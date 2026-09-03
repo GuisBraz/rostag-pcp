@@ -461,7 +461,7 @@
         <div class="sub" id="page-sub">Visão geral dos projetos — ROSTAG</div>
       </div>
       <div class="topbar-right">
-        <div class="save-chip" id="save-chip">…</div>
+        <div class="save-chip" id="save-chip" onclick="cliqueChip()" style="cursor:pointer;">…</div>
         <div class="sino-wrap">
           <button class="sino-btn" id="sino-btn" onclick="toggleNotificacoes(event)" data-i18n-title="tt.notificacoes" title="Notificações" aria-label="Notificações">🔔<span class="sino-contador" id="sino-contador" style="display:none">0</span></button>
           <div class="notif-panel" id="notif-panel">
@@ -767,9 +767,11 @@
   </div>
 
   <div class="settings-panel" id="stab-equipe">
-    <div class="card panel-pad" style="max-width:620px;">
+    <div class="card panel-pad" style="max-width:680px;">
       <div class="panel-title" data-i18n="cfg.equipe">Equipe</div>
-      <div class="stub-note" data-i18n="cfg.equipeNota">Ainda é só você por aqui.</div>
+      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Quem se cadastra no site entra aqui como pendente — só edita depois que alguém já aprovado libera. Qualquer pessoa aprovada pode aprovar ou revogar qualquer outra.</div>
+      <div id="equipe-sem-login" class="stub-note" data-i18n="cfg.equipePrecisaLogin">Entre para ver e gerenciar a equipe.</div>
+      <div id="equipe-lista" style="display:none;"></div>
     </div>
   </div>
 
@@ -912,24 +914,78 @@
 
 <div class="modal-overlay" id="modal-login" role="dialog" aria-modal="true" aria-labelledby="modal-login-title">
   <div class="modal-box estreita">
-    <div class="modal-header">
-      <div style="min-width:0;">
-        <h2 id="modal-login-title" data-i18n="auth.tituloLogin">Entrar para editar</h2>
-        <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subLogin">Sem login dá pra ver tudo — só não salva nada.</div>
+
+    <!-- ver "entrar" -->
+    <div id="login-view-entrar">
+      <div class="modal-header">
+        <div style="min-width:0;">
+          <h2 id="modal-login-title" data-i18n="auth.tituloLogin">Entrar para editar</h2>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subLogin">Sem login dá pra ver tudo — só não salva nada.</div>
+        </div>
+        <button class="modal-close" onclick="fecharModalLogin()" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
       </div>
-      <button class="modal-close" onclick="fecharModalLogin()" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+      <form id="login-form" onsubmit="fazerLogin(event)">
+        <div class="modal-body">
+          <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="login-email" type="email" autocomplete="username" required></div>
+          <div class="field"><label data-i18n="auth.senha">SENHA</label><input id="login-senha" type="password" autocomplete="current-password" required></div>
+          <div style="display:flex; justify-content:space-between; font-size:12px; margin-top:-6px;">
+            <a href="#" onclick="event.preventDefault(); mostrarViewLogin('recuperar')" data-i18n="auth.esqueciSenha">Esqueci minha senha</a>
+            <a href="#" onclick="event.preventDefault(); mostrarViewLogin('cadastro')" data-i18n="auth.criarConta">Criar conta</a>
+          </div>
+          <div id="login-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="fecharModalLogin()" data-i18n="btn.cancelar">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="login-submit" data-i18n="auth.entrarBtn">Entrar</button>
+        </div>
+      </form>
     </div>
-    <form id="login-form" onsubmit="fazerLogin(event)">
-      <div class="modal-body">
-        <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="login-email" type="email" autocomplete="username" required></div>
-        <div class="field"><label data-i18n="auth.senha">SENHA</label><input id="login-senha" type="password" autocomplete="current-password" required></div>
-        <div id="login-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+
+    <!-- ver "criar conta" -->
+    <div id="login-view-cadastro" style="display:none">
+      <div class="modal-header">
+        <div style="min-width:0;">
+          <h2 data-i18n="auth.tituloCadastro">Criar conta</h2>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subCadastro">Depois de criar, um administrador precisa aprovar antes de você poder editar.</div>
+        </div>
+        <button class="modal-close" onclick="fecharModalLogin()" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" onclick="fecharModalLogin()" data-i18n="btn.cancelar">Cancelar</button>
-        <button type="submit" class="btn btn-primary" id="login-submit" data-i18n="auth.entrarBtn">Entrar</button>
+      <form id="cadastro-form" onsubmit="fazerCadastro(event)">
+        <div class="modal-body">
+          <div class="field"><label data-i18n="auth.nome">NOME</label><input id="cadastro-nome" required></div>
+          <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="cadastro-email" type="email" autocomplete="username" required></div>
+          <div class="field"><label data-i18n="auth.senha">SENHA</label><input id="cadastro-senha" type="password" autocomplete="new-password" minlength="6" required></div>
+          <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label><input id="cadastro-senha2" type="password" autocomplete="new-password" minlength="6" required></div>
+          <div id="cadastro-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+        </div>
+        <div class="modal-footer">
+          <a href="#" style="align-self:center; font-size:12px;" onclick="event.preventDefault(); mostrarViewLogin('entrar')" data-i18n="auth.jaTenhoConta">Já tenho conta</a>
+          <button type="submit" class="btn btn-primary" id="cadastro-submit" data-i18n="auth.criarContaBtn">Criar conta</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ver "recuperar senha" -->
+    <div id="login-view-recuperar" style="display:none">
+      <div class="modal-header">
+        <div style="min-width:0;">
+          <h2 data-i18n="auth.tituloRecuperar">Recuperar senha</h2>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subRecuperar">Manda um link de redefinição para o seu e-mail.</div>
+        </div>
+        <button class="modal-close" onclick="fecharModalLogin()" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
       </div>
-    </form>
+      <form id="recuperar-form" onsubmit="fazerRecuperarSenha(event)">
+        <div class="modal-body">
+          <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="recuperar-email" type="email" autocomplete="username" required></div>
+          <div id="recuperar-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+        </div>
+        <div class="modal-footer">
+          <a href="#" style="align-self:center; font-size:12px;" onclick="event.preventDefault(); mostrarViewLogin('entrar')" data-i18n="auth.voltarLogin">Voltar</a>
+          <button type="submit" class="btn btn-primary" id="recuperar-submit" data-i18n="auth.enviarLink">Enviar link</button>
+        </div>
+      </form>
+    </div>
+
   </div>
 </div>
 
@@ -1074,6 +1130,8 @@ const I18N = {
     // topo e geral
     'chip.salvoNuvem':'☁ Salvo na nuvem', 'chip.salvoNuvemT':'Os projetos ficam salvos no Firestore — todo mundo com o link vê a mesma coisa.',
     'chip.visualizando':'👁 Visualizando', 'chip.visualizandoT':'Você está vendo tudo, mas edições exigem login.',
+    'chip.aguardandoVerificacao':'✉ Confirme seu e-mail', 'chip.aguardandoVerificacaoT':'Clique aqui para reenviar o e-mail de verificação.',
+    'chip.aguardandoAprovacao':'⏳ Aguardando aprovação', 'chip.aguardandoAprovacaoT':'Um administrador precisa aprovar sua conta na aba Equipe.',
     'chip.semSalvar':'Sem salvamento neste modo',
     'chip.semSalvarT':'O navegador bloqueou o armazenamento local. O app funciona, mas os dados somem ao recarregar — use Exportar JSON.',
     'chip.flash':'Salvo',
@@ -1216,7 +1274,16 @@ const I18N = {
     'cfg.nomeExibNota':'Aparece como GP padrão nos projetos novos e no rodapé do menu.',
     'cfg.dadosConta':'Dados da conta', 'cfg.email':'E-MAIL', 'cfg.empresa':'EMPRESA', 'cfg.plano':'PLANO',
     'cfg.planoInterno':'Interno', 'cfg.sairConta':'Sair da conta',
-    'cfg.equipeNota':'Ainda é só você por aqui. Quando o app tiver mais de um usuário, a gestão da equipe (convites, papéis, permissões) aparece nessa aba.',
+    'cfg.equipeNota2':'Quem se cadastra no site entra aqui como pendente — só edita depois que alguém já aprovado libera. Qualquer pessoa aprovada pode aprovar ou revogar qualquer outra.',
+    'cfg.equipePrecisaLogin':'Entre para ver e gerenciar a equipe.',
+    'cfg.equipeCarregando':'Carregando...', 'cfg.equipeVazia':'Ninguém cadastrado ainda.',
+    'cfg.equipeErro':'Não consegui carregar a equipe.',
+    'cfg.equipeAprovado':'aprovado', 'cfg.equipePendente':'pendente de aprovação',
+    'cfg.equipeVoce':'você',
+    'cfg.equipeAprovar':'Aprovar', 'cfg.equipeRevogar':'Revogar',
+    'cfg.equipeConfirmarRevogar':'Revogar o acesso de edição dessa pessoa?',
+    'cfg.equipeAprovadoFeito':'Acesso aprovado.', 'cfg.equipeRevogadoFeito':'Acesso revogado.',
+    'cfg.equipeErroAcao':'Não consegui fazer essa alteração.',
     'cfg.paleta':'Paleta de cores',
     'cfg.paletaNota':'A escolha fica salva e vale para as próximas vezes que você abrir o app.',
     'cfg.paletaClara':'Azul & Navy', 'cfg.paletaEscura':'Dark', 'cfg.paletaEscuraSub':'(preto & azul royal)',
@@ -1307,7 +1374,24 @@ const I18N = {
     'auth.saiu':'Você saiu. Voltou pro modo visualização.',
     'auth.confirmarSair':'Sair da edição?',
     'auth.somenteLeitura':'Modo visualização — entre para editar.',
-    'auth.visitante':'Visitante'
+    'auth.precisaVerificar':'Confirme seu e-mail para poder editar — clique no chip pra reenviar.',
+    'auth.precisaAprovacao':'Sua conta ainda não foi aprovada por um administrador.',
+    'auth.visitante':'Visitante',
+    'auth.esqueciSenha':'Esqueci minha senha', 'auth.criarConta':'Criar conta',
+    'auth.tituloCadastro':'Criar conta',
+    'auth.subCadastro':'Depois de criar, um administrador precisa aprovar antes de você poder editar.',
+    'auth.nome':'NOME', 'auth.confirmarSenha':'CONFIRMAR SENHA',
+    'auth.jaTenhoConta':'Já tenho conta', 'auth.criarContaBtn':'Criar conta',
+    'auth.tituloRecuperar':'Recuperar senha', 'auth.subRecuperar':'Manda um link de redefinição para o seu e-mail.',
+    'auth.voltarLogin':'Voltar', 'auth.enviarLink':'Enviar link',
+    'auth.senhasDiferentes':'As senhas não são iguais.',
+    'auth.cadastroFeito':'Conta criada! Confira seu e-mail pra confirmar, e aguarde um administrador aprovar seu acesso.',
+    'auth.emailJaExiste':'Já existe uma conta com esse e-mail.',
+    'auth.senhaFraca':'A senha precisa ter pelo menos 6 caracteres.',
+    'auth.erroCadastro':'Não consegui criar a conta. Tente de novo.',
+    'auth.recuperarEnviado':'Se esse e-mail tiver conta, chega um link de redefinição em instantes.',
+    'auth.erroRecuperar':'Não consegui enviar o e-mail de recuperação.',
+    'auth.verificarReenviado':'E-mail de verificação reenviado — confira a caixa de entrada.',
   },
 
   en: {
@@ -1330,6 +1414,8 @@ const I18N = {
 
     'chip.salvoNuvem':'☁ Saved to the cloud', 'chip.salvoNuvemT':'Projects are saved in Firestore — anyone with the link sees the same data.',
     'chip.visualizando':'👁 Viewing', 'chip.visualizandoT':'You can see everything, but editing requires logging in.',
+    'chip.aguardandoVerificacao':'✉ Confirm your email', 'chip.aguardandoVerificacaoT':'Click here to resend the verification email.',
+    'chip.aguardandoAprovacao':'⏳ Awaiting approval', 'chip.aguardandoAprovacaoT':'An admin needs to approve your account in the Team tab.',
     'chip.semSalvar':'Not saving in this mode',
     'chip.semSalvarT':'The browser blocked local storage. The app works, but data is lost on reload — use Export JSON.',
     'chip.flash':'Saved',
@@ -1463,7 +1549,16 @@ const I18N = {
     'cfg.nomeExibNota':'Used as the default PM on new projects and in the menu footer.',
     'cfg.dadosConta':'Account details', 'cfg.email':'E-MAIL', 'cfg.empresa':'COMPANY', 'cfg.plano':'PLAN',
     'cfg.planoInterno':'Internal', 'cfg.sairConta':'Sign out',
-    'cfg.equipeNota':'It is still just you here. When the app has more than one user, team management (invites, roles, permissions) shows up on this tab.',
+    'cfg.equipeNota2':'People who sign up on the site land here as pending — they only edit once someone already approved unlocks them. Any approved person can approve or revoke any other.',
+    'cfg.equipePrecisaLogin':'Sign in to see and manage the team.',
+    'cfg.equipeCarregando':'Loading...', 'cfg.equipeVazia':'Nobody signed up yet.',
+    'cfg.equipeErro':'Could not load the team.',
+    'cfg.equipeAprovado':'approved', 'cfg.equipePendente':'pending approval',
+    'cfg.equipeVoce':'you',
+    'cfg.equipeAprovar':'Approve', 'cfg.equipeRevogar':'Revoke',
+    'cfg.equipeConfirmarRevogar':'Revoke this person’s edit access?',
+    'cfg.equipeAprovadoFeito':'Access approved.', 'cfg.equipeRevogadoFeito':'Access revoked.',
+    'cfg.equipeErroAcao':'Could not make that change.',
     'cfg.paleta':'Colour palette',
     'cfg.paletaNota':'The choice is saved and applies the next time you open the app.',
     'cfg.paletaClara':'Blue & Navy', 'cfg.paletaEscura':'Dark', 'cfg.paletaEscuraSub':'(black & royal blue)',
@@ -1549,7 +1644,24 @@ const I18N = {
     'auth.saiu':'Signed out. Back to viewing mode.',
     'auth.confirmarSair':'Sign out of editing?',
     'auth.somenteLeitura':'Viewing mode — sign in to edit.',
-    'auth.visitante':'Visitor'
+    'auth.precisaVerificar':'Confirm your email to edit — click the chip to resend it.',
+    'auth.precisaAprovacao':'Your account has not been approved by an admin yet.',
+    'auth.visitante':'Visitor',
+    'auth.esqueciSenha':'Forgot my password', 'auth.criarConta':'Create account',
+    'auth.tituloCadastro':'Create account',
+    'auth.subCadastro':'Once created, an admin needs to approve you before you can edit.',
+    'auth.nome':'NAME', 'auth.confirmarSenha':'CONFIRM PASSWORD',
+    'auth.jaTenhoConta':'I already have an account', 'auth.criarContaBtn':'Create account',
+    'auth.tituloRecuperar':'Recover password', 'auth.subRecuperar':'Sends a reset link to your email.',
+    'auth.voltarLogin':'Back', 'auth.enviarLink':'Send link',
+    'auth.senhasDiferentes':'Passwords do not match.',
+    'auth.cadastroFeito':'Account created! Check your email to confirm it, and wait for an admin to approve your access.',
+    'auth.emailJaExiste':'An account with that email already exists.',
+    'auth.senhaFraca':'Password needs at least 6 characters.',
+    'auth.erroCadastro':'Could not create the account. Try again.',
+    'auth.recuperarEnviado':'If that email has an account, a reset link is on its way.',
+    'auth.erroRecuperar':'Could not send the recovery email.',
+    'auth.verificarReenviado':'Verification email resent — check your inbox.',
   }
 };
 
@@ -1691,26 +1803,92 @@ const Cronograma = (function () {
    isto aqui só ajusta a interface para o modo de cada visitante.
 --------------------------------------------------------------------------- */
 const Auth = (function () {
-  let usuario = null;
+  let usuario = null;   // objeto do Firebase Authentication
+  let perfil = null;    // documento /usuarios/{uid}: nome, preferências, aprovado
   let pronto = false;
   const ouvintes = [];
 
+  function docPerfil(uid) { return firebase.firestore().collection('usuarios').doc(uid); }
+
+  function carregarPerfil(uid) {
+    return docPerfil(uid).get().then(function (snap) {
+      perfil = snap.exists ? snap.data() : null;
+    }).catch(function (e) { console.warn(e); perfil = null; });
+  }
+
+  function avisar() { ouvintes.forEach(function (fn) { try { fn(); } catch (e) { console.warn(e); } }); }
+
   function inicializar() {
-    if (!FIREBASE_PRONTO) { pronto = true; ouvintes.forEach(function (fn) { fn(null); }); return; }
+    if (!FIREBASE_PRONTO) { pronto = true; avisar(); return; }
     firebase.auth().onAuthStateChanged(function (u) {
-      usuario = u; pronto = true;
-      ouvintes.forEach(function (fn) { try { fn(u); } catch (e) { console.warn(e); } });
+      usuario = u;
+      const seguir = function () { pronto = true; avisar(); };
+      if (u) carregarPerfil(u.uid).then(seguir); else { perfil = null; seguir(); }
     });
   }
-  function podeEditar() { return !!usuario; }
+
+  function logado() { return !!usuario; }
   function usuarioAtual() { return usuario; }
+  function perfilAtual() { return perfil; }
+  function emailVerificado() { return !!(usuario && usuario.emailVerified); }
+  // aprovado != podeEditar: a aprovação some se o admin revogar, mesmo sem deslogar
+  function aprovado() { return !!(perfil && perfil.aprovado); }
+  function podeEditar() { return logado() && emailVerificado() && aprovado(); }
+
   function entrar(email, senha) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado (veja README.md).'));
     return firebase.auth().signInWithEmailAndPassword(email, senha);
   }
+
+  function cadastrar(nome, email, senha) {
+    if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado (veja README.md).'));
+    return firebase.auth().createUserWithEmailAndPassword(email, senha).then(function (cred) {
+      return cred.user.updateProfile({ displayName: nome }).then(function () {
+        return docPerfil(cred.user.uid).set({
+          nome: nome, email: email, aprovado: false,
+          criadoEm: new Date().toISOString(),
+          tema: 'claro', idioma: 'pt', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao'
+        });
+      }).then(function () { return cred.user.sendEmailVerification(); });
+    });
+  }
+
+  function reenviarVerificacao() {
+    return usuario ? usuario.sendEmailVerification() : Promise.reject(new Error('sem sessão'));
+  }
+  function recuperarSenha(email) {
+    if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado.'));
+    return firebase.auth().sendPasswordResetEmail(email);
+  }
   function sair() { return FIREBASE_PRONTO ? firebase.auth().signOut() : Promise.resolve(); }
-  function aoMudar(fn) { ouvintes.push(fn); if (pronto) fn(usuario); }
-  return { inicializar, podeEditar, usuarioAtual, entrar, sair, aoMudar };
+  function aoMudar(fn) { ouvintes.push(fn); if (pronto) fn(); }
+
+  // salva campos de preferência/perfil (nome, tema, idioma...) na conta
+  function salvarPerfil(campos) {
+    if (!usuario) return Promise.reject(new Error('sem sessão'));
+    return docPerfil(usuario.uid).update(campos).then(function () {
+      perfil = Object.assign({}, perfil, campos);
+    });
+  }
+
+  // Equipe — a segurança de verdade está na regra do Firestore, isto aqui é só a tela
+  function listarEquipe() {
+    return firebase.firestore().collection('usuarios').get().then(function (qs) {
+      const lista = [];
+      qs.forEach(function (doc) { lista.push(Object.assign({ uid: doc.id }, doc.data())); });
+      lista.sort(function (a, b) { return (a.nome || '').localeCompare(b.nome || '', 'pt-BR'); });
+      return lista;
+    });
+  }
+  function definirAprovacao(uid, valor) {
+    return docPerfil(uid).update({ aprovado: valor }).then(function () {
+      if (usuario && uid === usuario.uid) return carregarPerfil(uid);
+    });
+  }
+
+  return { inicializar, logado, usuarioAtual, perfilAtual, emailVerificado, aprovado, podeEditar,
+    entrar, cadastrar, reenviarVerificacao, recuperarSenha, sair, aoMudar, salvarPerfil,
+    listarEquipe, definirAprovacao };
 })();
 
 /* ---------------------------------------------------------------------------
@@ -2234,6 +2412,13 @@ function salvarPrefs() {
   if (em) prefs.email = em.value.trim();
   if (ep) prefs.empresa = ep.value.trim();
   Store.salvarPrefsRaw(prefs);
+  // logado: nome/tema/idioma/alertas seguem a conta, não só este navegador
+  if (Auth.logado()) {
+    Auth.salvarPerfil({
+      nome: prefs.nome, tema: prefs.tema, idioma: prefs.idioma,
+      alerta: prefs.alerta, alertaTarefa: prefs.alertaTarefa, fimDeSemana: prefs.fimDeSemana
+    }).catch(function (e) { console.warn(e); });
+  }
   Cronograma.invalidar();
   aplicarPrefs();
   renderTudo();
@@ -2265,6 +2450,12 @@ let chipTimer = null;
 function atualizarChip(flash) {
   const chip = document.getElementById('save-chip');
   clearTimeout(chipTimer);
+  if (Auth.logado() && !Auth.podeEditar()) {
+    chip.classList.add('warn');
+    chip.textContent = !Auth.emailVerificado() ? T('chip.aguardandoVerificacao') : T('chip.aguardandoAprovacao');
+    chip.title = !Auth.emailVerificado() ? T('chip.aguardandoVerificacaoT') : T('chip.aguardandoAprovacaoT');
+    return;
+  }
   if (!Auth.podeEditar()) {
     chip.classList.remove('warn');
     chip.textContent = T('chip.visualizando');
@@ -3451,6 +3642,7 @@ function abaConfig(k) {
   document.querySelectorAll('.settings-tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.stab === k); });
   document.querySelectorAll('.settings-panel').forEach(function (p) { p.classList.toggle('active', p.id === 'stab-' + k); });
   if (k === 'atalhos') renderAtalhos();
+  if (k === 'equipe') renderEquipe();
 }
 function toggleSidebar() {
   prefs.sidebarRecolhida = !document.getElementById('sidebar').classList.contains('collapsed');
@@ -3463,10 +3655,6 @@ function toggleProfileMenu() {
   fecharPopups();
   if (!aberto) m.classList.add('open');
 }
-function doLogout() {
-  if (confirm('Deseja sair da conta?')) toast('Sessão encerrada (protótipo — ainda sem autenticação real).');
-}
-
 /* ---------------------------------------------------------------------------
    Boot
 --------------------------------------------------------------------------- */
@@ -3489,13 +3677,31 @@ function renderTudo() {
 --------------------------------------------------------------------------- */
 function exigirEdicao(mensagem) {
   if (Auth.podeEditar()) return true;
-  toast(mensagem || T('auth.somenteLeitura'));
+  toast(mensagem || mensagemModoAtual());
   abrirModalLogin();
   return false;
+}
+function mensagemModoAtual() {
+  if (!Auth.logado()) return T('auth.somenteLeitura');
+  if (!Auth.emailVerificado()) return T('auth.precisaVerificar');
+  if (!Auth.aprovado()) return T('auth.precisaAprovacao');
+  return T('auth.somenteLeitura');
+}
+function mostrarViewLogin(ver) {
+  ['entrar','cadastro','recuperar'].forEach(function (v) {
+    document.getElementById('login-view-' + v).style.display = (v === ver) ? 'block' : 'none';
+  });
+  const foco = { entrar:'login-email', cadastro:'cadastro-nome', recuperar:'recuperar-email' }[ver];
+  setTimeout(function () { const el = document.getElementById(foco); if (el) el.focus(); }, 30);
 }
 function abrirModalLogin() {
   document.getElementById('login-erro').textContent = '';
   document.getElementById('login-form').reset();
+  document.getElementById('cadastro-erro').textContent = '';
+  document.getElementById('cadastro-form').reset();
+  document.getElementById('recuperar-erro').textContent = '';
+  document.getElementById('recuperar-form').reset();
+  mostrarViewLogin('entrar');
   abrirModal('modal-login');
   setTimeout(function () { document.getElementById('login-email').focus(); }, 30);
 }
@@ -3520,16 +3726,121 @@ function fazerLogin(ev) {
     console.warn(e);
   });
 }
+function fazerCadastro(ev) {
+  if (ev) ev.preventDefault();
+  const nome = document.getElementById('cadastro-nome').value.trim();
+  const email = document.getElementById('cadastro-email').value.trim();
+  const senha = document.getElementById('cadastro-senha').value;
+  const senha2 = document.getElementById('cadastro-senha2').value;
+  const erro = document.getElementById('cadastro-erro');
+  const btn = document.getElementById('cadastro-submit');
+  erro.textContent = '';
+  if (senha !== senha2) { erro.textContent = T('auth.senhasDiferentes'); return; }
+  btn.disabled = true;
+  Auth.cadastrar(nome, email, senha).then(function () {
+    btn.disabled = false;
+    fecharModalLogin();
+    toast(T('auth.cadastroFeito'), { ms:8000 });
+  }).catch(function (e) {
+    btn.disabled = false;
+    erro.textContent = (e && e.code === 'auth/email-already-in-use') ? T('auth.emailJaExiste')
+      : (e && e.code === 'auth/weak-password') ? T('auth.senhaFraca')
+      : T('auth.erroCadastro');
+    console.warn(e);
+  });
+}
+function fazerRecuperarSenha(ev) {
+  if (ev) ev.preventDefault();
+  const email = document.getElementById('recuperar-email').value.trim();
+  const erro = document.getElementById('recuperar-erro');
+  const btn = document.getElementById('recuperar-submit');
+  erro.textContent = '';
+  btn.disabled = true;
+  Auth.recuperarSenha(email).then(function () {
+    btn.disabled = false;
+    fecharModalLogin();
+    toast(T('auth.recuperarEnviado'), { ms:8000 });
+  }).catch(function (e) {
+    btn.disabled = false;
+    erro.textContent = T('auth.erroRecuperar');
+    console.warn(e);
+  });
+}
+function cliqueChip() {
+  if (!Auth.logado()) { abrirModalLogin(); return; }
+  if (!Auth.emailVerificado()) { reenviarVerificacaoEmail(); return; }
+  if (!Auth.aprovado()) { toast(T('chip.aguardandoAprovacaoT')); return; }
+}
+function reenviarVerificacaoEmail() {
+  Auth.reenviarVerificacao().then(function () { toast(T('auth.verificarReenviado')); })
+    .catch(function (e) { console.warn(e); });
+}
 function doLogout() {
   if (!confirm(T('auth.confirmarSair'))) return;
   Auth.sair().then(function () { toast(T('auth.saiu')); });
 }
-function atualizarModoEdicao(usuario) {
-  const podeEditar = !!usuario;
-  document.getElementById('profile-item-sair').style.display = podeEditar ? '' : 'none';
-  document.getElementById('profile-item-entrar').style.display = podeEditar ? 'none' : '';
+
+/* ---------------------------------------------------------------------------
+   Equipe — aprovar/revogar quem pode editar
+--------------------------------------------------------------------------- */
+function renderEquipe() {
+  const semLogin = document.getElementById('equipe-sem-login');
+  const lista = document.getElementById('equipe-lista');
+  if (!Auth.logado()) { semLogin.style.display = 'block'; lista.style.display = 'none'; return; }
+  semLogin.style.display = 'none';
+  lista.style.display = 'block';
+  lista.innerHTML = '<div class="hint-txt">' + T('cfg.equipeCarregando') + '</div>';
+  Auth.listarEquipe().then(function (membros) {
+    const meuUid = Auth.usuarioAtual().uid;
+    lista.innerHTML = membros.map(function (m) {
+      const voceMesmo = m.uid === meuUid;
+      const statusTxt = m.aprovado ? T('cfg.equipeAprovado') : T('cfg.equipePendente');
+      const statusCor = m.aprovado ? 'var(--green)' : 'var(--amber, #b8860b)';
+      const acao = m.aprovado
+        ? '<button class="btn btn-outline" onclick="revogarMembro(\'' + m.uid + '\')"' + (voceMesmo ? ' disabled' : '') + '>' + T('cfg.equipeRevogar') + '</button>'
+        : '<button class="btn btn-primary" onclick="aprovarMembro(\'' + m.uid + '\')">' + T('cfg.equipeAprovar') + '</button>';
+      return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);">' +
+        '<div style="min-width:0;">' +
+          '<div style="font-weight:600; font-size:13px;">' + esc(m.nome || '—') + (voceMesmo ? ' <span class="hint-txt">(' + T('cfg.equipeVoce') + ')</span>' : '') + '</div>' +
+          '<div class="hint-txt" style="font-size:11px;">' + esc(m.email || '') + ' · <span style="color:' + statusCor + '">' + statusTxt + '</span></div>' +
+        '</div>' +
+        '<div>' + acao + '</div>' +
+      '</div>';
+    }).join('') || '<div class="hint-txt">' + T('cfg.equipeVazia') + '</div>';
+  }).catch(function (e) {
+    console.warn(e);
+    lista.innerHTML = '<div class="hint-txt" style="color:var(--rust);">' + T('cfg.equipeErro') + '</div>';
+  });
+}
+function aprovarMembro(uid) {
+  Auth.definirAprovacao(uid, true).then(function () { toast(T('cfg.equipeAprovadoFeito')); renderEquipe(); atualizarModoEdicao(); })
+    .catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
+}
+function revogarMembro(uid) {
+  if (!confirm(T('cfg.equipeConfirmarRevogar'))) return;
+  Auth.definirAprovacao(uid, false).then(function () { toast(T('cfg.equipeRevogadoFeito')); renderEquipe(); atualizarModoEdicao(); })
+    .catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
+}
+
+function atualizarModoEdicao() {
+  const podeEditar = Auth.podeEditar();
+  document.getElementById('profile-item-sair').style.display = Auth.logado() ? '' : 'none';
+  document.getElementById('profile-item-entrar').style.display = Auth.logado() ? 'none' : '';
+  // preferências da conta sobrescrevem as locais assim que a gente sabe quem é
+  const perfil = Auth.perfilAtual();
+  if (Auth.logado() && perfil) {
+    ['nome','tema','idioma','alerta','alertaTarefa','fimDeSemana'].forEach(function (k) {
+      if (perfil[k] != null) prefs[k] = perfil[k];
+    });
+    if (typeof aplicarPrefs === 'function' && document.getElementById('cfg-nome')) {
+      aplicarPrefs(); aplicarIdioma();
+      document.documentElement.setAttribute('data-tema', prefs.tema === 'escuro' ? 'escuro' : 'claro');
+      document.getElementById('tema-btn').textContent = prefs.tema === 'escuro' ? '☀' : '◐';
+    }
+  }
   atualizarChip();
   atualizarInfoArmazenamento();
+  if (abaAtual() === 'config' && document.getElementById('stab-equipe').classList.contains('active')) renderEquipe();
 }
 Auth.aoMudar(atualizarModoEdicao);
 

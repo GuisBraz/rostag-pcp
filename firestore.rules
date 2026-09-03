@@ -1,12 +1,38 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Qualquer pessoa lê (site público, sem login). Só quem fez login no
-    // Firebase Authentication pode escrever — é essa regra, não o código do
-    // site, que garante que visitantes não editam.
-    match /{document=**} {
+
+    // Aprovado = logado + e-mail confirmado + tem perfil em /usuarios com
+    // aprovado:true. É essa função que decide quem edita — não a tela.
+    function aprovado() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.aprovado == true;
+    }
+
+    // Projetos: todo mundo lê, só quem está aprovado escreve.
+    match /rostag/dados {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if aprovado();
+    }
+
+    // Perfis de usuário (nome, preferências, status de aprovação):
+    //  - qualquer logado lê a lista inteira (é o que alimenta a aba Equipe)
+    //  - um usuário cria o próprio perfil, sempre nascendo aprovado:false
+    //    (não dá pra se autoaprovar no create)
+    //  - o dono edita o próprio perfil livremente, DESDE que não mude o
+    //    campo aprovado; só quem já está aprovado pode aprovar/revogar
+    //    (o próprio ou qualquer outro)
+    match /usuarios/{uid} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.aprovado == false;
+      allow update: if request.auth != null && (
+        (request.auth.uid == uid && request.resource.data.aprovado == resource.data.aprovado)
+        || aprovado()
+      );
     }
   }
 }
