@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Qualquer pessoa lê (site público, sem login). Só quem fez login no
+    // Firebase Authentication pode escrever — é essa regra, não o código do
+    // site, que garante que visitantes não editam.
+    match /{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
