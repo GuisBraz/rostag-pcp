@@ -2,8 +2,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // O coordenador é definido por um único documento (sistema/coordenador),
+    // não por um campo em cada perfil — assim nunca existe ambiguidade sobre
+    // quem manda, e transferir o cargo é só trocar esse um valor.
+    function souCoordenador() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/sistema/coordenador)
+        && get(/databases/$(database)/documents/sistema/coordenador).data.uid == request.auth.uid;
+    }
+
     // Aprovado = logado + e-mail confirmado + tem perfil em /usuarios com
-    // aprovado:true. É essa função que decide quem edita — não a tela.
+    // aprovado:true. Sem isso, nem lê os projetos — o app agora exige login
+    // pra tudo, não só pra editar.
     function aprovado() {
       return request.auth != null
         && request.auth.token.email_verified == true
@@ -11,28 +21,44 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.aprovado == true;
     }
 
-    // Projetos: todo mundo lê, só quem está aprovado escreve.
+    // Projetos: só quem está aprovado lê ou escreve. Nada de visitante.
     match /rostag/dados {
-      allow read: if true;
-      allow write: if aprovado();
+      allow read, write: if aprovado();
+    }
+
+    // O documento único que diz quem é o coordenador atual.
+    //  - qualquer logado lê (pra saber quem é e mostrar na aba Equipe)
+    //  - só é criado uma vez, pelo próprio primeiro usuário (o cadastro dele
+    //    grava os dois documentos numa transação — ver Auth.cadastrar no app)
+    //  - só o coordenador atual troca o valor, e só pra alguém já aprovado
+    match /sistema/coordenador {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && !exists(/databases/$(database)/documents/sistema/coordenador)
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if souCoordenador()
+        && exists(/databases/$(database)/documents/usuarios/$(request.resource.data.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.resource.data.uid)).data.aprovado == true;
     }
 
     // Perfis de usuário (nome, preferências, status de aprovação):
     //  - qualquer logado lê a lista inteira (é o que alimenta a aba Equipe)
-    //  - um usuário cria o próprio perfil, sempre nascendo aprovado:false
-    //    (não dá pra se autoaprovar no create)
+    //  - um usuário cria o próprio perfil; só nasce aprovado:true se for
+    //    literalmente o primeiro usuário do sistema (ainda não existe
+    //    coordenador) — todo mundo depois nasce aprovado:false
     //  - o dono edita o próprio perfil livremente, DESDE que não mude o
-    //    campo aprovado; só quem já está aprovado pode aprovar/revogar
-    //    (o próprio ou qualquer outro)
+    //    campo aprovado; só o coordenador aprova, revoga ou remove alguém
     match /usuarios/{uid} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null
-        && request.auth.uid == uid
-        && request.resource.data.aprovado == false;
+      allow create: if request.auth != null && request.auth.uid == uid && (
+        (request.resource.data.aprovado == true && !exists(/databases/$(database)/documents/sistema/coordenador))
+        || request.resource.data.aprovado == false
+      );
       allow update: if request.auth != null && (
         (request.auth.uid == uid && request.resource.data.aprovado == resource.data.aprovado)
-        || aprovado()
+        || souCoordenador()
       );
+      allow delete: if souCoordenador();
     }
   }
 }

@@ -425,7 +425,7 @@
 </head>
 <body>
 
-<div class="app-shell">
+<div class="app-shell" id="app-shell" style="display:none;">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
       <div class="brand-mark"><img src="data:image/png;base64,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" alt="ROSTAG PCP"></div>
@@ -448,8 +448,7 @@
       <button class="sidebar-gear-btn" id="gear-btn" onclick="irPara('config')" data-i18n-title="tt.config" title="Configurações" aria-label="Configurações">⚙</button>
       <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" onclick="toggleSidebar()" data-i18n-title="tt.recolher" title="Recolher menu" aria-label="Recolher menu"><span aria-hidden="true">‹</span></button>
       <div class="profile-menu" id="profile-menu">
-        <button class="profile-menu-item" id="profile-item-entrar" onclick="abrirModalLogin()" data-i18n="auth.entrar">🔓 Entrar</button>
-        <button class="profile-menu-item logout" id="profile-item-sair" onclick="doLogout()" style="display:none" data-i18n="btn.sair">⏻ Sair</button>
+        <button class="profile-menu-item logout" onclick="doLogout()" data-i18n="btn.sair">⏻ Sair</button>
       </div>
     </div>
   </aside>
@@ -461,7 +460,7 @@
         <div class="sub" id="page-sub">Visão geral dos projetos — ROSTAG</div>
       </div>
       <div class="topbar-right">
-        <div class="save-chip" id="save-chip" onclick="cliqueChip()" style="cursor:pointer;">…</div>
+        <div class="save-chip" id="save-chip">…</div>
         <div class="sino-wrap">
           <button class="sino-btn" id="sino-btn" onclick="toggleNotificacoes(event)" data-i18n-title="tt.notificacoes" title="Notificações" aria-label="Notificações">🔔<span class="sino-contador" id="sino-contador" style="display:none">0</span></button>
           <div class="notif-panel" id="notif-panel">
@@ -769,9 +768,8 @@
   <div class="settings-panel" id="stab-equipe">
     <div class="card panel-pad" style="max-width:680px;">
       <div class="panel-title" data-i18n="cfg.equipe">Equipe</div>
-      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Quem se cadastra no site entra aqui como pendente — só edita depois que alguém já aprovado libera. Qualquer pessoa aprovada pode aprovar ou revogar qualquer outra.</div>
-      <div id="equipe-sem-login" class="stub-note" data-i18n="cfg.equipePrecisaLogin">Entre para ver e gerenciar a equipe.</div>
-      <div id="equipe-lista" style="display:none;"></div>
+      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Quem se cadastra entra como pendente — só o coordenador aprova, revoga ou remove. O coordenador também pode passar o cargo para outra pessoa da equipe.</div>
+      <div id="equipe-lista"></div>
     </div>
   </div>
 
@@ -912,31 +910,29 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-login" role="dialog" aria-modal="true" aria-labelledby="modal-login-title">
+<div id="tela-acesso" style="display:none; position:fixed; inset:0; z-index:200; align-items:center; justify-content:center; background:var(--bg);">
   <div class="modal-box estreita">
 
     <!-- ver "entrar" -->
     <div id="login-view-entrar">
       <div class="modal-header">
         <div style="min-width:0;">
-          <h2 id="modal-login-title" data-i18n="auth.tituloLogin">Entrar para editar</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subLogin">Sem login dá pra ver tudo — só não salva nada.</div>
+          <h2 id="modal-login-title" data-i18n="auth.tituloLogin">Entrar no ROSTAG PCP</h2>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subLogin">É preciso conta pra ver e mexer nos projetos.</div>
         </div>
-        <button class="modal-close" onclick="fecharModalLogin()" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
       </div>
       <form id="login-form" onsubmit="fazerLogin(event)">
         <div class="modal-body">
           <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="login-email" type="email" autocomplete="username" required></div>
           <div class="field"><label data-i18n="auth.senha">SENHA</label><input id="login-senha" type="password" autocomplete="current-password" required></div>
           <div style="display:flex; justify-content:space-between; font-size:12px; margin-top:-6px;">
-            <a href="#" onclick="event.preventDefault(); mostrarViewLogin('recuperar')" data-i18n="auth.esqueciSenha">Esqueci minha senha</a>
-            <a href="#" onclick="event.preventDefault(); mostrarViewLogin('cadastro')" data-i18n="auth.criarConta">Criar conta</a>
+            <a href="#" onclick="event.preventDefault(); mostrarViewAcesso('recuperar')" data-i18n="auth.esqueciSenha">Esqueci minha senha</a>
+            <a href="#" onclick="event.preventDefault(); mostrarViewAcesso('cadastro')" data-i18n="auth.criarConta">Criar conta</a>
           </div>
           <div id="login-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline" onclick="fecharModalLogin()" data-i18n="btn.cancelar">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="login-submit" data-i18n="auth.entrarBtn">Entrar</button>
+          <button type="submit" class="btn btn-primary" id="login-submit" style="width:100%;" data-i18n="auth.entrarBtn">Entrar</button>
         </div>
       </form>
     </div>
@@ -946,9 +942,8 @@
       <div class="modal-header">
         <div style="min-width:0;">
           <h2 data-i18n="auth.tituloCadastro">Criar conta</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subCadastro">Depois de criar, um administrador precisa aprovar antes de você poder editar.</div>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subCadastro">Se você for a primeira pessoa a se cadastrar, vira coordenador automaticamente. Depois disso, o coordenador aprova quem entra.</div>
         </div>
-        <button class="modal-close" onclick="fecharModalLogin()" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
       </div>
       <form id="cadastro-form" onsubmit="fazerCadastro(event)">
         <div class="modal-body">
@@ -959,7 +954,7 @@
           <div id="cadastro-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
         </div>
         <div class="modal-footer">
-          <a href="#" style="align-self:center; font-size:12px;" onclick="event.preventDefault(); mostrarViewLogin('entrar')" data-i18n="auth.jaTenhoConta">Já tenho conta</a>
+          <a href="#" style="align-self:center; font-size:12px;" onclick="event.preventDefault(); mostrarViewAcesso('entrar')" data-i18n="auth.jaTenhoConta">Já tenho conta</a>
           <button type="submit" class="btn btn-primary" id="cadastro-submit" data-i18n="auth.criarContaBtn">Criar conta</button>
         </div>
       </form>
@@ -972,7 +967,6 @@
           <h2 data-i18n="auth.tituloRecuperar">Recuperar senha</h2>
           <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subRecuperar">Manda um link de redefinição para o seu e-mail.</div>
         </div>
-        <button class="modal-close" onclick="fecharModalLogin()" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
       </div>
       <form id="recuperar-form" onsubmit="fazerRecuperarSenha(event)">
         <div class="modal-body">
@@ -980,10 +974,40 @@
           <div id="recuperar-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
         </div>
         <div class="modal-footer">
-          <a href="#" style="align-self:center; font-size:12px;" onclick="event.preventDefault(); mostrarViewLogin('entrar')" data-i18n="auth.voltarLogin">Voltar</a>
+          <a href="#" style="align-self:center; font-size:12px;" onclick="event.preventDefault(); mostrarViewAcesso('entrar')" data-i18n="auth.voltarLogin">Voltar</a>
           <button type="submit" class="btn btn-primary" id="recuperar-submit" data-i18n="auth.enviarLink">Enviar link</button>
         </div>
       </form>
+    </div>
+
+    <!-- ver "confirme seu e-mail" -->
+    <div id="login-view-verificar" style="display:none">
+      <div class="modal-header">
+        <div style="min-width:0;">
+          <h2 data-i18n="auth.tituloVerificar">Confirme seu e-mail</h2>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subVerificar">Mandamos um link de confirmação. Clique nele e depois volte aqui.</div>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="hint-txt" id="verificar-email-texto"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="doLogout()" data-i18n="btn.sair">⏻ Sair</button>
+        <button type="button" class="btn btn-primary" onclick="reenviarVerificacaoEmail()" data-i18n="auth.reenviarBtn">Reenviar e-mail</button>
+      </div>
+    </div>
+
+    <!-- ver "aguardando aprovação" -->
+    <div id="login-view-aguardando" style="display:none">
+      <div class="modal-header">
+        <div style="min-width:0;">
+          <h2 data-i18n="auth.tituloAguardando">Conta criada</h2>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subAguardando">O coordenador da equipe ainda precisa aprovar seu acesso.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="doLogout()" data-i18n="btn.sair">⏻ Sair</button>
+      </div>
     </div>
 
   </div>
@@ -1129,9 +1153,6 @@ const I18N = {
 
     // topo e geral
     'chip.salvoNuvem':'☁ Salvo na nuvem', 'chip.salvoNuvemT':'Os projetos ficam salvos no Firestore — todo mundo com o link vê a mesma coisa.',
-    'chip.visualizando':'👁 Visualizando', 'chip.visualizandoT':'Você está vendo tudo, mas edições exigem login.',
-    'chip.aguardandoVerificacao':'✉ Confirme seu e-mail', 'chip.aguardandoVerificacaoT':'Clique aqui para reenviar o e-mail de verificação.',
-    'chip.aguardandoAprovacao':'⏳ Aguardando aprovação', 'chip.aguardandoAprovacaoT':'Um administrador precisa aprovar sua conta na aba Equipe.',
     'chip.semSalvar':'Sem salvamento neste modo',
     'chip.semSalvarT':'O navegador bloqueou o armazenamento local. O app funciona, mas os dados somem ao recarregar — use Exportar JSON.',
     'chip.flash':'Salvo',
@@ -1274,10 +1295,13 @@ const I18N = {
     'cfg.nomeExibNota':'Aparece como GP padrão nos projetos novos e no rodapé do menu.',
     'cfg.dadosConta':'Dados da conta', 'cfg.email':'E-MAIL', 'cfg.empresa':'EMPRESA', 'cfg.plano':'PLANO',
     'cfg.planoInterno':'Interno', 'cfg.sairConta':'Sair da conta',
-    'cfg.equipeNota2':'Quem se cadastra no site entra aqui como pendente — só edita depois que alguém já aprovado libera. Qualquer pessoa aprovada pode aprovar ou revogar qualquer outra.',
-    'cfg.equipePrecisaLogin':'Entre para ver e gerenciar a equipe.',
+    'cfg.equipeNota2':'Quem se cadastra entra como pendente — só o coordenador aprova, revoga ou remove. O coordenador também pode passar o cargo para outra pessoa da equipe.',
     'cfg.equipeCarregando':'Carregando...', 'cfg.equipeVazia':'Ninguém cadastrado ainda.',
     'cfg.equipeErro':'Não consegui carregar a equipe.',
+    'cfg.equipeCoordenador':'coordenador',
+    'cfg.equipeTransferir':'Transferir cargo',
+    'cfg.equipeConfirmarTransferir':'Transferir o cargo de coordenador para {0}? Você deixa de ser coordenador imediatamente.',
+    'cfg.equipeTransferido':'{0} agora é o coordenador.',
     'cfg.equipeAprovado':'aprovado', 'cfg.equipePendente':'pendente de aprovação',
     'cfg.equipeVoce':'você',
     'cfg.equipeAprovar':'Aprovar', 'cfg.equipeRevogar':'Revogar',
@@ -1375,7 +1399,10 @@ const I18N = {
     'auth.confirmarSair':'Sair da edição?',
     'auth.somenteLeitura':'Modo visualização — entre para editar.',
     'auth.precisaVerificar':'Confirme seu e-mail para poder editar — clique no chip pra reenviar.',
-    'auth.precisaAprovacao':'Sua conta ainda não foi aprovada por um administrador.',
+    'auth.precisaAprovacao':'Sua conta ainda não foi aprovada pelo coordenador.',
+    'auth.tituloVerificar':'Confirme seu e-mail', 'auth.subVerificar':'Mandamos um link de confirmação. Clique nele e depois volte aqui.',
+    'auth.verificarEnviadoPara':'Enviado para {0}.', 'auth.reenviarBtn':'Reenviar e-mail',
+    'auth.tituloAguardando':'Conta criada', 'auth.subAguardando':'O coordenador da equipe ainda precisa aprovar seu acesso.',
     'auth.visitante':'Visitante',
     'auth.esqueciSenha':'Esqueci minha senha', 'auth.criarConta':'Criar conta',
     'auth.tituloCadastro':'Criar conta',
@@ -1413,9 +1440,6 @@ const I18N = {
     'sit.atrasada':'Overdue', 'sit.parada':'On hold', 'sit.concluida':'Done',
 
     'chip.salvoNuvem':'☁ Saved to the cloud', 'chip.salvoNuvemT':'Projects are saved in Firestore — anyone with the link sees the same data.',
-    'chip.visualizando':'👁 Viewing', 'chip.visualizandoT':'You can see everything, but editing requires logging in.',
-    'chip.aguardandoVerificacao':'✉ Confirm your email', 'chip.aguardandoVerificacaoT':'Click here to resend the verification email.',
-    'chip.aguardandoAprovacao':'⏳ Awaiting approval', 'chip.aguardandoAprovacaoT':'An admin needs to approve your account in the Team tab.',
     'chip.semSalvar':'Not saving in this mode',
     'chip.semSalvarT':'The browser blocked local storage. The app works, but data is lost on reload — use Export JSON.',
     'chip.flash':'Saved',
@@ -1549,10 +1573,13 @@ const I18N = {
     'cfg.nomeExibNota':'Used as the default PM on new projects and in the menu footer.',
     'cfg.dadosConta':'Account details', 'cfg.email':'E-MAIL', 'cfg.empresa':'COMPANY', 'cfg.plano':'PLAN',
     'cfg.planoInterno':'Internal', 'cfg.sairConta':'Sign out',
-    'cfg.equipeNota2':'People who sign up on the site land here as pending — they only edit once someone already approved unlocks them. Any approved person can approve or revoke any other.',
-    'cfg.equipePrecisaLogin':'Sign in to see and manage the team.',
+    'cfg.equipeNota2':'People who sign up land here as pending — only the coordinator approves, revokes or removes. The coordinator can also pass the role to someone else on the team.',
     'cfg.equipeCarregando':'Loading...', 'cfg.equipeVazia':'Nobody signed up yet.',
     'cfg.equipeErro':'Could not load the team.',
+    'cfg.equipeCoordenador':'coordinator',
+    'cfg.equipeTransferir':'Transfer role',
+    'cfg.equipeConfirmarTransferir':'Transfer the coordinator role to {0}? You stop being coordinator immediately.',
+    'cfg.equipeTransferido':'{0} is now the coordinator.',
     'cfg.equipeAprovado':'approved', 'cfg.equipePendente':'pending approval',
     'cfg.equipeVoce':'you',
     'cfg.equipeAprovar':'Approve', 'cfg.equipeRevogar':'Revoke',
@@ -1645,7 +1672,10 @@ const I18N = {
     'auth.confirmarSair':'Sign out of editing?',
     'auth.somenteLeitura':'Viewing mode — sign in to edit.',
     'auth.precisaVerificar':'Confirm your email to edit — click the chip to resend it.',
-    'auth.precisaAprovacao':'Your account has not been approved by an admin yet.',
+    'auth.precisaAprovacao':'Your account has not been approved by the coordinator yet.',
+    'auth.tituloVerificar':'Confirm your email', 'auth.subVerificar':'We sent a confirmation link. Click it, then come back here.',
+    'auth.verificarEnviadoPara':'Sent to {0}.', 'auth.reenviarBtn':'Resend email',
+    'auth.tituloAguardando':'Account created', 'auth.subAguardando':'The team coordinator still needs to approve your access.',
     'auth.visitante':'Visitor',
     'auth.esqueciSenha':'Forgot my password', 'auth.criarConta':'Create account',
     'auth.tituloCadastro':'Create account',
@@ -1803,17 +1833,24 @@ const Cronograma = (function () {
    isto aqui só ajusta a interface para o modo de cada visitante.
 --------------------------------------------------------------------------- */
 const Auth = (function () {
-  let usuario = null;   // objeto do Firebase Authentication
-  let perfil = null;    // documento /usuarios/{uid}: nome, preferências, aprovado
+  let usuario = null;      // objeto do Firebase Authentication
+  let perfil = null;       // documento /usuarios/{uid}: nome, preferências, aprovado
+  let coordenadorUid = null;
   let pronto = false;
   const ouvintes = [];
 
   function docPerfil(uid) { return firebase.firestore().collection('usuarios').doc(uid); }
+  function docCoordenador() { return firebase.firestore().collection('sistema').doc('coordenador'); }
 
   function carregarPerfil(uid) {
     return docPerfil(uid).get().then(function (snap) {
       perfil = snap.exists ? snap.data() : null;
     }).catch(function (e) { console.warn(e); perfil = null; });
+  }
+  function carregarCoordenador() {
+    return docCoordenador().get().then(function (snap) {
+      coordenadorUid = snap.exists ? snap.data().uid : null;
+    }).catch(function (e) { console.warn(e); coordenadorUid = null; });
   }
 
   function avisar() { ouvintes.forEach(function (fn) { try { fn(); } catch (e) { console.warn(e); } }); }
@@ -1823,7 +1860,11 @@ const Auth = (function () {
     firebase.auth().onAuthStateChanged(function (u) {
       usuario = u;
       const seguir = function () { pronto = true; avisar(); };
-      if (u) carregarPerfil(u.uid).then(seguir); else { perfil = null; seguir(); }
+      if (u) {
+        Promise.all([carregarPerfil(u.uid), carregarCoordenador()]).then(seguir);
+      } else {
+        perfil = null; coordenadorUid = null; seguir();
+      }
     });
   }
 
@@ -1831,33 +1872,47 @@ const Auth = (function () {
   function usuarioAtual() { return usuario; }
   function perfilAtual() { return perfil; }
   function emailVerificado() { return !!(usuario && usuario.emailVerified); }
-  // aprovado != podeEditar: a aprovação some se o admin revogar, mesmo sem deslogar
+  // aprovado != podeEditar: some se o coordenador revogar, mesmo sem deslogar
   function aprovado() { return !!(perfil && perfil.aprovado); }
   function podeEditar() { return logado() && emailVerificado() && aprovado(); }
+  function souCoordenador() { return logado() && !!coordenadorUid && coordenadorUid === usuario.uid; }
+  function existeCoordenador() { return !!coordenadorUid; }
+  function coordenadorUidAtual() { return coordenadorUid; }
 
   function entrar(email, senha) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado (veja README.md).'));
     return firebase.auth().signInWithEmailAndPassword(email, senha);
   }
 
+  // O primeiro usuário do sistema vira coordenador automaticamente — os dois
+  // documentos (perfil + coordenador) nascem juntos numa transação, pra nunca
+  // dar duas pessoas se declarando coordenador ao mesmo tempo.
   function cadastrar(nome, email, senha) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado (veja README.md).'));
     return firebase.auth().createUserWithEmailAndPassword(email, senha).then(function (cred) {
-      const novoPerfil = {
-        nome: nome, email: email, aprovado: false,
-        criadoEm: new Date().toISOString(),
-        tema: 'claro', idioma: 'pt', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao'
-      };
-      return cred.user.updateProfile({ displayName: nome }).then(function () {
-        return docPerfil(cred.user.uid).set(novoPerfil);
-      }).then(function () {
-        // criação do usuário já disparou onAuthStateChanged antes desta escrita
+      const db = firebase.firestore();
+      const refCoord = docCoordenador(), refPerfil = docPerfil(cred.user.uid);
+      return db.runTransaction(function (tx) {
+        return tx.get(refCoord).then(function (snapCoord) {
+          const souPrimeiro = !snapCoord.exists;
+          const novoPerfil = {
+            nome: nome, email: email, aprovado: souPrimeiro,
+            criadoEm: new Date().toISOString(),
+            tema: 'claro', idioma: 'pt', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao'
+          };
+          tx.set(refPerfil, novoPerfil);
+          if (souPrimeiro) tx.set(refCoord, { uid: cred.user.uid });
+          return { novoPerfil: novoPerfil, souPrimeiro: souPrimeiro };
+        });
+      }).then(function (resultado) {
+        // criação do usuário já disparou onAuthStateChanged antes da transação
         // terminar — sem isto, o app ficaria achando que o perfil não existe
         // até o próximo login
         usuario = cred.user;
-        perfil = novoPerfil;
-        return cred.user.sendEmailVerification();
-      });
+        perfil = resultado.novoPerfil;
+        if (resultado.souPrimeiro) coordenadorUid = cred.user.uid;
+        return cred.user.updateProfile({ displayName: nome });
+      }).then(function () { return cred.user.sendEmailVerification(); });
     });
   }
 
@@ -1888,15 +1943,22 @@ const Auth = (function () {
       return lista;
     });
   }
+  // só o coordenador consegue de verdade (a regra do Firestore garante isso)
   function definirAprovacao(uid, valor) {
     return docPerfil(uid).update({ aprovado: valor }).then(function () {
       if (usuario && uid === usuario.uid) return carregarPerfil(uid);
     });
   }
+  function transferirCoordenacao(novoUid) {
+    return docCoordenador().update({ uid: novoUid }).then(function () {
+      return carregarCoordenador();
+    });
+  }
 
   return { inicializar, logado, usuarioAtual, perfilAtual, emailVerificado, aprovado, podeEditar,
+    souCoordenador, existeCoordenador, coordenadorUidAtual,
     entrar, cadastrar, reenviarVerificacao, recuperarSenha, sair, aoMudar, salvarPerfil,
-    listarEquipe, definirAprovacao };
+    listarEquipe, definirAprovacao, transferirCoordenacao };
 })();
 
 /* ---------------------------------------------------------------------------
@@ -2395,11 +2457,13 @@ let charts = {};
 
 function persistir() {
   if (!Auth.podeEditar()) {
-    // modo visualização: desfaz a mudança local e pede login — o Firestore
-    // recusaria a gravação de qualquer forma, isto só deixa a mensagem clara
+    // não deveria chegar aqui — o app inteiro fica escondido pra quem não
+    // pode editar — mas se a aprovação sumir no meio da sessão (o
+    // coordenador revogou agora), desfaz e manda pra tela de acesso
     projetos = projetosServidor.map(function (p) { return JSON.parse(JSON.stringify(p)); });
     renderTudo(); if (idDetalhe) renderDetalhe();
-    exigirEdicao();
+    toast(mensagemModoAtual());
+    atualizarTelaDeAcesso();
     return;
   }
   Cronograma.invalidar();
@@ -2456,20 +2520,10 @@ function iniciais(nome) {
 
 let chipTimer = null;
 function atualizarChip(flash) {
+  // se chegou até aqui é porque Auth.podeEditar() já é true — o app inteiro
+  // fica escondido atrás da tela de acesso enquanto isso não for verdade
   const chip = document.getElementById('save-chip');
   clearTimeout(chipTimer);
-  if (Auth.logado() && !Auth.podeEditar()) {
-    chip.classList.add('warn');
-    chip.textContent = !Auth.emailVerificado() ? T('chip.aguardandoVerificacao') : T('chip.aguardandoAprovacao');
-    chip.title = !Auth.emailVerificado() ? T('chip.aguardandoVerificacaoT') : T('chip.aguardandoAprovacaoT');
-    return;
-  }
-  if (!Auth.podeEditar()) {
-    chip.classList.remove('warn');
-    chip.textContent = T('chip.visualizando');
-    chip.title = T('chip.visualizandoT');
-    return;
-  }
   if (!Store.estaDisponivel()) {
     chip.textContent = T('chip.semSalvar');
     chip.title = T('chip.semSalvarT');
@@ -3000,7 +3054,6 @@ function limparForm() {
   previewStatus();
 }
 function abrirNovoProjeto() {
-  if (!exigirEdicao()) return;
   editandoId = null; limparForm();
   const h = hojeIso();
   document.getElementById('f-gp').value = prefs.nome;
@@ -3016,7 +3069,6 @@ function abrirNovoProjeto() {
   setTimeout(function () { document.getElementById('f-commessa').focus(); }, 30);
 }
 function abrirEditarProjeto() {
-  if (!exigirEdicao()) return;
   const p = projetoAtual(); if (!p) return;
   limparForm(); editandoId = p.id;
   CAMPOS_FORM.forEach(function (c) {
@@ -3450,13 +3502,11 @@ function exportarCSV() {
   toast('CSV exportado — abre direto no Excel.');
 }
 function abrirImportador() {
-  if (!exigirEdicao()) return;
   document.getElementById('import-file').click();
 }
 function importarJSON(ev) {
   const file = ev.target.files && ev.target.files[0];
   if (!file) return;
-  if (!exigirEdicao()) { ev.target.value = ''; return; }
   const leitor = new FileReader();
   leitor.onload = function () {
     try {
@@ -3474,7 +3524,6 @@ function importarJSON(ev) {
   leitor.readAsText(file);
 }
 function resetarDados() {
-  if (!exigirEdicao()) return;
   if (!confirm('Isso apaga os projetos atuais e volta aos dados de exemplo. Continuar?')) return;
   const backup = projetos.slice();
   projetos = Store.exemplo();
@@ -3484,7 +3533,6 @@ function resetarDados() {
   } } });
 }
 function apagarTudo() {
-  if (!exigirEdicao()) return;
   if (!confirm(T('cfg.apagarTudoConfirm'))) return;
   const backup = projetos.slice();
   projetos = [];
@@ -3691,38 +3739,18 @@ function renderTudo() {
    A garantia de verdade é a regra do Firestore (write: auth != null); isto
    aqui só deixa a interface clara para cada tipo de visitante.
 --------------------------------------------------------------------------- */
-function exigirEdicao(mensagem) {
-  if (Auth.podeEditar()) return true;
-  toast(mensagem || mensagemModoAtual());
-  abrirModalLogin();
-  return false;
-}
 function mensagemModoAtual() {
   if (!Auth.logado()) return T('auth.somenteLeitura');
   if (!Auth.emailVerificado()) return T('auth.precisaVerificar');
   if (!Auth.aprovado()) return T('auth.precisaAprovacao');
   return T('auth.somenteLeitura');
 }
-function mostrarViewLogin(ver) {
-  ['entrar','cadastro','recuperar'].forEach(function (v) {
+function mostrarViewAcesso(ver) {
+  ['entrar','cadastro','recuperar','verificar','aguardando'].forEach(function (v) {
     document.getElementById('login-view-' + v).style.display = (v === ver) ? 'block' : 'none';
   });
   const foco = { entrar:'login-email', cadastro:'cadastro-nome', recuperar:'recuperar-email' }[ver];
-  setTimeout(function () { const el = document.getElementById(foco); if (el) el.focus(); }, 30);
-}
-function abrirModalLogin() {
-  document.getElementById('login-erro').textContent = '';
-  document.getElementById('login-form').reset();
-  document.getElementById('cadastro-erro').textContent = '';
-  document.getElementById('cadastro-form').reset();
-  document.getElementById('recuperar-erro').textContent = '';
-  document.getElementById('recuperar-form').reset();
-  mostrarViewLogin('entrar');
-  abrirModal('modal-login');
-  setTimeout(function () { document.getElementById('login-email').focus(); }, 30);
-}
-function fecharModalLogin() {
-  document.getElementById('modal-login').classList.remove('open');
+  if (foco) setTimeout(function () { const el = document.getElementById(foco); if (el) el.focus(); }, 30);
 }
 function fazerLogin(ev) {
   if (ev) ev.preventDefault();
@@ -3734,8 +3762,6 @@ function fazerLogin(ev) {
   btn.disabled = true;
   Auth.entrar(email, senha).then(function () {
     btn.disabled = false;
-    fecharModalLogin();
-    toast(T('auth.entrou'));
   }).catch(function (e) {
     btn.disabled = false;
     erro.textContent = T('auth.erroLogin');
@@ -3755,9 +3781,7 @@ function fazerCadastro(ev) {
   btn.disabled = true;
   Auth.cadastrar(nome, email, senha).then(function () {
     btn.disabled = false;
-    fecharModalLogin();
-    atualizarModoEdicao();
-    toast(T('auth.cadastroFeito'), { ms:8000 });
+    atualizarTelaDeAcesso();
   }).catch(function (e) {
     btn.disabled = false;
     erro.textContent = (e && e.code === 'auth/email-already-in-use') ? T('auth.emailJaExiste')
@@ -3775,18 +3799,13 @@ function fazerRecuperarSenha(ev) {
   btn.disabled = true;
   Auth.recuperarSenha(email).then(function () {
     btn.disabled = false;
-    fecharModalLogin();
     toast(T('auth.recuperarEnviado'), { ms:8000 });
+    mostrarViewAcesso('entrar');
   }).catch(function (e) {
     btn.disabled = false;
     erro.textContent = T('auth.erroRecuperar');
     console.warn(e);
   });
-}
-function cliqueChip() {
-  if (!Auth.logado()) { abrirModalLogin(); return; }
-  if (!Auth.emailVerificado()) { reenviarVerificacaoEmail(); return; }
-  if (!Auth.aprovado()) { toast(T('chip.aguardandoAprovacaoT')); return; }
 }
 function reenviarVerificacaoEmail() {
   Auth.reenviarVerificacao().then(function () { toast(T('auth.verificarReenviado')); })
@@ -3798,30 +3817,36 @@ function doLogout() {
 }
 
 /* ---------------------------------------------------------------------------
-   Equipe — aprovar/revogar quem pode editar
+   Equipe — só o coordenador aprova, revoga ou transfere o cargo
 --------------------------------------------------------------------------- */
 function renderEquipe() {
-  const semLogin = document.getElementById('equipe-sem-login');
   const lista = document.getElementById('equipe-lista');
-  if (!Auth.logado()) { semLogin.style.display = 'block'; lista.style.display = 'none'; return; }
-  semLogin.style.display = 'none';
-  lista.style.display = 'block';
+  if (!Auth.logado()) return;
   lista.innerHTML = '<div class="hint-txt">' + T('cfg.equipeCarregando') + '</div>';
   Auth.listarEquipe().then(function (membros) {
     const meuUid = Auth.usuarioAtual().uid;
+    const coordUid = Auth.coordenadorUidAtual();
+    const souCoord = Auth.souCoordenador();
     lista.innerHTML = membros.map(function (m) {
       const voceMesmo = m.uid === meuUid;
-      const statusTxt = m.aprovado ? T('cfg.equipeAprovado') : T('cfg.equipePendente');
-      const statusCor = m.aprovado ? 'var(--green)' : 'var(--amber, #b8860b)';
-      const acao = m.aprovado
-        ? '<button class="btn btn-outline" onclick="revogarMembro(\'' + m.uid + '\')"' + (voceMesmo ? ' disabled' : '') + '>' + T('cfg.equipeRevogar') + '</button>'
-        : '<button class="btn btn-primary" onclick="aprovarMembro(\'' + m.uid + '\')">' + T('cfg.equipeAprovar') + '</button>';
-      return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);">' +
+      const ehCoordenador = m.uid === coordUid;
+      const statusTxt = ehCoordenador ? T('cfg.equipeCoordenador') : (m.aprovado ? T('cfg.equipeAprovado') : T('cfg.equipePendente'));
+      const statusCor = ehCoordenador ? 'var(--azul, #2563eb)' : (m.aprovado ? 'var(--green)' : 'var(--amber, #b8860b)');
+      let acoes = '';
+      if (souCoord && !ehCoordenador) {
+        acoes += m.aprovado
+          ? '<button class="btn btn-outline" onclick="revogarMembro(\'' + m.uid + '\')">' + T('cfg.equipeRevogar') + '</button>'
+          : '<button class="btn btn-primary" onclick="aprovarMembro(\'' + m.uid + '\')">' + T('cfg.equipeAprovar') + '</button>';
+        if (m.aprovado) {
+          acoes += ' <button class="btn btn-outline" onclick="transferirCoordenacaoPara(\'' + m.uid + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.equipeTransferir') + '</button>';
+        }
+      }
+      return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); flex-wrap:wrap;">' +
         '<div style="min-width:0;">' +
           '<div style="font-weight:600; font-size:13px;">' + esc(m.nome || '—') + (voceMesmo ? ' <span class="hint-txt">(' + T('cfg.equipeVoce') + ')</span>' : '') + '</div>' +
           '<div class="hint-txt" style="font-size:11px;">' + esc(m.email || '') + ' · <span style="color:' + statusCor + '">' + statusTxt + '</span></div>' +
         '</div>' +
-        '<div>' + acao + '</div>' +
+        '<div style="display:flex; gap:6px; flex-wrap:wrap;">' + acoes + '</div>' +
       '</div>';
     }).join('') || '<div class="hint-txt">' + T('cfg.equipeVazia') + '</div>';
   }).catch(function (e) {
@@ -3830,42 +3855,74 @@ function renderEquipe() {
   });
 }
 function aprovarMembro(uid) {
-  Auth.definirAprovacao(uid, true).then(function () { toast(T('cfg.equipeAprovadoFeito')); renderEquipe(); atualizarModoEdicao(); })
+  Auth.definirAprovacao(uid, true).then(function () { toast(T('cfg.equipeAprovadoFeito')); renderEquipe(); })
     .catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
 }
 function revogarMembro(uid) {
   if (!confirm(T('cfg.equipeConfirmarRevogar'))) return;
-  Auth.definirAprovacao(uid, false).then(function () { toast(T('cfg.equipeRevogadoFeito')); renderEquipe(); atualizarModoEdicao(); })
+  Auth.definirAprovacao(uid, false).then(function () { toast(T('cfg.equipeRevogadoFeito')); renderEquipe(); })
     .catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
 }
-
-function atualizarModoEdicao() {
-  const podeEditar = Auth.podeEditar();
-  document.getElementById('profile-item-sair').style.display = Auth.logado() ? '' : 'none';
-  document.getElementById('profile-item-entrar').style.display = Auth.logado() ? 'none' : '';
-  // preferências da conta sobrescrevem as locais assim que a gente sabe quem é
-  const perfil = Auth.perfilAtual();
-  if (Auth.logado() && perfil) {
-    ['nome','tema','idioma','alerta','alertaTarefa','fimDeSemana'].forEach(function (k) {
-      if (perfil[k] != null) prefs[k] = perfil[k];
-    });
-    if (typeof aplicarPrefs === 'function' && document.getElementById('cfg-nome')) {
-      aplicarPrefs(); aplicarIdioma();
-      document.documentElement.setAttribute('data-tema', prefs.tema === 'escuro' ? 'escuro' : 'claro');
-      document.getElementById('tema-btn').textContent = prefs.tema === 'escuro' ? '☀' : '◐';
-    }
-  }
-  atualizarChip();
-  atualizarInfoArmazenamento();
-  if (abaAtual() === 'config' && document.getElementById('stab-equipe').classList.contains('active')) renderEquipe();
+function transferirCoordenacaoPara(uid, nome) {
+  if (!confirm(T('cfg.equipeConfirmarTransferir', nome))) return;
+  Auth.transferirCoordenacao(uid).then(function () {
+    toast(T('cfg.equipeTransferido', nome));
+    renderEquipe();
+  }).catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
 }
-Auth.aoMudar(atualizarModoEdicao);
+
+/* ---------------------------------------------------------------------------
+   Tela de acesso — o app inteiro fica escondido até logar E ser aprovado.
+   Ver/editar agora é a mesma trava; não existe mais visitante.
+--------------------------------------------------------------------------- */
+let appIniciado = false;
+function atualizarTelaDeAcesso() {
+  const podeVer = Auth.podeEditar();
+  document.getElementById('app-shell').style.display = podeVer ? '' : 'none';
+  document.getElementById('tela-acesso').style.display = podeVer ? 'none' : 'flex';
+
+  if (podeVer) {
+    if (!appIniciado) {
+      appIniciado = true;
+      Store.carregar().then(function (ps) { iniciarApp(ps); })
+        .catch(function (e) { console.error('Não consegui carregar os dados da nuvem:', e); iniciarApp([]); });
+    } else {
+      const perfil = Auth.perfilAtual();
+      if (perfil) {
+        ['nome','tema','idioma','alerta','alertaTarefa','fimDeSemana'].forEach(function (k) {
+          if (perfil[k] != null) prefs[k] = perfil[k];
+        });
+        aplicarPrefs(); aplicarIdioma();
+        document.documentElement.setAttribute('data-tema', prefs.tema === 'escuro' ? 'escuro' : 'claro');
+        document.getElementById('tema-btn').textContent = prefs.tema === 'escuro' ? '☀' : '◐';
+      }
+    }
+    if (abaAtual() === 'config' && document.getElementById('stab-equipe').classList.contains('active')) renderEquipe();
+    return;
+  }
+
+  if (!Auth.logado()) {
+    mostrarViewAcesso('entrar');
+  } else if (!Auth.emailVerificado()) {
+    document.getElementById('verificar-email-texto').textContent = T('auth.verificarEnviadoPara', Auth.usuarioAtual().email);
+    mostrarViewAcesso('verificar');
+  } else {
+    mostrarViewAcesso('aguardando');
+  }
+}
+Auth.aoMudar(atualizarTelaDeAcesso);
 
 function iniciarApp(dadosIniciais) {
   try {
-    const salvas = Store.carregarPrefs();
-    if (salvas) Object.assign(prefs, salvas);
+    const salvasLocais = Store.carregarPrefs();
+    if (salvasLocais) Object.assign(prefs, salvasLocais);
     if (!prefs.lidas || typeof prefs.lidas !== 'object') prefs.lidas = {};
+    const perfil = Auth.perfilAtual();
+    if (perfil) {
+      ['nome','tema','idioma','alerta','alertaTarefa','fimDeSemana'].forEach(function (k) {
+        if (perfil[k] != null) prefs[k] = perfil[k];
+      });
+    }
 
     projetos = dadosIniciais || [];
     projetosServidor = projetos.map(function (p) { return JSON.parse(JSON.stringify(p)); });
@@ -3896,28 +3953,16 @@ function iniciarApp(dadosIniciais) {
   }
 }
 
-/* Boot: busca os projetos na nuvem antes de desenhar a tela. Se o Firebase
-   ainda não foi configurado (primeiro deploy), abre vazio com um aviso —
-   ver README.md → "Configurar o Firebase". */
-let jaIniciou = false;
+/* Boot: a tela de acesso já nasce visível no HTML (display:flex por padrão
+   só aparece se o CSS assim definir — aqui é JS que decide). Auth.inicializar()
+   dispara atualizarTelaDeAcesso() assim que souber se tem alguém logado. */
 function bootar() {
-  if (jaIniciou) return;
-  jaIniciou = true;
   Auth.inicializar();
   if (!FIREBASE_PRONTO) {
-    iniciarApp([]);
-    document.querySelector('.content-area').insertAdjacentHTML('afterbegin',
-      '<div class="card panel-pad" style="border-color:var(--rust); margin-bottom:16px;">' +
-      '<strong>Firebase não configurado</strong><div style="font-size:12px; color:var(--ink-dim); margin-top:6px;">' +
-      'Preencha FIREBASE_CONFIG no início do arquivo com os dados do seu projeto Firebase — veja README.md → “Configurar o Firebase”. Até lá, nada fica salvo de verdade.</div></div>');
-    return;
+    document.getElementById('tela-acesso').style.display = 'flex';
+    mostrarViewAcesso('entrar');
+    document.getElementById('login-erro').textContent = 'Firebase não configurado — veja README.md.';
   }
-  Store.carregar().then(function (ps) {
-    iniciarApp(ps);
-  }).catch(function (e) {
-    console.error('Não consegui carregar os dados da nuvem:', e);
-    iniciarApp([]);
-  });
 }
 bootar();
 </script>
