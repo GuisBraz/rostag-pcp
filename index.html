@@ -1843,13 +1843,21 @@ const Auth = (function () {
   function cadastrar(nome, email, senha) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado (veja README.md).'));
     return firebase.auth().createUserWithEmailAndPassword(email, senha).then(function (cred) {
+      const novoPerfil = {
+        nome: nome, email: email, aprovado: false,
+        criadoEm: new Date().toISOString(),
+        tema: 'claro', idioma: 'pt', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao'
+      };
       return cred.user.updateProfile({ displayName: nome }).then(function () {
-        return docPerfil(cred.user.uid).set({
-          nome: nome, email: email, aprovado: false,
-          criadoEm: new Date().toISOString(),
-          tema: 'claro', idioma: 'pt', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao'
-        });
-      }).then(function () { return cred.user.sendEmailVerification(); });
+        return docPerfil(cred.user.uid).set(novoPerfil);
+      }).then(function () {
+        // criação do usuário já disparou onAuthStateChanged antes desta escrita
+        // terminar — sem isto, o app ficaria achando que o perfil não existe
+        // até o próximo login
+        usuario = cred.user;
+        perfil = novoPerfil;
+        return cred.user.sendEmailVerification();
+      });
     });
   }
 
@@ -2972,8 +2980,16 @@ function renderPontualidadeAno() {
       '<div class="empty-state">Não consegui desenhar este gráfico. Os números acima continuam corretos.</div>';
   }
 }
+// Fecha só em clique de verdade no fundo — não quando selecionar texto
+// (arrastar pra selecionar um campo às vezes solta o mouse fora da caixa,
+// e um clique comum só conta como "no fundo" se começou E terminou lá).
 document.querySelectorAll('.modal-overlay').forEach(function (ov) {
-  ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('open'); });
+  let comecouNoFundo = false;
+  ov.addEventListener('mousedown', function (e) { comecouNoFundo = (e.target === ov); });
+  ov.addEventListener('click', function (e) {
+    if (comecouNoFundo && e.target === ov) ov.classList.remove('open');
+    comecouNoFundo = false;
+  });
 });
 
 function limparForm() {
@@ -3740,6 +3756,7 @@ function fazerCadastro(ev) {
   Auth.cadastrar(nome, email, senha).then(function () {
     btn.disabled = false;
     fecharModalLogin();
+    atualizarModoEdicao();
     toast(T('auth.cadastroFeito'), { ms:8000 });
   }).catch(function (e) {
     btn.disabled = false;
