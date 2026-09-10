@@ -4531,8 +4531,9 @@ function criarEquipeUI() {
 }
 function migrarEquipeAntigaUI() {
   const btn = document.getElementById('btn-migrar-equipe');
+  const nome = document.getElementById('hub-nome-equipe').value.trim() || T('hub.nomeEquipeMigrada');
   btn.disabled = true;
-  Auth.migrarEquipeAntiga(T('hub.nomeEquipeMigrada')).then(function (resultado) {
+  Auth.migrarEquipeAntiga(nome).then(function (resultado) {
     btn.disabled = false;
     toast(T('hub.migracaoFeita', resultado.projetosMigrados));
     // a equipe já foi trocada por dentro da migração, mas os projetos foram
