@@ -29,6 +29,24 @@ service cloud.firestore {
         && request.resource.data.papel == papelAlvo
         && papelAlvo == get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.papel;
     }
+    // Segunda forma de entrar numa equipe (além do link de convite): nome +
+    // senha da equipe. Quem entra assim sempre vira planejador (papel mais
+    // restrito) — o coordenador promove depois se quiser. O hash enviado é
+    // comparado com o hash guardado em /equipes/{id}, que só é lido aqui
+    // dentro da regra — nunca exposto de volta pro cliente que está tentando
+    // entrar (só quem já é membro consegue ler o documento da equipe).
+    function senhaConfere(equipeId, papelAlvo) {
+      return papelAlvo == 'planejador'
+        && request.resource.data.senhaHash is string
+        && request.resource.data.senhaHash == get(/databases/$(database)/documents/equipes/$(equipeId)).data.senhaHash;
+    }
+    // Índice pessoal criado depois do /membros/{uid} (nessa ordem, de
+    // propósito) — em vez de mandar a senha de novo, só confirma que meu
+    // próprio /membros/{uid} já existe com o hash validado.
+    function jaEntreiPorSenha(equipeId) {
+      return get(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.auth.uid)).data.papel == 'planejador'
+        && get(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.auth.uid)).data.senhaHash is string;
+    }
 
     // ------------------------------------------------------- perfil pessoal
     // Nome, preferências (tema/idioma/alertas) — não guarda mais papel, isso
@@ -53,10 +71,25 @@ service cloud.firestore {
         allow create: if request.auth != null && request.auth.uid == uid && (
           (souCoordDe(equipeId) && request.resource.data.papel == 'gp')
           || convitePraMim(equipeId, request.resource.data.papel)
+          || (request.resource.data.papel == 'planejador' && jaEntreiPorSenha(equipeId))
         );
         allow update: if request.auth != null && request.auth.uid == uid;
         allow delete: if request.auth != null && request.auth.uid == uid;
       }
+    }
+
+    // Índice nome→id das equipes — permite checar "nome disponível" e achar
+    // o id pra entrar por nome+senha, sem expor o conteúdo da equipe em si
+    // (isso continua protegido por membroDe()). O id do documento é um hash
+    // do nome normalizado, não o nome cru (evita problema de caractere
+    // inválido em id de documento). Imutável: o "create" só é permitido se
+    // o nome ainda não tiver dono; depois disso não muda nem apaga.
+    match /equipeNomes/{nomeHash} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.equipeId is string
+        && get(/databases/$(database)/documents/equipes/$(request.resource.data.equipeId)).data.criadoPorUid == request.auth.uid;
+      allow update, delete: if false;
     }
 
     // ------------------------------------------------------------- equipes
@@ -65,6 +98,7 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.coordenadorUid == request.auth.uid
         && request.resource.data.criadoPorUid == request.auth.uid
+        && request.resource.data.senhaHash is string
         && (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.equipesCriadas == null
             || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.equipesCriadas < 3);
       allow update: if souCoordDe(equipeId)
@@ -77,6 +111,7 @@ service cloud.firestore {
         allow create: if request.auth != null && request.auth.uid == uid && (
           (souCoordDe(equipeId) && request.resource.data.papel == 'gp')
           || convitePraMim(equipeId, request.resource.data.papel)
+          || senhaConfere(equipeId, request.resource.data.papel)
         );
         allow update: if souCoordDe(equipeId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['papel']);

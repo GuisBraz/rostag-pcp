@@ -1033,26 +1033,44 @@
       </form>
     </div>
 
-    <!-- ver "hub" (logado, mas sem nenhuma equipe — criar uma, ou migrar dados antigos) -->
+    <!-- ver "hub" (logado, mas sem nenhuma equipe — criar uma, entrar numa existente por nome+senha, ou migrar dados antigos) -->
     <div id="login-view-hub" style="display:none">
       <div class="modal-header">
         <div style="min-width:0;">
           <h2 data-i18n="hub.titulo">Sua equipe</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="hub.sub">Você ainda não faz parte de nenhuma equipe. Crie a sua, ou peça um link de convite pra alguém que já tem uma.</div>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="hub.sub">Você ainda não faz parte de nenhuma equipe. Crie a sua, entre numa existente, ou peça um link de convite.</div>
         </div>
       </div>
       <div class="modal-body">
         <div id="hub-migracao" style="display:none; margin-bottom:16px; padding:12px; border-radius:8px; background:var(--bg-panel-alt); border:1px solid var(--line);">
           <div style="font-weight:700; font-size:13px; margin-bottom:4px;" data-i18n="hub.migracaoTitulo">Encontramos uma equipe sua de antes</div>
-          <div class="hint-txt" style="margin-bottom:10px;" data-i18n="hub.migracaoNota">Antes de existir o sistema de várias equipes, havia um espaço só. Migre pra continuar de onde parou — os projetos são copiados, nada é apagado.</div>
+          <div class="hint-txt" style="margin-bottom:10px;" data-i18n="hub.migracaoNota">Antes de existir o sistema de várias equipes, havia um espaço só. Migre pra continuar de onde parou (usa o nome e a senha preenchidos em "Criar equipe" ao lado) — os projetos são copiados, nada é apagado.</div>
           <button type="button" class="btn btn-primary" id="btn-migrar-equipe" onclick="migrarEquipeAntigaUI()" data-i18n="hub.migrarBtn">Migrar meus dados</button>
         </div>
-        <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="hub-nome-equipe" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
-        <div id="hub-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+
+        <div class="settings-tabs" style="margin-bottom:14px;">
+          <button type="button" class="settings-tab-btn active" id="hub-tab-criar" onclick="hubMudarAba('criar')" data-i18n="hub.abaCriar">Criar equipe</button>
+          <button type="button" class="settings-tab-btn" id="hub-tab-entrar" onclick="hubMudarAba('entrar')" data-i18n="hub.abaEntrar">Entrar em equipe</button>
+        </div>
+
+        <div id="hub-painel-criar">
+          <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="hub-nome-equipe" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
+          <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label><input id="hub-senha-equipe" type="password" autocomplete="new-password" data-i18n-ph="hub.senhaEquipePh" placeholder="crie uma senha"></div>
+          <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label><input id="hub-senha-equipe2" type="password" autocomplete="new-password"></div>
+          <div class="hint-txt" style="margin-bottom:6px;" data-i18n="hub.senhaNota">Essa senha é o que qualquer pessoa vai usar pra entrar na equipe pelo nome (aba "Entrar em equipe"). Quem entra assim vira planejador; promova depois se precisar.</div>
+          <div id="hub-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+        </div>
+
+        <div id="hub-painel-entrar" style="display:none">
+          <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="hub-entrar-nome" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
+          <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label><input id="hub-entrar-senha" type="password" autocomplete="current-password" data-i18n-ph="hub.senhaEquipePh" placeholder="senha combinada com o coordenador"></div>
+          <div id="hub-entrar-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline" onclick="doLogout()" data-i18n="btn.sair">⏻ Sair</button>
         <button type="button" class="btn btn-primary" id="hub-criar-submit" onclick="criarEquipeUI()" data-i18n="hub.criarBtn">+ Criar equipe</button>
+        <button type="button" class="btn btn-primary" id="hub-entrar-submit" style="display:none" onclick="entrarPorNomeSenhaUI()" data-i18n="hub.entrarBtn">Entrar na equipe</button>
       </div>
     </div>
 
@@ -1485,16 +1503,25 @@ const I18N = {
     'auth.erroRecuperar':'Não consegui enviar o e-mail de recuperação.',
 
     // hub / equipes
-    'hub.titulo':'Sua equipe', 'hub.sub':'Você ainda não faz parte de nenhuma equipe. Crie a sua, ou peça um link de convite pra alguém que já tem uma.',
+    'hub.titulo':'Sua equipe', 'hub.sub':'Você ainda não faz parte de nenhuma equipe. Crie a sua, entre numa existente, ou peça um link de convite.',
     'hub.migracaoTitulo':'Encontramos uma equipe sua de antes',
-    'hub.migracaoNota':'Antes de existir o sistema de várias equipes, havia um espaço só. Migre pra continuar de onde parou — os projetos são copiados, nada é apagado.',
+    'hub.migracaoNota':'Antes de existir o sistema de várias equipes, havia um espaço só. Migre pra continuar de onde parou (usa o nome e a senha preenchidos em "Criar equipe" ao lado) — os projetos são copiados, nada é apagado.',
     'hub.migrarBtn':'Migrar meus dados', 'hub.nomeEquipeMigrada':'Minha equipe',
     'hub.migracaoFeita':'Equipe criada com {0} projeto(s) migrado(s). Os antigos membros precisam de um convite novo.',
     'hub.nomeEquipe':'NOME DA EQUIPE', 'hub.nomeEquipePh':'ex: PCP Rostag',
+    'hub.senhaEquipe':'SENHA DA EQUIPE', 'hub.senhaEquipePh':'crie uma senha',
+    'hub.senhaNota':'Essa senha é o que qualquer pessoa vai usar pra entrar na equipe pelo nome (aba "Entrar em equipe"). Quem entra assim vira planejador; promova depois se precisar.',
+    'hub.abaCriar':'Criar equipe', 'hub.abaEntrar':'Entrar em equipe', 'hub.entrarBtn':'Entrar na equipe',
     'hub.criarBtn':'+ Criar equipe', 'hub.criarOutra':'+ Criar outra equipe',
     'hub.erroNome':'Dê um nome pra equipe.',
+    'hub.erroSenhaVazia':'Defina uma senha pra equipe.',
+    'hub.erroSenhaVaziaMigrar':'Defina uma senha ao lado (em "Criar equipe") antes de migrar.',
     'hub.erroLimite':'Você já criou o máximo de 3 equipes.',
     'hub.erroCriar':'Não consegui criar a equipe. Tente de novo.',
+    'hub.erroNomeIndisponivel':'Já existe uma equipe com esse nome. Escolha outro.',
+    'hub.erroEquipeNaoEncontrada':'Não achei equipe nenhuma com esse nome.',
+    'hub.erroSenhaIncorreta':'Senha incorreta pra essa equipe.',
+    'hub.erroJaEMembro':'Você já faz parte dessa equipe.',
     'hub.equipeCriada':'Equipe "{0}" criada.',
     'hub.equipeCarregada':'Vendo a equipe {0}.',
     'hub.conviteAceito':'Convite aceito — você entrou na equipe.',
@@ -1792,16 +1819,25 @@ const I18N = {
     'auth.erroRecuperar':'Could not send the recovery email.',
 
     // hub / teams
-    'hub.titulo':'Your team', 'hub.sub':'You are not part of any team yet. Create your own, or ask someone who already has one for an invite link.',
+    'hub.titulo':'Your team', 'hub.sub':'You are not part of any team yet. Create your own, join an existing one, or ask for an invite link.',
     'hub.migracaoTitulo':'We found a team of yours from before',
-    'hub.migracaoNota':'Before the multi-team system existed, there was just one shared space. Migrate to pick up where you left off — projects are copied, nothing is deleted.',
+    'hub.migracaoNota':'Before the multi-team system existed, there was just one shared space. Migrate to pick up where you left off (uses the name and password filled in under "Create team") — projects are copied, nothing is deleted.',
     'hub.migrarBtn':'Migrate my data', 'hub.nomeEquipeMigrada':'My team',
     'hub.migracaoFeita':'Team created with {0} migrated project(s). Former members need a new invite.',
     'hub.nomeEquipe':'TEAM NAME', 'hub.nomeEquipePh':'e.g. Rostag PCP',
+    'hub.senhaEquipe':'TEAM PASSWORD', 'hub.senhaEquipePh':'set a password',
+    'hub.senhaNota':'This is what anyone uses to join the team by name (the "Join team" tab). Joining this way makes them a planner; promote them later if needed.',
+    'hub.abaCriar':'Create team', 'hub.abaEntrar':'Join team', 'hub.entrarBtn':'Join team',
     'hub.criarBtn':'+ Create team', 'hub.criarOutra':'+ Create another team',
     'hub.erroNome':'Give the team a name.',
+    'hub.erroSenhaVazia':'Set a password for the team.',
+    'hub.erroSenhaVaziaMigrar':'Set a password on the side (under "Create team") before migrating.',
     'hub.erroLimite':'You already created the maximum of 3 teams.',
     'hub.erroCriar':'Could not create the team. Try again.',
+    'hub.erroNomeIndisponivel':'A team with that name already exists. Pick another.',
+    'hub.erroEquipeNaoEncontrada':'Could not find a team with that name.',
+    'hub.erroSenhaIncorreta':'Wrong password for that team.',
+    'hub.erroJaEMembro':'You are already part of that team.',
     'hub.equipeCriada':'Team "{0}" created.',
     'hub.equipeCarregada':'Viewing team {0}.',
     'hub.conviteAceito':'Invite accepted — you joined the team.',
@@ -1963,6 +1999,18 @@ const Auth = (function () {
   function colMembros(equipeId) { return docEquipe(equipeId).collection('membros'); }
   function docCoordenadorAntigo() { return firebase.firestore().collection('sistema').doc('coordenador'); }
 
+  // Nome de equipe normalizado (pra achar por nome, ignorando maiúscula e
+  // espaço extra) e hash — de nome e de senha, nunca guardados em texto puro.
+  function normalizarNome(nome) { return (nome || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+  function sha256Hex(texto) {
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto)).then(function (buf) {
+      return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    });
+  }
+  function docNomeEquipe(nomeNormalizado) {
+    return sha256Hex(nomeNormalizado).then(function (h) { return firebase.firestore().collection('equipeNomes').doc(h); });
+  }
+
   function lerEquipeLocal() {
     try { return localStorage.getItem(CHAVE_EQUIPE); } catch (e) { return null; }
   }
@@ -2102,33 +2150,86 @@ const Auth = (function () {
   }
 
   // Cria uma equipe nova e já me torna coordenador dela (limite de 3 equipes
-  // criadas por pessoa, garantido pela regra do Firestore). A criação do
+  // criadas por pessoa, garantido pela regra do Firestore). O nome precisa
+  // estar livre (checado antes, e reservado por hash depois — ver
+  // docNomeEquipe) e a senha é a que qualquer pessoa vai usar pra entrar
+  // pelo caminho "nome + senha" (ver entrarPorNomeSenha). A criação do
   // documento da equipe é uma transação com o contador em /usuarios/{uid};
   // meu /membros/{uid} e meu índice pessoal são gravados logo em seguida
   // (não dá pra fazer tudo na mesma transação: a regra de /membros precisa
   // *ler* a equipe já criada pra confirmar que sou o coordenador, e leitura
   // de um doc escrito na mesma transação não enxerga esse doc ainda).
-  function criarEquipe(nome) {
+  function criarEquipe(nome, senha) {
     if (!usuario) return Promise.reject(new Error('sem sessão'));
+    const nomeLimpo = (nome || '').trim();
+    const nomeNorm = normalizarNome(nome);
+    if (!nomeNorm) return Promise.reject(new Error('nome-vazio'));
     const db = firebase.firestore();
-    const refEquipe = db.collection('equipes').doc();
-    const refPerfil = docPerfil(usuario.uid);
-    return db.runTransaction(function (tx) {
-      return tx.get(refPerfil).then(function (snap) {
-        const atual = (snap.exists && snap.data().equipesCriadas) || 0;
-        if (atual >= 3) throw new Error('limite-equipes');
-        tx.set(refEquipe, { nome: nome, coordenadorUid: usuario.uid, criadoPorUid: usuario.uid, criadoEm: new Date().toISOString() });
-        tx.update(refPerfil, { equipesCriadas: atual + 1 });
+    return docNomeEquipe(nomeNorm).then(function (refNome) {
+      return refNome.get().then(function (snapNome) {
+        if (snapNome.exists) throw new Error('nome-indisponivel');
+        return sha256Hex(senha || '');
+      }).then(function (senhaHash) {
+        const refEquipe = db.collection('equipes').doc();
+        const refPerfil = docPerfil(usuario.uid);
+        return db.runTransaction(function (tx) {
+          return tx.get(refPerfil).then(function (snap) {
+            const atual = (snap.exists && snap.data().equipesCriadas) || 0;
+            if (atual >= 3) throw new Error('limite-equipes');
+            tx.set(refEquipe, { nome: nomeLimpo, coordenadorUid: usuario.uid, criadoPorUid: usuario.uid, criadoEm: new Date().toISOString(), senhaHash: senhaHash });
+            tx.update(refPerfil, { equipesCriadas: atual + 1 });
+          });
+        }).then(function () {
+          const novoId = refEquipe.id;
+          return colMembros(novoId).doc(usuario.uid).set({
+            nome: (perfil && perfil.nome) || '', email: usuario.email || '', papel: 'gp', entrouEm: new Date().toISOString()
+          }).then(function () {
+            return colMinhasEquipes(usuario.uid).doc(novoId).set({ papel: 'gp', nomeEquipe: nomeLimpo, entrouEm: new Date().toISOString() });
+          }).then(function () {
+            // reserva o nome por último — numa corrida rara com outra pessoa
+            // criando o mesmo nome ao mesmo tempo, a equipe ainda é criada,
+            // só não fica achável pelo nome (o coordenador pode recriar com
+            // outro nome se isso acontecer)
+            return refNome.set({ equipeId: novoId }).catch(function (e) { console.warn('nome da equipe não reservado:', e); });
+          });
+        }).then(function () { return carregarMinhasEquipes(usuario.uid); })
+          .then(function () { return trocarEquipe(novoId); })
+          .then(function () { return novoId; });
       });
-    }).then(function () {
-      const novoId = refEquipe.id;
-      return colMembros(novoId).doc(usuario.uid).set({
-        nome: (perfil && perfil.nome) || '', email: usuario.email || '', papel: 'gp', entrouEm: new Date().toISOString()
-      }).then(function () {
-        return colMinhasEquipes(usuario.uid).doc(novoId).set({ papel: 'gp', nomeEquipe: nome, entrouEm: new Date().toISOString() });
-      }).then(function () { return carregarMinhasEquipes(usuario.uid); })
-        .then(function () { return trocarEquipe(novoId); })
-        .then(function () { return novoId; });
+    });
+  }
+
+  // Segunda forma de entrar numa equipe (a primeira é o link de convite):
+  // nome + senha. Quem entra assim sempre vira planejador — o coordenador
+  // promove depois se quiser dar mais acesso.
+  function entrarPorNomeSenha(nome, senha) {
+    if (!usuario) return Promise.reject(new Error('sem sessão'));
+    const nomeNorm = normalizarNome(nome);
+    if (!nomeNorm) return Promise.reject(new Error('nome-vazio'));
+    return docNomeEquipe(nomeNorm).then(function (refNome) {
+      return refNome.get().then(function (snapNome) {
+        if (!snapNome.exists) throw new Error('equipe-nao-encontrada');
+        const equipeId = snapNome.data().equipeId;
+        if (minhasEquipes.some(function (e) { return e.id === equipeId; })) throw new Error('ja-e-membro');
+        return sha256Hex(senha || '').then(function (senhaHash) {
+          return colMembros(equipeId).doc(usuario.uid).set({
+            nome: (perfil && perfil.nome) || '', email: usuario.email || '', papel: 'planejador',
+            entrouEm: new Date().toISOString(), senhaHash: senhaHash
+          }).catch(function (e) {
+            if (e && e.code === 'permission-denied') throw new Error('senha-incorreta');
+            throw e;
+          });
+        }).then(function () {
+          return docEquipe(equipeId).get().then(function (snapEquipe) {
+            const nomeEquipe = snapEquipe.exists ? snapEquipe.data().nome : '';
+            return colMinhasEquipes(usuario.uid).doc(equipeId).set({
+              papel: 'planejador', nomeEquipe: nomeEquipe, entrouEm: new Date().toISOString()
+            });
+          });
+        }).then(function () { return carregarMinhasEquipes(usuario.uid); })
+          .then(function () { return trocarEquipe(equipeId); })
+          .then(function () { return equipeId; });
+      });
     });
   }
 
@@ -2303,8 +2404,8 @@ const Auth = (function () {
       return snap.exists && snap.data().uid === usuario.uid;
     }).catch(function () { return false; });
   }
-  function migrarEquipeAntiga(nomeEquipe) {
-    return criarEquipe(nomeEquipe).then(function (novoId) {
+  function migrarEquipeAntiga(nomeEquipe, senha) {
+    return criarEquipe(nomeEquipe, senha).then(function (novoId) {
       return firebase.firestore().collection('projetos').get().then(function (qs) {
         const antigos = [];
         qs.forEach(function (doc) { antigos.push(doc.data()); });
@@ -2325,7 +2426,7 @@ const Auth = (function () {
   }
 
   return { inicializar, logado, usuarioAtual, perfilAtual, membro, podeEditar,
-    temEquipe, minhasEquipesLista, equipeAtualId, equipeAtualNome, trocarEquipe, criarEquipe, entrarComConvite,
+    temEquipe, minhasEquipesLista, equipeAtualId, equipeAtualNome, trocarEquipe, criarEquipe, entrarComConvite, entrarPorNomeSenha,
     souCoordenador, coordenadorUidAtual, papel, souGPouCoordenador,
     entrar, cadastrar, recuperarSenha, sair, aoMudar, salvarPerfil,
     listarEquipe, transferirCoordenacao, alterarPapel,
@@ -4520,34 +4621,84 @@ Auth.aoMudar(atualizarTelaDeAcesso);
 --------------------------------------------------------------------------- */
 function prepararHub() {
   document.getElementById('hub-nome-equipe').value = '';
+  document.getElementById('hub-senha-equipe').value = '';
+  document.getElementById('hub-senha-equipe2').value = '';
   document.getElementById('hub-erro').textContent = '';
+  document.getElementById('hub-entrar-nome').value = '';
+  document.getElementById('hub-entrar-senha').value = '';
+  document.getElementById('hub-entrar-erro').textContent = '';
+  hubMudarAba('criar');
   const bloco = document.getElementById('hub-migracao');
   bloco.style.display = 'none';
   Auth.verificarEquipeAntiga().then(function (encontrou) {
     bloco.style.display = encontrou ? 'block' : 'none';
   });
 }
+function hubMudarAba(aba) {
+  document.getElementById('hub-tab-criar').classList.toggle('active', aba === 'criar');
+  document.getElementById('hub-tab-entrar').classList.toggle('active', aba === 'entrar');
+  document.getElementById('hub-painel-criar').style.display = aba === 'criar' ? 'block' : 'none';
+  document.getElementById('hub-painel-entrar').style.display = aba === 'entrar' ? 'block' : 'none';
+  document.getElementById('hub-criar-submit').style.display = aba === 'criar' ? 'inline-block' : 'none';
+  document.getElementById('hub-entrar-submit').style.display = aba === 'entrar' ? 'inline-block' : 'none';
+}
+// Traduz os erros mais comuns pra uma mensagem que ajuda a agir; qualquer
+// outro erro mostra o código de verdade (em vez de "tente de novo" genérico
+// sem pista nenhuma) — ajuda a diagnosticar se, por exemplo, as regras do
+// Firestore publicadas não são as mais recentes.
+function mensagemErroEquipe(e) {
+  if (e && e.message === 'limite-equipes') return T('hub.erroLimite');
+  if (e && e.message === 'nome-indisponivel') return T('hub.erroNomeIndisponivel');
+  if (e && e.message === 'equipe-nao-encontrada') return T('hub.erroEquipeNaoEncontrada');
+  if (e && e.message === 'senha-incorreta') return T('hub.erroSenhaIncorreta');
+  if (e && e.message === 'ja-e-membro') return T('hub.erroJaEMembro');
+  if (e && e.code) return T('hub.erroCriar') + ' (' + e.code + ')';
+  return T('hub.erroCriar');
+}
 function criarEquipeUI() {
   const nome = document.getElementById('hub-nome-equipe').value.trim();
+  const senha = document.getElementById('hub-senha-equipe').value;
+  const senha2 = document.getElementById('hub-senha-equipe2').value;
   const erro = document.getElementById('hub-erro');
   const btn = document.getElementById('hub-criar-submit');
   erro.textContent = '';
   if (!nome) { erro.textContent = T('hub.erroNome'); return; }
+  if (!senha) { erro.textContent = T('hub.erroSenhaVazia'); return; }
+  if (senha !== senha2) { erro.textContent = T('auth.senhasDiferentes'); return; }
   btn.disabled = true;
-  Auth.criarEquipe(nome).then(function () {
+  Auth.criarEquipe(nome, senha).then(function () {
     btn.disabled = false;
     toast(T('hub.equipeCriada', nome));
   }).catch(function (e) {
     btn.disabled = false;
-    erro.textContent = (e && e.message === 'limite-equipes') ? T('hub.erroLimite') : T('hub.erroCriar');
+    erro.textContent = mensagemErroEquipe(e);
+    console.warn(e);
+  });
+}
+function entrarPorNomeSenhaUI() {
+  const nome = document.getElementById('hub-entrar-nome').value.trim();
+  const senha = document.getElementById('hub-entrar-senha').value;
+  const erro = document.getElementById('hub-entrar-erro');
+  const btn = document.getElementById('hub-entrar-submit');
+  erro.textContent = '';
+  if (!nome) { erro.textContent = T('hub.erroNome'); return; }
+  btn.disabled = true;
+  Auth.entrarPorNomeSenha(nome, senha).then(function () {
+    btn.disabled = false;
+    toast(T('hub.conviteAceito'));
+  }).catch(function (e) {
+    btn.disabled = false;
+    erro.textContent = mensagemErroEquipe(e);
     console.warn(e);
   });
 }
 function migrarEquipeAntigaUI() {
   const btn = document.getElementById('btn-migrar-equipe');
   const nome = document.getElementById('hub-nome-equipe').value.trim() || T('hub.nomeEquipeMigrada');
+  const senha = document.getElementById('hub-senha-equipe').value;
+  if (!senha) { document.getElementById('hub-erro').textContent = T('hub.erroSenhaVaziaMigrar'); return; }
   btn.disabled = true;
-  Auth.migrarEquipeAntiga(nome).then(function (resultado) {
+  Auth.migrarEquipeAntiga(nome, senha).then(function (resultado) {
     btn.disabled = false;
     toast(T('hub.migracaoFeita', resultado.projetosMigrados));
     // a equipe já foi trocada por dentro da migração, mas os projetos foram
@@ -4558,7 +4709,7 @@ function migrarEquipeAntigaUI() {
     }
   }).catch(function (e) {
     btn.disabled = false;
-    document.getElementById('hub-erro').textContent = T('hub.erroCriar');
+    document.getElementById('hub-erro').textContent = mensagemErroEquipe(e);
     console.warn(e);
   });
 }
