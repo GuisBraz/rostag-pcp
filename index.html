@@ -441,6 +441,15 @@
     </nav>
 
     <div class="sidebar-bottom">
+      <div class="sidebar-equipe" id="sidebar-equipe" onclick="toggleEquipeMenu(event)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')toggleEquipeMenu(event)" style="cursor:pointer; padding:7px 9px; border-radius:8px; display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--ink-dim); border:1px solid var(--line); margin-bottom:6px; position:relative;">
+        <span aria-hidden="true">⌂</span>
+        <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" id="sidebar-equipe-nome">—</span>
+        <span aria-hidden="true">▾</span>
+        <div class="profile-menu" id="equipe-menu" style="left:0; right:0; width:auto; bottom:calc(100% + 6px);">
+          <div id="equipe-menu-lista"></div>
+          <button class="profile-menu-item" id="equipe-menu-criar" onclick="abrirCriarEquipeModal()" data-i18n="hub.criarOutra">+ Criar outra equipe</button>
+        </div>
+      </div>
       <div class="sidebar-profile" id="sidebar-profile" onclick="toggleProfileMenu()" role="button" tabindex="0" onkeydown="if(event.key==='Enter')toggleProfileMenu()">
         <div class="avatar" id="avatar-iniciais" style="width:26px;height:26px;font-size:10.5px;">GB</div>
         <span class="profile-name">Gui</span>
@@ -932,6 +941,24 @@
   </div>
 </div>
 
+<!-- ==================== CRIAR EQUIPE (a partir de dentro do app) ==================== -->
+<div class="modal-overlay" id="modal-criar-equipe" role="dialog" aria-modal="true" aria-labelledby="modal-criar-equipe-title">
+  <div class="modal-box estreita">
+    <div class="modal-header">
+      <h2 id="modal-criar-equipe-title" data-i18n="hub.criarBtn">+ Criar equipe</h2>
+      <button class="modal-close" onclick="fecharModalCriarEquipe()" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="nova-equipe-nome" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
+      <div id="nova-equipe-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModalCriarEquipe()" data-i18n="btn.cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="nova-equipe-submit" onclick="criarEquipeMenuUI()" data-i18n="hub.criarBtn">+ Criar equipe</button>
+    </div>
+  </div>
+</div>
+
 <div id="tela-acesso" style="display:none; position:fixed; inset:0; z-index:200; align-items:center; justify-content:center; background:var(--bg);">
   <div class="modal-box estreita">
 
@@ -943,6 +970,7 @@
           <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subLogin">É preciso conta pra ver e mexer nos projetos.</div>
         </div>
       </div>
+      <div id="acesso-convite-banner-entrar" style="display:none; margin:0 20px 0; padding:10px 12px; border-radius:8px; background:var(--bg-panel-alt); border:1px solid var(--line); font-size:12px;" data-i18n="auth.bannerConvite">Você tem um convite pendente — entre ou crie sua conta para participar da equipe.</div>
       <form id="login-form" onsubmit="fazerLogin(event)">
         <div class="modal-body">
           <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="login-email" type="email" autocomplete="username" required></div>
@@ -964,9 +992,10 @@
       <div class="modal-header">
         <div style="min-width:0;">
           <h2 data-i18n="auth.tituloCadastro">Criar conta</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subCadastro">Se você for a primeira pessoa a se cadastrar, vira coordenador automaticamente. Depois disso, só entra quem tiver um link de convite do coordenador.</div>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subCadastro">Qualquer pessoa pode criar uma conta. Pra participar de uma equipe, crie a sua ou use um link de convite.</div>
         </div>
       </div>
+      <div id="acesso-convite-banner-cadastro" style="display:none; margin:0 20px 0; padding:10px 12px; border-radius:8px; background:var(--bg-panel-alt); border:1px solid var(--line); font-size:12px;" data-i18n="auth.bannerConvite">Você tem um convite pendente — entre ou crie sua conta para participar da equipe.</div>
       <form id="cadastro-form" onsubmit="fazerCadastro(event)">
         <div class="modal-body">
           <div class="field"><label data-i18n="auth.nome">NOME</label><input id="cadastro-nome" required></div>
@@ -1002,16 +1031,26 @@
       </form>
     </div>
 
-    <!-- ver "sem acesso" (removido da equipe, ou nunca convidado) -->
-    <div id="login-view-semacesso" style="display:none">
+    <!-- ver "hub" (logado, mas sem nenhuma equipe — criar uma, ou migrar dados antigos) -->
+    <div id="login-view-hub" style="display:none">
       <div class="modal-header">
         <div style="min-width:0;">
-          <h2 data-i18n="auth.tituloSemAcesso">Sem acesso</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subSemAcesso">Essa conta não faz parte da equipe. Peça um link de convite ao coordenador.</div>
+          <h2 data-i18n="hub.titulo">Sua equipe</h2>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="hub.sub">Você ainda não faz parte de nenhuma equipe. Crie a sua, ou peça um link de convite pra alguém que já tem uma.</div>
         </div>
+      </div>
+      <div class="modal-body">
+        <div id="hub-migracao" style="display:none; margin-bottom:16px; padding:12px; border-radius:8px; background:var(--bg-panel-alt); border:1px solid var(--line);">
+          <div style="font-weight:700; font-size:13px; margin-bottom:4px;" data-i18n="hub.migracaoTitulo">Encontramos uma equipe sua de antes</div>
+          <div class="hint-txt" style="margin-bottom:10px;" data-i18n="hub.migracaoNota">Antes de existir o sistema de várias equipes, havia um espaço só. Migre pra continuar de onde parou — os projetos são copiados, nada é apagado.</div>
+          <button type="button" class="btn btn-primary" id="btn-migrar-equipe" onclick="migrarEquipeAntigaUI()" data-i18n="hub.migrarBtn">Migrar meus dados</button>
+        </div>
+        <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="hub-nome-equipe" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
+        <div id="hub-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline" onclick="doLogout()" data-i18n="btn.sair">⏻ Sair</button>
+        <button type="button" class="btn btn-primary" id="hub-criar-submit" onclick="criarEquipeUI()" data-i18n="hub.criarBtn">+ Criar equipe</button>
       </div>
     </div>
 
@@ -1425,12 +1464,12 @@ const I18N = {
     'auth.somenteLeitura':'Modo visualização — entre para editar.',
     'auth.semAcesso':'Essa conta não faz parte da equipe.',
     'auth.tituloSemAcesso':'Sem acesso', 'auth.subSemAcesso':'Essa conta não faz parte da equipe. Peça um link de convite ao coordenador.',
-    'auth.precisaConvite':'Cadastro exige um link de convite do coordenador — peça um a ele.',
     'auth.conviteInvalido':'Esse link de convite já foi usado ou não existe mais. Peça um novo.',
+    'auth.bannerConvite':'Você tem um convite pendente — entre ou crie sua conta para participar da equipe.',
     'auth.visitante':'Visitante',
     'auth.esqueciSenha':'Esqueci minha senha', 'auth.criarConta':'Criar conta',
     'auth.tituloCadastro':'Criar conta',
-    'auth.subCadastro':'Se você for a primeira pessoa a se cadastrar, vira coordenador automaticamente. Depois disso, só entra quem tiver um link de convite do coordenador.',
+    'auth.subCadastro':'Qualquer pessoa pode criar uma conta. Pra participar de uma equipe, crie a sua ou use um link de convite.',
     'auth.nome':'NOME', 'auth.confirmarSenha':'CONFIRMAR SENHA',
     'auth.jaTenhoConta':'Já tenho conta', 'auth.criarContaBtn':'Criar conta',
     'auth.tituloRecuperar':'Recuperar senha', 'auth.subRecuperar':'Manda um link de redefinição para o seu e-mail.',
@@ -1442,6 +1481,23 @@ const I18N = {
     'auth.erroCadastro':'Não consegui criar a conta. Tente de novo.',
     'auth.recuperarEnviado':'Se esse e-mail tiver conta, chega um link de redefinição em instantes.',
     'auth.erroRecuperar':'Não consegui enviar o e-mail de recuperação.',
+
+    // hub / equipes
+    'hub.titulo':'Sua equipe', 'hub.sub':'Você ainda não faz parte de nenhuma equipe. Crie a sua, ou peça um link de convite pra alguém que já tem uma.',
+    'hub.migracaoTitulo':'Encontramos uma equipe sua de antes',
+    'hub.migracaoNota':'Antes de existir o sistema de várias equipes, havia um espaço só. Migre pra continuar de onde parou — os projetos são copiados, nada é apagado.',
+    'hub.migrarBtn':'Migrar meus dados', 'hub.nomeEquipeMigrada':'Minha equipe',
+    'hub.migracaoFeita':'Equipe criada com {0} projeto(s) migrado(s). Os antigos membros precisam de um convite novo.',
+    'hub.nomeEquipe':'NOME DA EQUIPE', 'hub.nomeEquipePh':'ex: PCP Rostag',
+    'hub.criarBtn':'+ Criar equipe', 'hub.criarOutra':'+ Criar outra equipe',
+    'hub.erroNome':'Dê um nome pra equipe.',
+    'hub.erroLimite':'Você já criou o máximo de 3 equipes.',
+    'hub.erroCriar':'Não consegui criar a equipe. Tente de novo.',
+    'hub.equipeCriada':'Equipe "{0}" criada.',
+    'hub.equipeCarregada':'Vendo a equipe {0}.',
+    'hub.conviteAceito':'Convite aceito — você entrou na equipe.',
+    'hub.conviteErro':'Não consegui usar esse convite. Ele pode já ter sido usado.',
+    'hub.trocaErro':'Não consegui trocar de equipe.',
   },
 
   en: {
@@ -1715,12 +1771,12 @@ const I18N = {
     'auth.somenteLeitura':'Viewing mode — sign in to edit.',
     'auth.semAcesso':'This account is not part of the team.',
     'auth.tituloSemAcesso':'No access', 'auth.subSemAcesso':'This account is not part of the team. Ask the coordinator for an invite link.',
-    'auth.precisaConvite':'Signing up requires an invite link from the coordinator — ask them for one.',
     'auth.conviteInvalido':'That invite link was already used or no longer exists. Ask for a new one.',
+    'auth.bannerConvite':'You have a pending invite — sign in or create your account to join the team.',
     'auth.visitante':'Visitor',
     'auth.esqueciSenha':'Forgot my password', 'auth.criarConta':'Create account',
     'auth.tituloCadastro':'Create account',
-    'auth.subCadastro':'If you are the first person to sign up, you automatically become coordinator. After that, only people with an invite link from the coordinator can join.',
+    'auth.subCadastro':'Anyone can create an account. To join a team, create your own or use an invite link.',
     'auth.nome':'NAME', 'auth.confirmarSenha':'CONFIRM PASSWORD',
     'auth.jaTenhoConta':'I already have an account', 'auth.criarContaBtn':'Create account',
     'auth.tituloRecuperar':'Recover password', 'auth.subRecuperar':'Sends a reset link to your email.',
@@ -1732,6 +1788,23 @@ const I18N = {
     'auth.erroCadastro':'Could not create the account. Try again.',
     'auth.recuperarEnviado':'If that email has an account, a reset link is on its way.',
     'auth.erroRecuperar':'Could not send the recovery email.',
+
+    // hub / teams
+    'hub.titulo':'Your team', 'hub.sub':'You are not part of any team yet. Create your own, or ask someone who already has one for an invite link.',
+    'hub.migracaoTitulo':'We found a team of yours from before',
+    'hub.migracaoNota':'Before the multi-team system existed, there was just one shared space. Migrate to pick up where you left off — projects are copied, nothing is deleted.',
+    'hub.migrarBtn':'Migrate my data', 'hub.nomeEquipeMigrada':'My team',
+    'hub.migracaoFeita':'Team created with {0} migrated project(s). Former members need a new invite.',
+    'hub.nomeEquipe':'TEAM NAME', 'hub.nomeEquipePh':'e.g. Rostag PCP',
+    'hub.criarBtn':'+ Create team', 'hub.criarOutra':'+ Create another team',
+    'hub.erroNome':'Give the team a name.',
+    'hub.erroLimite':'You already created the maximum of 3 teams.',
+    'hub.erroCriar':'Could not create the team. Try again.',
+    'hub.equipeCriada':'Team "{0}" created.',
+    'hub.equipeCarregada':'Viewing team {0}.',
+    'hub.conviteAceito':'Invite accepted — you joined the team.',
+    'hub.conviteErro':'Could not use that invite. It may already have been used.',
+    'hub.trocaErro':'Could not switch teams.',
   }
 };
 
@@ -1873,24 +1946,65 @@ const Cronograma = (function () {
    isto aqui só ajusta a interface para o modo de cada visitante.
 --------------------------------------------------------------------------- */
 const Auth = (function () {
-  let usuario = null;      // objeto do Firebase Authentication
-  let perfil = null;       // documento /usuarios/{uid}: nome, preferências, aprovado
-  let coordenadorUid = null;
+  let usuario = null;        // objeto do Firebase Authentication
+  let perfil = null;         // documento /usuarios/{uid}: nome, preferências (pessoal, não por equipe)
+  let minhasEquipes = [];    // [{id, papel, nomeEquipe, entrouEm}] — de /usuarios/{uid}/minhasEquipes
+  let equipeAtualId_ = null; // qual equipe estou vendo agora (persistido por navegador)
+  let equipeAtual = null;    // documento /equipes/{equipeAtualId}: nome, coordenadorUid...
   let pronto = false;
   const ouvintes = [];
+  const CHAVE_EQUIPE = 'rostag_pcp_equipe_atual';
 
   function docPerfil(uid) { return firebase.firestore().collection('usuarios').doc(uid); }
-  function docCoordenador() { return firebase.firestore().collection('sistema').doc('coordenador'); }
+  function colMinhasEquipes(uid) { return docPerfil(uid).collection('minhasEquipes'); }
+  function docEquipe(id) { return firebase.firestore().collection('equipes').doc(id); }
+  function colMembros(equipeId) { return docEquipe(equipeId).collection('membros'); }
+  function docCoordenadorAntigo() { return firebase.firestore().collection('sistema').doc('coordenador'); }
+
+  function lerEquipeLocal() {
+    try { return localStorage.getItem(CHAVE_EQUIPE); } catch (e) { return null; }
+  }
+  function gravarEquipeLocal(id) {
+    try { localStorage.setItem(CHAVE_EQUIPE, id); } catch (e) {}
+  }
 
   function carregarPerfil(uid) {
     return docPerfil(uid).get().then(function (snap) {
       perfil = snap.exists ? snap.data() : null;
     }).catch(function (e) { console.warn(e); perfil = null; });
   }
-  function carregarCoordenador() {
-    return docCoordenador().get().then(function (snap) {
-      coordenadorUid = snap.exists ? snap.data().uid : null;
-    }).catch(function (e) { console.warn(e); coordenadorUid = null; });
+  function carregarMinhasEquipes(uid) {
+    return colMinhasEquipes(uid).get().then(function (qs) {
+      const lista = [];
+      qs.forEach(function (doc) { lista.push(Object.assign({ id: doc.id }, doc.data())); });
+      lista.sort(function (a, b) { return (a.nomeEquipe || '').localeCompare(b.nomeEquipe || '', 'pt-BR'); });
+      minhasEquipes = lista;
+    }).catch(function (e) { console.warn(e); minhasEquipes = []; });
+  }
+  function escolherEquipeInicial() {
+    if (!minhasEquipes.length) { equipeAtualId_ = null; equipeAtual = null; return Promise.resolve(); }
+    const salva = lerEquipeLocal();
+    equipeAtualId_ = (salva && minhasEquipes.some(function (e) { return e.id === salva; })) ? salva : minhasEquipes[0].id;
+    return carregarEquipeAtual(true);
+  }
+  // Se a equipe escolhida sumiu (removido dela nesse meio tempo), tenta as
+  // outras que eu ainda tenho antes de desistir e cair pro hub.
+  function carregarEquipeAtual(podeTentarOutra) {
+    if (!equipeAtualId_) { equipeAtual = null; return Promise.resolve(); }
+    return docEquipe(equipeAtualId_).get().then(function (snap) {
+      equipeAtual = snap.exists ? Object.assign({ id: snap.id }, snap.data()) : null;
+      if (!equipeAtual) {
+        const outra = podeTentarOutra && minhasEquipes.find(function (e) { return e.id !== equipeAtualId_; });
+        equipeAtualId_ = outra ? outra.id : null;
+        if (outra) return carregarEquipeAtual(false);
+      }
+    }).catch(function (e) {
+      console.warn(e);
+      const outra = podeTentarOutra && minhasEquipes.find(function (e) { return e.id !== equipeAtualId_; });
+      equipeAtual = null;
+      equipeAtualId_ = outra ? outra.id : null;
+      if (outra) return carregarEquipeAtual(false);
+    });
   }
 
   function avisar() { ouvintes.forEach(function (fn) { try { fn(); } catch (e) { console.warn(e); } }); }
@@ -1901,9 +2015,10 @@ const Auth = (function () {
       usuario = u;
       const seguir = function () { pronto = true; avisar(); };
       if (u) {
-        Promise.all([carregarPerfil(u.uid), carregarCoordenador()]).then(seguir);
+        carregarPerfil(u.uid).then(function () { return carregarMinhasEquipes(u.uid); })
+          .then(escolherEquipeInicial).then(seguir);
       } else {
-        perfil = null; coordenadorUid = null; seguir();
+        perfil = null; minhasEquipes = []; equipeAtualId_ = null; equipeAtual = null; seguir();
       }
     });
   }
@@ -1911,15 +2026,21 @@ const Auth = (function () {
   function logado() { return !!usuario; }
   function usuarioAtual() { return usuario; }
   function perfilAtual() { return perfil; }
-  // membro = tem perfil em /usuarios — some na hora se o coordenador remover,
-  // mesmo sem essa pessoa deslogar. Não existe mais "pendente": ou tem
-  // perfil (entrou pelo primeiro cadastro ou por um convite válido) ou não.
-  function membro() { return !!perfil; }
+  function temEquipe() { return minhasEquipes.length > 0; }
+  function minhasEquipesLista() { return minhasEquipes.slice(); }
+  function equipeAtualId() { return equipeAtualId_; }
+  function equipeAtualNome() { return equipeAtual ? equipeAtual.nome : ''; }
+  // membro = pertenço à equipe que estou vendo agora. Some na hora se o
+  // coordenador remover, mesmo sem essa pessoa deslogar.
+  function membro() { return !!equipeAtualId_ && !!equipeAtual; }
   function podeEditar() { return logado() && membro(); }
-  function souCoordenador() { return logado() && !!coordenadorUid && coordenadorUid === usuario.uid; }
-  function existeCoordenador() { return !!coordenadorUid; }
-  function coordenadorUidAtual() { return coordenadorUid; }
-  function papel() { return perfil ? perfil.papel : null; }
+  function souCoordenador() { return !!(equipeAtual && usuario && equipeAtual.coordenadorUid === usuario.uid); }
+  function coordenadorUidAtual() { return equipeAtual ? equipeAtual.coordenadorUid : null; }
+  function papel() {
+    if (!equipeAtualId_) return null;
+    const e = minhasEquipes.find(function (x) { return x.id === equipeAtualId_; });
+    return e ? e.papel : null;
+  }
   // GP e coordenador têm o mesmo poder de edição; planejador só mexe no que
   // for designado a ele (a garantia de verdade está na regra do Firestore)
   function souGPouCoordenador() { return membro() && (souCoordenador() || papel() === 'gp'); }
@@ -1929,83 +2050,139 @@ const Auth = (function () {
     return firebase.auth().signInWithEmailAndPassword(email, senha);
   }
 
-  // O primeiro usuário do sistema vira coordenador automaticamente — os dois
-  // documentos (perfil + coordenador) nascem juntos numa transação, pra nunca
-  // dar duas pessoas se declarando coordenador ao mesmo tempo.
-  // Sem convite só dá pra criar conta se for a primeira pessoa do sistema
-  // (vira coordenador). Depois disso, todo cadastro exige um código de
-  // convite válido — e quem entra assim já é membro pleno na hora, sem
-  // pendência nenhuma.
-  function cadastrar(nome, email, senha, codigoConvite) {
+  // Cria só a conta + perfil pessoal (nome, preferências) — não entra em
+  // equipe nenhuma sozinho. Entrar numa equipe é sempre um passo separado
+  // (criar uma nova, ou consumir um convite via entrarComConvite), o que
+  // deixa o mesmo fluxo servir tanto pra quem nunca teve conta quanto pra
+  // quem já tem conta e só precisa entrar numa equipe nova.
+  function cadastrar(nome, email, senha) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado (veja README.md).'));
     return firebase.auth().createUserWithEmailAndPassword(email, senha).then(function (cred) {
-      const db = firebase.firestore();
-      const refCoord = docCoordenador(), refPerfil = docPerfil(cred.user.uid);
-      const refConvite = codigoConvite ? db.collection('convites').doc(codigoConvite) : null;
-      return db.runTransaction(function (tx) {
-        return tx.get(refCoord).then(function (snapCoord) {
-          const souPrimeiro = !snapCoord.exists;
-          const checarConvite = (!souPrimeiro && refConvite) ? tx.get(refConvite) : Promise.resolve(null);
-          return checarConvite.then(function (snapConvite) {
-            if (!souPrimeiro) {
-              if (!snapConvite || !snapConvite.exists || snapConvite.data().usado) {
-                throw new Error('convite-invalido');
-              }
-            }
-            const novoPerfil = {
-              nome: nome, email: email,
-              papel: souPrimeiro ? 'gp' : snapConvite.data().papel,
-              criadoEm: new Date().toISOString(),
-              tema: 'claro', idioma: 'pt', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao'
-            };
-            if (!souPrimeiro) novoPerfil.viaConvite = codigoConvite;
-            tx.set(refPerfil, novoPerfil);
-            if (souPrimeiro) tx.set(refCoord, { uid: cred.user.uid });
-            else tx.update(refConvite, { usado: true, usadoPor: cred.user.uid, usadoEm: new Date().toISOString() });
-            return { novoPerfil: novoPerfil, souPrimeiro: souPrimeiro };
-          });
-        });
-      }).then(function (resultado) {
-        // criação do usuário já disparou onAuthStateChanged antes da transação
-        // terminar — sem isto, o app ficaria achando que o perfil não existe
-        // até o próximo login
+      const novoPerfil = {
+        nome: nome, email: email, criadoEm: new Date().toISOString(), equipesCriadas: 0,
+        tema: 'claro', idioma: 'pt', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao'
+      };
+      return docPerfil(cred.user.uid).set(novoPerfil).then(function () {
+        // criação do usuário já disparou onAuthStateChanged antes de o perfil
+        // existir — sem isto, o app ficaria achando que não há perfil até o
+        // próximo login
         usuario = cred.user;
-        perfil = resultado.novoPerfil;
-        if (resultado.souPrimeiro) coordenadorUid = cred.user.uid;
+        perfil = novoPerfil;
         return cred.user.updateProfile({ displayName: nome });
       }).catch(function (e) {
-        // o cadastro no Auth já aconteceu; se a transação falhar (convite
-        // inválido), desfaz pra não deixar uma conta órfã sem perfil
+        // o cadastro no Auth já aconteceu; se o perfil falhar, desfaz pra não
+        // deixar uma conta órfã sem perfil
         return cred.user.delete().catch(function () {}).then(function () { throw e; });
       });
     });
   }
 
-  // Convites — só o coordenador cria (a regra do Firestore garante isso)
+  // Cria uma equipe nova e já me torna coordenador dela (limite de 3 equipes
+  // criadas por pessoa, garantido pela regra do Firestore). A criação do
+  // documento da equipe é uma transação com o contador em /usuarios/{uid};
+  // meu /membros/{uid} e meu índice pessoal são gravados logo em seguida
+  // (não dá pra fazer tudo na mesma transação: a regra de /membros precisa
+  // *ler* a equipe já criada pra confirmar que sou o coordenador, e leitura
+  // de um doc escrito na mesma transação não enxerga esse doc ainda).
+  function criarEquipe(nome) {
+    if (!usuario) return Promise.reject(new Error('sem sessão'));
+    const db = firebase.firestore();
+    const refEquipe = db.collection('equipes').doc();
+    const refPerfil = docPerfil(usuario.uid);
+    return db.runTransaction(function (tx) {
+      return tx.get(refPerfil).then(function (snap) {
+        const atual = (snap.exists && snap.data().equipesCriadas) || 0;
+        if (atual >= 3) throw new Error('limite-equipes');
+        tx.set(refEquipe, { nome: nome, coordenadorUid: usuario.uid, criadoPorUid: usuario.uid, criadoEm: new Date().toISOString() });
+        tx.update(refPerfil, { equipesCriadas: atual + 1 });
+      });
+    }).then(function () {
+      const novoId = refEquipe.id;
+      return colMembros(novoId).doc(usuario.uid).set({
+        nome: (perfil && perfil.nome) || '', email: usuario.email || '', papel: 'gp', entrouEm: new Date().toISOString()
+      }).then(function () {
+        return colMinhasEquipes(usuario.uid).doc(novoId).set({ papel: 'gp', nomeEquipe: nome, entrouEm: new Date().toISOString() });
+      }).then(function () { return carregarMinhasEquipes(usuario.uid); })
+        .then(function () { return trocarEquipe(novoId); })
+        .then(function () { return novoId; });
+    });
+  }
+
+  // Consome um convite pra entrar numa equipe existente — serve tanto pra
+  // quem acabou de criar a conta quanto pra quem já tinha uma e só clicou
+  // num link de convite. Primeiro marca o convite como usado (transação,
+  // pra não dar duas pessoas consumindo o mesmo código); só depois — numa
+  // escrita separada, já enxergando o convite marcado — cria meu /membros
+  // e meu índice pessoal (mesmo motivo da ordem em criarEquipe).
+  function entrarComConvite(codigo) {
+    if (!usuario) return Promise.reject(new Error('sem sessão'));
+    const db = firebase.firestore();
+    const refConvite = db.collection('convites').doc(codigo);
+    let dadosConvite = null;
+    return db.runTransaction(function (tx) {
+      return tx.get(refConvite).then(function (snap) {
+        if (!snap.exists || snap.data().usado) throw new Error('convite-invalido');
+        dadosConvite = snap.data();
+        tx.update(refConvite, { usado: true, usadoPor: usuario.uid, usadoEm: new Date().toISOString() });
+      });
+    }).then(function () {
+      const equipeId = dadosConvite.equipeId, papelNovo = dadosConvite.papel;
+      return colMembros(equipeId).doc(usuario.uid).set({
+        nome: (perfil && perfil.nome) || '', email: usuario.email || '', papel: papelNovo,
+        entrouEm: new Date().toISOString(), viaConvite: codigo
+      }).then(function () {
+        // só depois de virar membro dá pra ler o nome da equipe (regra de leitura)
+        return docEquipe(equipeId).get().then(function (snapEquipe) {
+          const nomeEquipe = snapEquipe.exists ? snapEquipe.data().nome : '';
+          return colMinhasEquipes(usuario.uid).doc(equipeId).set({
+            papel: papelNovo, nomeEquipe: nomeEquipe, entrouEm: new Date().toISOString(), viaConvite: codigo
+          });
+        });
+      }).then(function () { return carregarMinhasEquipes(usuario.uid); })
+        .then(function () { return trocarEquipe(equipeId); })
+        .then(function () { return equipeId; });
+    });
+  }
+
+  function trocarEquipe(equipeId) {
+    if (equipeId === equipeAtualId_) return Promise.resolve();
+    return docEquipe(equipeId).get().then(function (snap) {
+      if (!snap.exists) throw new Error('equipe-nao-encontrada');
+      equipeAtualId_ = equipeId;
+      equipeAtual = Object.assign({ id: snap.id }, snap.data());
+      gravarEquipeLocal(equipeId);
+      avisar();
+    });
+  }
+
+  // Convites — só GP/coordenador da equipe atual criam (a regra garante isso)
   function criarConvite(papelConvite) {
+    if (!equipeAtualId_) return Promise.reject(new Error('sem equipe selecionada'));
     const codigo = (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2))).replace(/-/g, '');
     return firebase.firestore().collection('convites').doc(codigo).set({
-      criadoPor: usuario.uid, usado: false, papel: papelConvite, criadoEm: new Date().toISOString()
+      criadoPor: usuario.uid, equipeId: equipeAtualId_, usado: false, papel: papelConvite, criadoEm: new Date().toISOString()
     }).then(function () { return codigo; });
   }
   function listarConvites() {
-    return firebase.firestore().collection('convites').where('usado', '==', false).get().then(function (qs) {
-      const lista = [];
-      qs.forEach(function (doc) { lista.push(Object.assign({ codigo: doc.id }, doc.data())); });
-      lista.sort(function (a, b) { return (b.criadoEm || '').localeCompare(a.criadoEm || ''); });
-      return lista;
-    });
+    if (!equipeAtualId_) return Promise.resolve([]);
+    return firebase.firestore().collection('convites')
+      .where('equipeId', '==', equipeAtualId_).where('usado', '==', false).get().then(function (qs) {
+        const lista = [];
+        qs.forEach(function (doc) { lista.push(Object.assign({ codigo: doc.id }, doc.data())); });
+        lista.sort(function (a, b) { return (b.criadoEm || '').localeCompare(a.criadoEm || ''); });
+        return lista;
+      });
   }
   function revogarConvite(codigo) {
     return firebase.firestore().collection('convites').doc(codigo).delete();
   }
   function removerMembro(uid) {
-    return docPerfil(uid).delete();
+    if (!equipeAtualId_) return Promise.reject(new Error('sem equipe selecionada'));
+    return colMembros(equipeAtualId_).doc(uid).delete();
   }
   function alterarPapel(uid, papelNovo) {
-    return docPerfil(uid).update({ papel: papelNovo }).then(function () {
-      if (usuario && uid === usuario.uid) return carregarPerfil(uid);
-    });
+    if (!equipeAtualId_) return Promise.reject(new Error('sem equipe selecionada'));
+    return colMembros(equipeAtualId_).doc(uid).update({ papel: papelNovo });
   }
 
   function recuperarSenha(email) {
@@ -2015,7 +2192,8 @@ const Auth = (function () {
   function sair() { return FIREBASE_PRONTO ? firebase.auth().signOut() : Promise.resolve(); }
   function aoMudar(fn) { ouvintes.push(fn); if (pronto) fn(); }
 
-  // salva campos de preferência/perfil (nome, tema, idioma...) na conta
+  // salva campos de preferência/perfil (nome, tema, idioma...) na conta —
+  // são pessoais, valem em todas as equipes
   function salvarPerfil(campos) {
     if (!usuario) return Promise.reject(new Error('sem sessão'));
     return docPerfil(usuario.uid).update(campos).then(function () {
@@ -2026,11 +2204,12 @@ const Auth = (function () {
   /* ------------------------------------------------------------- notificações
      De designação de projeto ou de observação numa tarefa — só GP/coordenador
      geram (a regra do Firestore garante), o destinatário só lê as próprias
-     e marca como lida. */
+     e marca como lida. Cross-equipe: uma pessoa pode estar em mais de uma
+     equipe e receber avisos de qualquer uma delas. */
   function criarNotificacao(paraUid, tipo, mensagem, projetoId) {
     if (!usuario || paraUid === usuario.uid) return Promise.resolve(); // não notifica a si mesmo
     return firebase.firestore().collection('notificacoes').add({
-      paraUid: paraUid, tipo: tipo, mensagem: mensagem, projetoId: projetoId || null,
+      paraUid: paraUid, tipo: tipo, mensagem: mensagem, projetoId: projetoId || null, equipeId: equipeAtualId_,
       deUid: usuario.uid, deNome: (perfil && perfil.nome) || '',
       lida: false, criadoEm: new Date().toISOString()
     }).catch(function (e) { console.warn('notificação não enviada:', e); });
@@ -2051,8 +2230,9 @@ const Auth = (function () {
   /* --------------------------------------------------------------------- chat
      Ao vivo (onSnapshot) só aqui — é o único lugar do app onde "atualizar na
      hora sem recarregar" importa de verdade. */
+  function colProjetoDaEquipe(projetoId) { return docEquipe(equipeAtualId_).collection('projetos').doc(projetoId); }
   function escutarChat(projetoId, callback) {
-    return firebase.firestore().collection('projetos').doc(projetoId).collection('chat')
+    return colProjetoDaEquipe(projetoId).collection('chat')
       .orderBy('criadoEm', 'asc').onSnapshot(function (qs) {
         const msgs = [];
         qs.forEach(function (doc) { msgs.push(Object.assign({ id: doc.id }, doc.data())); });
@@ -2061,7 +2241,7 @@ const Auth = (function () {
   }
   function enviarMensagemChat(projetoId, texto) {
     if (!usuario) return Promise.reject(new Error('sem sessão'));
-    return firebase.firestore().collection('projetos').doc(projetoId).collection('chat').add({
+    return colProjetoDaEquipe(projetoId).collection('chat').add({
       autorUid: usuario.uid, autorNome: (perfil && perfil.nome) || '',
       texto: texto, criadoEm: new Date().toISOString()
     });
@@ -2069,7 +2249,8 @@ const Auth = (function () {
 
   // Equipe — a segurança de verdade está na regra do Firestore, isto aqui é só a tela
   function listarEquipe() {
-    return firebase.firestore().collection('usuarios').get().then(function (qs) {
+    if (!equipeAtualId_) return Promise.resolve([]);
+    return colMembros(equipeAtualId_).get().then(function (qs) {
       const lista = [];
       qs.forEach(function (doc) { lista.push(Object.assign({ uid: doc.id }, doc.data())); });
       lista.sort(function (a, b) { return (a.nome || '').localeCompare(b.nome || '', 'pt-BR'); });
@@ -2077,18 +2258,53 @@ const Auth = (function () {
     });
   }
   function transferirCoordenacao(novoUid) {
-    return docCoordenador().update({ uid: novoUid }).then(function () {
-      return carregarCoordenador();
+    if (!equipeAtualId_) return Promise.reject(new Error('sem equipe selecionada'));
+    return docEquipe(equipeAtualId_).update({ coordenadorUid: novoUid }).then(carregarEquipeAtual);
+  }
+
+  /* --------------------------------------------------------- migração (legado)
+     Antes de existir o sistema de equipes havia um workspace só. Detecta se
+     eu era o coordenador daquele workspace e, sob pedido explícito, cria uma
+     equipe nova a partir dele — só os PROJETOS são copiados automaticamente
+     (o coordenador continua sendo quem migra); os demais membros antigos
+     precisam de um convite novo pra entrar na equipe migrada, porque só o
+     dono de uma conta pode gravar o próprio índice de equipes. */
+  function verificarEquipeAntiga() {
+    if (!usuario || !FIREBASE_PRONTO) return Promise.resolve(false);
+    return docCoordenadorAntigo().get().then(function (snap) {
+      return snap.exists && snap.data().uid === usuario.uid;
+    }).catch(function () { return false; });
+  }
+  function migrarEquipeAntiga(nomeEquipe) {
+    return criarEquipe(nomeEquipe).then(function (novoId) {
+      return firebase.firestore().collection('projetos').get().then(function (qs) {
+        const antigos = [];
+        qs.forEach(function (doc) { antigos.push(doc.data()); });
+        const batch = firebase.firestore().batch();
+        const colNovosProjetos = docEquipe(novoId).collection('projetos');
+        antigos.forEach(function (p) {
+          const dados = Object.assign({ responsavelUid: null }, p);
+          batch.set(colNovosProjetos.doc(p.id), dados);
+        });
+        return (antigos.length ? batch.commit() : Promise.resolve()).then(function () {
+          return { equipeId: novoId, projetosMigrados: antigos.length };
+        });
+      }).catch(function (e) {
+        console.warn('projetos antigos não migrados:', e);
+        return { equipeId: novoId, projetosMigrados: 0, erroProjetos: true };
+      });
     });
   }
 
   return { inicializar, logado, usuarioAtual, perfilAtual, membro, podeEditar,
-    souCoordenador, existeCoordenador, coordenadorUidAtual, papel, souGPouCoordenador,
+    temEquipe, minhasEquipesLista, equipeAtualId, equipeAtualNome, trocarEquipe, criarEquipe, entrarComConvite,
+    souCoordenador, coordenadorUidAtual, papel, souGPouCoordenador,
     entrar, cadastrar, recuperarSenha, sair, aoMudar, salvarPerfil,
     listarEquipe, transferirCoordenacao, alterarPapel,
     criarConvite, listarConvites, revogarConvite, removerMembro,
     criarNotificacao, listarNotificacoes, marcarNotificacaoLida,
-    escutarChat, enviarMensagemChat };
+    escutarChat, enviarMensagemChat,
+    verificarEquipeAntiga, migrarEquipeAntiga };
 })();
 
 /* ---------------------------------------------------------------------------
@@ -2172,9 +2388,11 @@ const Store = (function () {
   // Cada projeto é um documento próprio (coleção "projetos") — não um array
   // dentro de um blob só. É o que permite a regra de segurança restringir o
   // planejador a só ler/escrever o projeto dele.
-  function colProjetos() { return firebase.firestore().collection('projetos'); }
+  function colProjetos() {
+    return firebase.firestore().collection('equipes').doc(Auth.equipeAtualId()).collection('projetos');
+  }
   function carregar() {
-    if (!FIREBASE_PRONTO) return Promise.resolve([]);
+    if (!FIREBASE_PRONTO || !Auth.equipeAtualId()) return Promise.resolve([]);
     // Firestore não filtra resultado de query "solta" por regra — ou o pedido
     // inteiro é permitido, ou é negado por inteiro. Por isso o planejador
     // precisa de um where() que combine exatamente com a regra dele (só o
@@ -2192,7 +2410,7 @@ const Store = (function () {
   // Recebe o array inteiro (é como o resto do app já funciona) e calcula
   // sozinho quem mudou/sumiu, gravando tudo num lote atômico só.
   function salvar(projetosAtuais) {
-    if (!FIREBASE_PRONTO) return false;
+    if (!FIREBASE_PRONTO || !Auth.equipeAtualId()) return false;
     const antes = projetosServidor || [];
     const idsAtuais = {};
     projetosAtuais.forEach(function (p) { idsAtuais[p.id] = true; });
@@ -2827,12 +3045,14 @@ function fecharPopups() {
   document.querySelectorAll('.filter-panel').forEach(function (p) { p.classList.remove('open'); });
   document.getElementById('notif-panel').classList.remove('open');
   document.getElementById('profile-menu').classList.remove('open');
+  document.getElementById('equipe-menu').classList.remove('open');
 }
 document.addEventListener('click', function (e) {
   if (!e.target.closest('.actionbar')) {
     document.querySelectorAll('.filter-panel').forEach(function (p) { p.classList.remove('open'); });
   }
-  if (!e.target.closest('.sidebar-bottom')) document.getElementById('profile-menu').classList.remove('open');
+  if (!e.target.closest('#sidebar-profile') && !e.target.closest('#profile-menu')) document.getElementById('profile-menu').classList.remove('open');
+  if (!e.target.closest('#sidebar-equipe')) document.getElementById('equipe-menu').classList.remove('open');
   if (!e.target.closest('.sino-wrap')) document.getElementById('notif-panel').classList.remove('open');
 });
 
@@ -2841,7 +3061,7 @@ document.addEventListener('click', function (e) {
 --------------------------------------------------------------------------- */
 function mapNotifReal(n) {
   return {
-    id: 'real:' + n.id, projetoId: n.projetoId,
+    id: 'real:' + n.id, projetoId: n.projetoId, equipeId: n.equipeId || null,
     nivel: 'aviso', titulo: T(n.tipo === 'designacao' ? 'notif.tituloDesignacao' : 'notif.tituloObservacao'),
     meta: n.mensagem, quando: (n.criadoEm || hojeIso()).slice(0, 10), lida: !!n.lida
   };
@@ -2858,7 +3078,7 @@ function renderNotificacoes() {
 
   document.getElementById('notif-lista').innerHTML = lista.length ? lista.map(function (n) {
     const cor = n.nivel === 'alerta' ? 'var(--rust)' : 'var(--amber-ink)';
-    return '<button class="notif-item ' + (n.lida ? '' : 'nao-lida') + '" onclick="abrirNotificacao(\'' + esc(n.id) + '\',\'' + n.projetoId + '\')">' +
+    return '<button class="notif-item ' + (n.lida ? '' : 'nao-lida') + '" onclick="abrirNotificacao(\'' + esc(n.id) + '\',\'' + n.projetoId + '\',\'' + (n.equipeId || '') + '\')">' +
       '<span class="dot ' + (n.nivel === 'alerta' ? 'dot-atrasada' : 'dot-chegando') + '" style="margin-top:4px"></span>' +
       '<span class="corpo"><span class="tit">' + esc(n.titulo) + '</span>' +
       '<span class="meta">' + esc(n.meta) + '</span></span>' +
@@ -2873,16 +3093,22 @@ function toggleNotificacoes(ev) {
   fecharPopups();
   if (!aberto) { renderNotificacoes(); atualizarNotifReais(); painel.classList.add('open'); }
 }
-function abrirNotificacao(id, projetoId) {
+function abrirNotificacao(id, projetoId, equipeId) {
+  document.getElementById('notif-panel').classList.remove('open');
   if (id.indexOf('real:') === 0) {
     const realId = id.slice(5);
     const n = notifReais.find(function (x) { return x.id === realId; });
     if (n && !n.lida) { n.lida = true; Auth.marcarNotificacaoLida(realId).catch(function (e) { console.warn(e); }); }
+    renderNotificacoes();
+    if (equipeId && equipeId !== Auth.equipeAtualId()) {
+      Auth.trocarEquipe(equipeId).then(function () { if (projetoId) abrirProjeto(projetoId); })
+        .catch(function (e) { toast(T('hub.trocaErro'), { tipo:'erro' }); console.warn(e); });
+      return;
+    }
   } else {
     Notif.marcarLida(id);
+    renderNotificacoes();
   }
-  document.getElementById('notif-panel').classList.remove('open');
-  renderNotificacoes();
   if (projetoId) abrirProjeto(projetoId);
 }
 function marcarTodasLidas() {
@@ -4008,11 +4234,30 @@ function mensagemModoAtual() {
   return T('auth.somenteLeitura');
 }
 function mostrarViewAcesso(ver) {
-  ['entrar','cadastro','recuperar','semacesso'].forEach(function (v) {
+  ['entrar','cadastro','recuperar','hub'].forEach(function (v) {
     document.getElementById('login-view-' + v).style.display = (v === ver) ? 'block' : 'none';
   });
-  const foco = { entrar:'login-email', cadastro:'cadastro-nome', recuperar:'recuperar-email' }[ver];
+  const bannerEntrar = document.getElementById('acesso-convite-banner-entrar');
+  const bannerCadastro = document.getElementById('acesso-convite-banner-cadastro');
+  if (bannerEntrar) bannerEntrar.style.display = (ver === 'entrar' && convitePendente) ? 'block' : 'none';
+  if (bannerCadastro) bannerCadastro.style.display = (ver === 'cadastro' && convitePendente) ? 'block' : 'none';
+  if (ver === 'hub') prepararHub();
+  const foco = { entrar:'login-email', cadastro:'cadastro-nome', recuperar:'recuperar-email', hub:'hub-nome-equipe' }[ver];
   if (foco) setTimeout(function () { const el = document.getElementById(foco); if (el) el.focus(); }, 30);
+}
+// Consome o convite pendente (se houver) depois de um login/cadastro bem
+// sucedido — é o que deixa quem já tem conta simplesmente entrar direto na
+// equipe do link, sem ficar preso numa tela de criar conta nova.
+function consumirConviteSeHouver() {
+  if (!convitePendente) return Promise.resolve();
+  const codigo = convitePendente;
+  convitePendente = null;
+  return Auth.entrarComConvite(codigo).then(function () {
+    toast(T('hub.conviteAceito'));
+  }).catch(function (e) {
+    toast(T('hub.conviteErro'), { tipo:'erro' });
+    console.warn(e);
+  });
 }
 function fazerLogin(ev) {
   if (ev) ev.preventDefault();
@@ -4024,6 +4269,7 @@ function fazerLogin(ev) {
   btn.disabled = true;
   Auth.entrar(email, senha).then(function () {
     btn.disabled = false;
+    return consumirConviteSeHouver();
   }).catch(function (e) {
     btn.disabled = false;
     erro.textContent = T('auth.erroLogin');
@@ -4040,17 +4286,16 @@ function fazerCadastro(ev) {
   const btn = document.getElementById('cadastro-submit');
   erro.textContent = '';
   if (senha !== senha2) { erro.textContent = T('auth.senhasDiferentes'); return; }
-  if (!convitePendente && Auth.existeCoordenador()) { erro.textContent = T('auth.precisaConvite'); return; }
   btn.disabled = true;
-  Auth.cadastrar(nome, email, senha, convitePendente).then(function () {
+  Auth.cadastrar(nome, email, senha).then(function () {
     btn.disabled = false;
-    convitePendente = null;
+    return consumirConviteSeHouver();
+  }).then(function () {
     atualizarTelaDeAcesso();
   }).catch(function (e) {
     btn.disabled = false;
     erro.textContent = (e && e.code === 'auth/email-already-in-use') ? T('auth.emailJaExiste')
       : (e && e.code === 'auth/weak-password') ? T('auth.senhaFraca')
-      : (e && e.message === 'convite-invalido') ? T('auth.conviteInvalido')
       : T('auth.erroCadastro');
     console.warn(e);
   });
@@ -4177,40 +4422,178 @@ function transferirCoordenacaoPara(uid, nome) {
    Ver/editar agora é a mesma trava; não existe mais visitante.
 --------------------------------------------------------------------------- */
 let appIniciado = false;
+let equipeCarregadaId = null;
+function atualizarPrefsDoPerfil() {
+  const perfil = Auth.perfilAtual();
+  if (!perfil) return;
+  ['nome','tema','idioma','alerta','alertaTarefa','fimDeSemana'].forEach(function (k) {
+    if (perfil[k] != null) prefs[k] = perfil[k];
+  });
+  aplicarPrefs(); aplicarIdioma();
+  document.documentElement.setAttribute('data-tema', prefs.tema === 'escuro' ? 'escuro' : 'claro');
+  document.getElementById('tema-btn').textContent = prefs.tema === 'escuro' ? '☀' : '◐';
+}
+// Trocar de equipe não reinicia o app inteiro — só recarrega os projetos
+// (cada equipe tem sua própria coleção) e manda de volta pro Painel.
+function recarregarDadosEquipe(dadosNovos) {
+  projetos = dadosNovos || [];
+  projetosServidor = projetos.map(function (p) { return JSON.parse(JSON.stringify(p)); });
+  idDetalhe = null;
+  refreshOpcoes();
+  renderTudo();
+  irPara('painel');
+  toast(T('hub.equipeCarregada', Auth.equipeAtualNome()));
+}
 function atualizarTelaDeAcesso() {
   const podeVer = Auth.podeEditar();
   document.getElementById('app-shell').style.display = podeVer ? '' : 'none';
   document.getElementById('tela-acesso').style.display = podeVer ? 'none' : 'flex';
 
   if (podeVer) {
+    const equipeId = Auth.equipeAtualId();
     if (!appIniciado) {
       appIniciado = true;
+      equipeCarregadaId = equipeId;
       Store.carregar().then(function (ps) { iniciarApp(ps); atualizarNotifReais(); })
         .catch(function (e) { console.error('Não consegui carregar os dados da nuvem:', e); iniciarApp([]); });
+    } else if (equipeId !== equipeCarregadaId) {
+      equipeCarregadaId = equipeId;
+      atualizarPrefsDoPerfil();
+      Store.carregar().then(function (ps) { recarregarDadosEquipe(ps); atualizarNotifReais(); atualizarInscricaoChat(); })
+        .catch(function (e) { console.error('Não consegui carregar os dados da nuvem:', e); recarregarDadosEquipe([]); });
     } else {
-      const perfil = Auth.perfilAtual();
-      if (perfil) {
-        ['nome','tema','idioma','alerta','alertaTarefa','fimDeSemana'].forEach(function (k) {
-          if (perfil[k] != null) prefs[k] = perfil[k];
-        });
-        aplicarPrefs(); aplicarIdioma();
-        document.documentElement.setAttribute('data-tema', prefs.tema === 'escuro' ? 'escuro' : 'claro');
-        document.getElementById('tema-btn').textContent = prefs.tema === 'escuro' ? '☀' : '◐';
-      }
+      atualizarPrefsDoPerfil();
     }
     aplicarRestricoesPapel();
+    atualizarSeletorEquipe();
     if (abaAtual() === 'config' && document.getElementById('stab-equipe').classList.contains('active')) renderEquipe();
     return;
   }
 
   if (!Auth.logado()) {
     mostrarViewAcesso(convitePendente ? 'cadastro' : 'entrar');
-  } else {
-    // logado mas sem perfil: ou nunca teve (link errado), ou o coordenador removeu
-    mostrarViewAcesso('semacesso');
+    return;
   }
+  // logado mas sem equipe corrente: convite pendente (já logado) é
+  // consumido direto, sem passar pela tela de escolha
+  if (convitePendente) {
+    const codigo = convitePendente;
+    convitePendente = null;
+    Auth.entrarComConvite(codigo).then(function () { toast(T('hub.conviteAceito')); })
+      .catch(function (e) { toast(T('hub.conviteErro'), { tipo:'erro' }); console.warn(e); mostrarViewAcesso('hub'); });
+    return;
+  }
+  mostrarViewAcesso('hub');
 }
 Auth.aoMudar(atualizarTelaDeAcesso);
+
+/* ---------------------------------------------------------------------------
+   Hub — criar equipe (primeiro contato) e migração do workspace antigo
+--------------------------------------------------------------------------- */
+function prepararHub() {
+  document.getElementById('hub-nome-equipe').value = '';
+  document.getElementById('hub-erro').textContent = '';
+  const bloco = document.getElementById('hub-migracao');
+  bloco.style.display = 'none';
+  Auth.verificarEquipeAntiga().then(function (encontrou) {
+    bloco.style.display = encontrou ? 'block' : 'none';
+  });
+}
+function criarEquipeUI() {
+  const nome = document.getElementById('hub-nome-equipe').value.trim();
+  const erro = document.getElementById('hub-erro');
+  const btn = document.getElementById('hub-criar-submit');
+  erro.textContent = '';
+  if (!nome) { erro.textContent = T('hub.erroNome'); return; }
+  btn.disabled = true;
+  Auth.criarEquipe(nome).then(function () {
+    btn.disabled = false;
+    toast(T('hub.equipeCriada', nome));
+  }).catch(function (e) {
+    btn.disabled = false;
+    erro.textContent = (e && e.message === 'limite-equipes') ? T('hub.erroLimite') : T('hub.erroCriar');
+    console.warn(e);
+  });
+}
+function migrarEquipeAntigaUI() {
+  const btn = document.getElementById('btn-migrar-equipe');
+  btn.disabled = true;
+  Auth.migrarEquipeAntiga(T('hub.nomeEquipeMigrada')).then(function (resultado) {
+    btn.disabled = false;
+    toast(T('hub.migracaoFeita', resultado.projetosMigrados));
+    // a equipe já foi trocada por dentro da migração, mas os projetos foram
+    // copiados DEPOIS — recarrega pra não ficar com a lista vazia na tela
+    if (appIniciado) {
+      Store.carregar().then(function (ps) { recarregarDadosEquipe(ps); })
+        .catch(function (e) { console.warn(e); });
+    }
+  }).catch(function (e) {
+    btn.disabled = false;
+    document.getElementById('hub-erro').textContent = T('hub.erroCriar');
+    console.warn(e);
+  });
+}
+
+/* ---------------------------------------------------------------------------
+   Seletor de equipe (barra lateral) — trocar de equipe ou criar outra,
+   sem sair do app (diferente do Hub, que só aparece sem nenhuma equipe)
+--------------------------------------------------------------------------- */
+function atualizarSeletorEquipe() {
+  const nomeEl = document.getElementById('sidebar-equipe-nome');
+  if (nomeEl) nomeEl.textContent = Auth.equipeAtualNome() || '—';
+}
+function toggleEquipeMenu(ev) {
+  if (ev) ev.stopPropagation();
+  const menu = document.getElementById('equipe-menu');
+  const aberto = menu.classList.contains('open');
+  fecharPopups();
+  if (aberto) return;
+  renderEquipeMenu();
+  menu.classList.add('open');
+}
+function renderEquipeMenu() {
+  const lista = document.getElementById('equipe-menu-lista');
+  const minhas = Auth.minhasEquipesLista();
+  const atualId = Auth.equipeAtualId();
+  lista.innerHTML = minhas.map(function (e) {
+    const ativa = e.id === atualId;
+    return '<button class="profile-menu-item" style="' + (ativa ? 'color:var(--violet, #7c3aed); font-weight:700;' : '') + '" onclick="trocarEquipeUI(\'' + e.id + '\')">' +
+      (ativa ? '● ' : '○ ') + esc(e.nomeEquipe || '—') +
+      '<span class="hint-txt" style="font-weight:400;"> · ' + T('cfg.papel.' + (e.papel || 'planejador')) + '</span></button>';
+  }).join('');
+}
+function trocarEquipeUI(equipeId) {
+  document.getElementById('equipe-menu').classList.remove('open');
+  if (equipeId === Auth.equipeAtualId()) return;
+  Auth.trocarEquipe(equipeId).catch(function (e) { toast(T('hub.trocaErro'), { tipo:'erro' }); console.warn(e); });
+}
+function abrirCriarEquipeModal() {
+  document.getElementById('equipe-menu').classList.remove('open');
+  document.getElementById('nova-equipe-nome').value = '';
+  document.getElementById('nova-equipe-erro').textContent = '';
+  abrirModal('modal-criar-equipe');
+  setTimeout(function () { document.getElementById('nova-equipe-nome').focus(); }, 30);
+}
+function fecharModalCriarEquipe() {
+  document.getElementById('modal-criar-equipe').classList.remove('open');
+}
+function criarEquipeMenuUI() {
+  const nome = document.getElementById('nova-equipe-nome').value.trim();
+  const erro = document.getElementById('nova-equipe-erro');
+  const btn = document.getElementById('nova-equipe-submit');
+  erro.textContent = '';
+  if (!nome) { erro.textContent = T('hub.erroNome'); return; }
+  btn.disabled = true;
+  Auth.criarEquipe(nome).then(function () {
+    btn.disabled = false;
+    fecharModalCriarEquipe();
+    toast(T('hub.equipeCriada', nome));
+  }).catch(function (e) {
+    btn.disabled = false;
+    erro.textContent = (e && e.message === 'limite-equipes') ? T('hub.erroLimite') : T('hub.erroCriar');
+    console.warn(e);
+  });
+}
 
 function iniciarApp(dadosIniciais) {
   try {

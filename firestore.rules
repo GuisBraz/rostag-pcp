@@ -2,115 +2,166 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // O coordenador é definido por um único documento (sistema/coordenador),
-    // não por um campo em cada perfil — assim nunca existe ambiguidade sobre
-    // quem manda, e transferir o cargo é só trocar esse um valor.
-    function souCoordenador() {
+    // ------------------------------------------------------------- helpers
+    function membroDe(equipeId) {
       return request.auth != null
-        && exists(/databases/$(database)/documents/sistema/coordenador)
-        && get(/databases/$(database)/documents/sistema/coordenador).data.uid == request.auth.uid;
+        && exists(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.auth.uid));
     }
-
-    // Membro = logado + tem perfil em /usuarios. Não existe "pendente": ou
-    // a pessoa entrou (primeira do sistema, ou usando um convite válido do
-    // coordenador) e já é membro pleno, ou não tem perfil nenhum.
-    function membro() {
+    function papelEm(equipeId) {
+      return get(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.auth.uid)).data.papel;
+    }
+    function souCoordDe(equipeId) {
       return request.auth != null
-        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+        && exists(/databases/$(database)/documents/equipes/$(equipeId))
+        && get(/databases/$(database)/documents/equipes/$(equipeId)).data.coordenadorUid == request.auth.uid;
+    }
+    // Coordenador e GP têm o mesmo poder de edição dentro da equipe; planejador
+    // só mexe no que for designado a ele (ver regra de /projetos abaixo).
+    function souGPouCoordDe(equipeId) {
+      return membroDe(equipeId) && (souCoordDe(equipeId) || papelEm(equipeId) == 'gp');
+    }
+    // Convite válido, já consumido por mim, pra essa equipe e com esse papel —
+    // usado tanto pra criar meu /membros/{uid} quanto meu índice pessoal.
+    function convitePraMim(equipeId, papelAlvo) {
+      return request.resource.data.viaConvite is string
+        && get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.equipeId == equipeId
+        && get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.usadoPor == request.auth.uid
+        && request.resource.data.papel == papelAlvo
+        && papelAlvo == get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.papel;
     }
 
-    function meuPapel() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.papel;
-    }
-
-    // Coordenador e GP têm o mesmo poder de edição — criam projeto, designam
-    // quem cuida de cada um, mexem em qualquer campo. Planejador só mexe no
-    // que for designado a ele, e só nas tarefas (ver regra de /projetos).
-    function souGPouCoordenador() {
-      return membro() && (souCoordenador() || meuPapel() == 'gp');
-    }
-
-    // O documento único que diz quem é o coordenador atual.
-    match /sistema/coordenador {
+    // ------------------------------------------------------- perfil pessoal
+    // Nome, preferências (tema/idioma/alertas) — não guarda mais papel, isso
+    // agora é por equipe. equipesCriadas é o contador do limite de 3 equipes
+    // criadas por pessoa; só muda em +1 de cada vez (via criação de equipe).
+    match /usuarios/{uid} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null
-        && !exists(/databases/$(database)/documents/sistema/coordenador)
-        && request.resource.data.uid == request.auth.uid;
-      allow update: if souCoordenador()
-        && exists(/databases/$(database)/documents/usuarios/$(request.resource.data.uid));
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.equipesCriadas == 0;
+      allow update: if request.auth != null && request.auth.uid == uid && (
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['nome','tema','idioma','alerta','alertaTarefa','fimDeSemana'])
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['equipesCriadas'])
+            && request.resource.data.equipesCriadas ==
+               (resource.data.equipesCriadas == null ? 0 : resource.data.equipesCriadas) + 1)
+      );
+      allow delete: if false;
+
+      // Índice pessoal: em quais equipes eu estou e meu papel em cada uma.
+      match /minhasEquipes/{equipeId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid && (
+          (souCoordDe(equipeId) && request.resource.data.papel == 'gp')
+          || convitePraMim(equipeId, request.resource.data.papel)
+        );
+        allow update: if request.auth != null && request.auth.uid == uid;
+        allow delete: if request.auth != null && request.auth.uid == uid;
+      }
     }
 
-    // Convites: só coordenador/GP criam. Quem se cadastra com um código
-    // válido (não usado) vira membro na hora, já com o papel do convite.
+    // ------------------------------------------------------------- equipes
+    match /equipes/{equipeId} {
+      allow read: if membroDe(equipeId);
+      allow create: if request.auth != null
+        && request.resource.data.coordenadorUid == request.auth.uid
+        && request.resource.data.criadoPorUid == request.auth.uid
+        && (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.equipesCriadas == null
+            || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.equipesCriadas < 3);
+      allow update: if souCoordDe(equipeId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coordenadorUid'])
+        && exists(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.resource.data.coordenadorUid));
+      allow delete: if false;
+
+      match /membros/{uid} {
+        allow read: if membroDe(equipeId);
+        allow create: if request.auth != null && request.auth.uid == uid && (
+          (souCoordDe(equipeId) && request.resource.data.papel == 'gp')
+          || convitePraMim(equipeId, request.resource.data.papel)
+        );
+        allow update: if souCoordDe(equipeId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['papel']);
+        allow delete: if souCoordDe(equipeId) || (request.auth != null && request.auth.uid == uid);
+      }
+
+      // Projetos: um documento por projeto — permite restringir o planejador
+      // a só ver o que é dele.
+      //  - GP/coordenador leem e escrevem qualquer projeto da equipe
+      //  - planejador só lê o projeto onde é responsavelUid, e só pode mudar
+      //    o campo "checklist" — nunca datas, responsável ou dados do projeto
+      match /projetos/{projetoId} {
+        allow read: if souGPouCoordDe(equipeId)
+          || (membroDe(equipeId) && resource.data.responsavelUid == request.auth.uid);
+        allow create, delete: if souGPouCoordDe(equipeId);
+        allow update: if souGPouCoordDe(equipeId) || (
+          membroDe(equipeId) && resource.data.responsavelUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checklist'])
+        );
+
+        // Chat do projeto: quem pode ver o projeto pode ver e mandar mensagem;
+        // mensagem não edita nem apaga, pra manter histórico simples e real.
+        match /chat/{msgId} {
+          allow read: if souGPouCoordDe(equipeId)
+            || (membroDe(equipeId) && get(/databases/$(database)/documents/equipes/$(equipeId)/projetos/$(projetoId)).data.responsavelUid == request.auth.uid);
+          allow create: if (souGPouCoordDe(equipeId)
+              || (membroDe(equipeId) && get(/databases/$(database)/documents/equipes/$(equipeId)/projetos/$(projetoId)).data.responsavelUid == request.auth.uid))
+            && request.resource.data.autorUid == request.auth.uid;
+          allow update, delete: if false;
+        }
+      }
+    }
+
+    // Convites: coleção raiz (não subcoleção de /equipes) — assim o link
+    // ?convite=CODIGO não precisa carregar o id da equipe também. Só
+    // coordenador/GP da equipe alvo criam; quem consome vira membro na hora.
     match /convites/{codigo} {
       allow read: if request.auth != null;
-      allow create: if souGPouCoordenador() && request.resource.data.usado == false
+      allow create: if request.auth != null
+        && souGPouCoordDe(request.resource.data.equipeId)
+        && request.resource.data.usado == false
         && request.resource.data.papel in ['gp', 'planejador'];
       allow update: if request.auth != null
         && resource.data.usado == false
         && request.resource.data.usado == true
-        && request.resource.data.usadoPor == request.auth.uid;
-      allow delete: if souGPouCoordenador();
+        && request.resource.data.usadoPor == request.auth.uid
+        && request.resource.data.equipeId == resource.data.equipeId
+        && request.resource.data.papel == resource.data.papel;
+      allow delete: if request.auth != null && souGPouCoordDe(resource.data.equipeId);
     }
 
-    // Perfis de usuário (nome, preferências, papel):
-    //  - qualquer logado lê a lista inteira (alimenta a aba Equipe)
-    //  - um usuário cria o próprio perfil só se for o primeiro do sistema
-    //    (vira coordenador+gp) OU consumindo um convite válido na mesma
-    //    transação, herdando o papel gravado no convite
-    //  - o dono edita as próprias preferências, MAS não o próprio papel —
-    //    só o coordenador muda papel ou remove alguém
-    match /usuarios/{uid} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.auth.uid == uid && (
-        (!exists(/databases/$(database)/documents/sistema/coordenador) && request.resource.data.papel == 'gp')
-        || (request.resource.data.viaConvite is string
-            && exists(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite))
-            && get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.usado == false
-            && request.resource.data.papel == get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.papel)
-      );
-      allow update: if request.auth != null && (
-        (request.auth.uid == uid && request.resource.data.papel == resource.data.papel)
-        || souCoordenador()
-      );
-      allow delete: if souCoordenador();
-    }
-
-    // Projetos: um documento por projeto (não um array num blob só) — é o
-    // que permite restringir o planejador a só ver o que é dele.
-    //  - GP/coordenador leem e escrevem qualquer projeto, qualquer campo
-    //  - planejador só lê o projeto onde é responsavelUid, e só pode mudar
-    //    o campo "checklist" (marcar tarefa feita, escrever observação) —
-    //    nunca datas, responsável ou dados do projeto em si
-    match /projetos/{projetoId} {
-      allow read: if souGPouCoordenador()
-        || (membro() && resource.data.responsavelUid == request.auth.uid);
-      allow create, delete: if souGPouCoordenador();
-      allow update: if souGPouCoordenador() || (
-        membro() && resource.data.responsavelUid == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checklist'])
-      );
-
-      // Chat do projeto: quem pode ver o projeto pode ver e mandar mensagem;
-      // mensagem não edita nem apaga, pra manter histórico simples e real.
-      match /chat/{msgId} {
-        allow read: if souGPouCoordenador()
-          || (membro() && get(/databases/$(database)/documents/projetos/$(projetoId)).data.responsavelUid == request.auth.uid);
-        allow create: if (souGPouCoordenador()
-            || (membro() && get(/databases/$(database)/documents/projetos/$(projetoId)).data.responsavelUid == request.auth.uid))
-          && request.resource.data.autorUid == request.auth.uid;
-        allow update, delete: if false;
-      }
-    }
-
-    // Notificações — de designação de projeto ou de observação numa tarefa.
-    // Só quem gerou (GP/coordenador) cria; o destinatário só marca como lida.
+    // Notificações — cross-equipe (uma pessoa pode estar em mais de uma
+    // equipe e receber avisos de qualquer uma). Só quem gera (GP/coordenador
+    // daquela equipe) cria; o destinatário só marca como lida.
     match /notificacoes/{notifId} {
-      allow read: if membro() && resource.data.paraUid == request.auth.uid;
-      allow create: if souGPouCoordenador() && request.resource.data.paraUid is string;
-      allow update: if membro() && resource.data.paraUid == request.auth.uid
+      allow read: if request.auth != null && resource.data.paraUid == request.auth.uid;
+      allow create: if request.auth != null
+        && souGPouCoordDe(request.resource.data.equipeId)
+        && request.resource.data.paraUid is string;
+      allow update: if request.auth != null && resource.data.paraUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida']);
-      allow delete: if membro() && resource.data.paraUid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.paraUid == request.auth.uid;
+    }
+
+    // ------------------------------------------------- schema antigo (legado)
+    // Antes de existir o sistema de equipes havia um workspace só. Mantido
+    // só de leitura, só pro antigo coordenador, unicamente pra alimentar a
+    // migração pontual (Hub → "Migrar meus dados"). O app não escreve mais
+    // aqui nem lê fora da migração.
+    function fuiCoordenadorAntigo() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/sistema/coordenador)
+        && get(/databases/$(database)/documents/sistema/coordenador).data.uid == request.auth.uid;
+    }
+    match /sistema/coordenador {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /projetos/{projetoId} {
+      allow read: if fuiCoordenadorAntigo();
+      allow write: if false;
+      match /chat/{msgId} {
+        allow read: if fuiCoordenadorAntigo();
+        allow write: if false;
+      }
     }
   }
 }
