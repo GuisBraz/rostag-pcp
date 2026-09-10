@@ -2171,6 +2171,7 @@ const Auth = (function () {
         return sha256Hex(senha || '');
       }).then(function (senhaHash) {
         const refEquipe = db.collection('equipes').doc();
+        const novoId = refEquipe.id;
         const refPerfil = docPerfil(usuario.uid);
         return db.runTransaction(function (tx) {
           return tx.get(refPerfil).then(function (snap) {
@@ -2180,7 +2181,6 @@ const Auth = (function () {
             tx.update(refPerfil, { equipesCriadas: atual + 1 });
           });
         }).then(function () {
-          const novoId = refEquipe.id;
           return colMembros(novoId).doc(usuario.uid).set({
             nome: (perfil && perfil.nome) || '', email: usuario.email || '', papel: 'gp', entrouEm: new Date().toISOString()
           }).then(function () {
