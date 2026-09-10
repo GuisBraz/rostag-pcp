@@ -173,6 +173,11 @@
   input.invalid, select.invalid { border-color: var(--rust); background: var(--rust-bg); }
   label { font-size: 11px; font-weight: 700; color: var(--ink-dim); letter-spacing: 0.03em; display: block; margin-bottom: 4px; }
   .field { margin-bottom: 12px; }
+  .campo-senha { position: relative; }
+  .campo-senha input { padding-right: 34px; }
+  .btn-olho { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border: none; background: transparent; cursor: pointer; font-size: 14px; color: var(--ink-faint); display: flex; align-items: center; justify-content: center; border-radius: 5px; line-height: 1; }
+  .btn-olho:hover { color: var(--ink); background: var(--bg-panel-alt); }
+  .btn-olho.ativo { color: var(--teal); }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
   .span2 { grid-column: span 2; }
   .form-error { font-size: 11.5px; color: var(--rust); font-weight: 600; margin-top: 10px; min-height: 15px; }
@@ -976,7 +981,11 @@
       <form id="login-form" onsubmit="fazerLogin(event)">
         <div class="modal-body">
           <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="login-email" type="email" autocomplete="username" required></div>
-          <div class="field"><label data-i18n="auth.senha">SENHA</label><input id="login-senha" type="password" autocomplete="current-password" required></div>
+          <div class="field"><label data-i18n="auth.senha">SENHA</label>
+            <div class="campo-senha"><input id="login-senha" type="password" autocomplete="current-password" required>
+              <button type="button" class="btn-olho" onclick="toggleSenhaVisivel('login-senha', this)" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
+            </div>
+          </div>
           <div style="display:flex; justify-content:space-between; font-size:12px; margin-top:-6px;">
             <a href="#" onclick="event.preventDefault(); mostrarViewAcesso('recuperar')" data-i18n="auth.esqueciSenha">Esqueci minha senha</a>
             <a href="#" onclick="event.preventDefault(); mostrarViewAcesso('cadastro')" data-i18n="auth.criarConta">Criar conta</a>
@@ -1002,8 +1011,16 @@
         <div class="modal-body">
           <div class="field"><label data-i18n="auth.nome">NOME</label><input id="cadastro-nome" required></div>
           <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="cadastro-email" type="email" autocomplete="username" required></div>
-          <div class="field"><label data-i18n="auth.senha">SENHA</label><input id="cadastro-senha" type="password" autocomplete="new-password" minlength="6" required></div>
-          <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label><input id="cadastro-senha2" type="password" autocomplete="new-password" minlength="6" required></div>
+          <div class="field"><label data-i18n="auth.senha">SENHA</label>
+            <div class="campo-senha"><input id="cadastro-senha" type="password" autocomplete="new-password" minlength="6" required>
+              <button type="button" class="btn-olho" onclick="toggleSenhaVisivel('cadastro-senha', this)" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
+            </div>
+          </div>
+          <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label>
+            <div class="campo-senha"><input id="cadastro-senha2" type="password" autocomplete="new-password" minlength="6" required>
+              <button type="button" class="btn-olho" onclick="toggleSenhaVisivel('cadastro-senha2', this)" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
+            </div>
+          </div>
           <div id="cadastro-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
         </div>
         <div class="modal-footer">
@@ -1055,15 +1072,27 @@
 
         <div id="hub-painel-criar">
           <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="hub-nome-equipe" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
-          <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label><input id="hub-senha-equipe" type="password" autocomplete="new-password" data-i18n-ph="hub.senhaEquipePh" placeholder="crie uma senha"></div>
-          <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label><input id="hub-senha-equipe2" type="password" autocomplete="new-password"></div>
+          <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
+            <div class="campo-senha"><input id="hub-senha-equipe" type="password" autocomplete="new-password" data-i18n-ph="hub.senhaEquipePh" placeholder="crie uma senha">
+              <button type="button" class="btn-olho" onclick="toggleSenhaVisivel('hub-senha-equipe', this)" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
+            </div>
+          </div>
+          <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label>
+            <div class="campo-senha"><input id="hub-senha-equipe2" type="password" autocomplete="new-password">
+              <button type="button" class="btn-olho" onclick="toggleSenhaVisivel('hub-senha-equipe2', this)" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
+            </div>
+          </div>
           <div class="hint-txt" style="margin-bottom:6px;" data-i18n="hub.senhaNota">Essa senha é o que qualquer pessoa vai usar pra entrar na equipe pelo nome (aba "Entrar em equipe"). Quem entra assim vira planejador; promova depois se precisar.</div>
           <div id="hub-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
         </div>
 
         <div id="hub-painel-entrar" style="display:none">
           <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="hub-entrar-nome" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
-          <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label><input id="hub-entrar-senha" type="password" autocomplete="current-password" data-i18n-ph="hub.senhaEquipePh" placeholder="senha combinada com o coordenador"></div>
+          <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
+            <div class="campo-senha"><input id="hub-entrar-senha" type="password" autocomplete="current-password" data-i18n-ph="hub.senhaEquipePh" placeholder="senha combinada com o coordenador">
+              <button type="button" class="btn-olho" onclick="toggleSenhaVisivel('hub-entrar-senha', this)" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
+            </div>
+          </div>
           <div id="hub-entrar-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
         </div>
       </div>
@@ -1477,6 +1506,7 @@ const I18N = {
     'auth.entrar':'🔓 Entrar', 'auth.entrarBtn':'Entrar',
     'auth.tituloLogin':'Entrar para editar', 'auth.subLogin':'Sem login dá pra ver tudo — só não salva nada.',
     'auth.email':'E-MAIL', 'auth.senha':'SENHA',
+    'auth.mostrarSenha':'Mostrar senha', 'auth.esconderSenha':'Esconder senha',
     'auth.erroLogin':'E-mail ou senha incorretos.',
     'auth.entrou':'Login feito. Agora você pode editar.',
     'auth.saiu':'Você saiu. Voltou pro modo visualização.',
@@ -1793,6 +1823,7 @@ const I18N = {
     'auth.entrar':'🔓 Sign in', 'auth.entrarBtn':'Sign in',
     'auth.tituloLogin':'Sign in to edit', 'auth.subLogin':'Without signing in you can see everything — you just can’t save anything.',
     'auth.email':'EMAIL', 'auth.senha':'PASSWORD',
+    'auth.mostrarSenha':'Show password', 'auth.esconderSenha':'Hide password',
     'auth.erroLogin':'Wrong email or password.',
     'auth.entrou':'Signed in. You can edit now.',
     'auth.saiu':'Signed out. Back to viewing mode.',
@@ -4361,6 +4392,14 @@ function mensagemModoAtual() {
   if (!Auth.logado()) return T('auth.somenteLeitura');
   if (!Auth.membro()) return T('auth.semAcesso');
   return T('auth.somenteLeitura');
+}
+function toggleSenhaVisivel(inputId, btn) {
+  const el = document.getElementById(inputId);
+  const mostrando = el.type === 'text';
+  el.type = mostrando ? 'password' : 'text';
+  btn.classList.toggle('ativo', !mostrando);
+  const rotulo = T(mostrando ? 'auth.mostrarSenha' : 'auth.esconderSenha');
+  btn.title = rotulo; btn.setAttribute('aria-label', rotulo);
 }
 function mostrarViewAcesso(ver) {
   ['entrar','cadastro','recuperar','hub'].forEach(function (v) {
