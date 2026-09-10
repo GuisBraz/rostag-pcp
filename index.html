@@ -2175,13 +2175,17 @@ const Auth = (function () {
   }
   function listarConvites() {
     if (!equipeAtualId_) return Promise.resolve([]);
-    return firebase.firestore().collection('convites')
-      .where('equipeId', '==', equipeAtualId_).where('usado', '==', false).get().then(function (qs) {
-        const lista = [];
-        qs.forEach(function (doc) { lista.push(Object.assign({ codigo: doc.id }, doc.data())); });
-        lista.sort(function (a, b) { return (b.criadoEm || '').localeCompare(a.criadoEm || ''); });
-        return lista;
+    // filtra a equipe no cliente (não no where()) pra não depender de um
+    // índice composto — "usado" sozinho já é indexado automaticamente
+    return firebase.firestore().collection('convites').where('usado', '==', false).get().then(function (qs) {
+      const lista = [];
+      qs.forEach(function (doc) {
+        const d = doc.data();
+        if (d.equipeId === equipeAtualId_) lista.push(Object.assign({ codigo: doc.id }, d));
       });
+      lista.sort(function (a, b) { return (b.criadoEm || '').localeCompare(a.criadoEm || ''); });
+      return lista;
+    });
   }
   function revogarConvite(codigo) {
     return firebase.firestore().collection('convites').doc(codigo).delete();
