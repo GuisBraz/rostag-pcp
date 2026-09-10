@@ -2009,7 +2009,10 @@ const Auth = (function () {
     });
   }
 
-  function avisar() { ouvintes.forEach(function (fn) { try { fn(); } catch (e) { console.warn(e); } }); }
+  // Itera uma cópia: alguns ouvintes (como o de aguardarProximaSincronizacao)
+  // se auto-removem de dentro do próprio callback, o que bagunçaria um
+  // forEach direto no array original.
+  function avisar() { ouvintes.slice().forEach(function (fn) { try { fn(); } catch (e) { console.warn(e); } }); }
 
   function inicializar() {
     if (!FIREBASE_PRONTO) { pronto = true; avisar(); return; }
@@ -2047,17 +2050,28 @@ const Auth = (function () {
   // for designado a ele (a garantia de verdade está na regra do Firestore)
   function souGPouCoordenador() { return membro() && (souCoordenador() || papel() === 'gp'); }
 
-  // Depois do login, carrega perfil/equipes ANTES de resolver — o
-  // onAuthStateChanged endógeno do Firebase também vai carregar tudo de
-  // novo (redundante, mas inofensivo), porém sem isto quem encadeia uma
-  // ação logo após entrar() (como consumir um convite pendente) corre com
-  // usuario/perfil ainda vazios.
+  // Espera o PRÓXIMO ciclo de carregamento disparado pelo onAuthStateChanged
+  // endógeno terminar — sem duplicar a lógica de carregar perfil/equipes
+  // (fazer isso duas vezes em paralelo — aqui e no listener — causa corrida
+  // nas mesmas variáveis compartilhadas e deixa equipeAtualId/equipeAtual
+  // inconsistentes entre si).
+  function aguardarProximaSincronizacao() {
+    let fn;
+    const p = new Promise(function (resolve) {
+      fn = function () { const i = ouvintes.indexOf(fn); if (i >= 0) ouvintes.splice(i, 1); resolve(); };
+      ouvintes.push(fn);
+    });
+    p.cancelar = function () { const i = ouvintes.indexOf(fn); if (i >= 0) ouvintes.splice(i, 1); };
+    return p;
+  }
+  // Depois do login, espera o perfil/equipes terminarem de carregar antes de
+  // resolver — sem isto, quem encadeia uma ação logo após entrar() (como
+  // consumir um convite pendente) corre com usuario/perfil ainda vazios.
   function entrar(email, senha) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado (veja README.md).'));
-    return firebase.auth().signInWithEmailAndPassword(email, senha).then(function (cred) {
-      return carregarPerfil(cred.user.uid).then(function () { return carregarMinhasEquipes(cred.user.uid); })
-        .then(escolherEquipeInicial).then(function () { usuario = cred.user; });
-    });
+    const espera = aguardarProximaSincronizacao();
+    return firebase.auth().signInWithEmailAndPassword(email, senha).then(function () { return espera; })
+      .catch(function (e) { espera.cancelar(); throw e; });
   }
 
   // Cria só a conta + perfil pessoal (nome, preferências) — não entra em
