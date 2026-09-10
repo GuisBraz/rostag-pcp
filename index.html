@@ -570,7 +570,7 @@
       <div class="hint" id="proj-count">—</div>
       <div class="btns">
         <button class="btn btn-outline" onclick="toggleFilterPanel('proj')"><span data-i18n="btn.filtro">Filtro</span> <span id="proj-filter-badge" style="display:none;" class="filter-btn-badge">0</span></button>
-        <button class="btn btn-primary" onclick="abrirNovoProjeto()" data-i18n="btn.novoProjeto">+ Novo projeto</button>
+        <button class="btn btn-primary" id="btn-novo-projeto" onclick="abrirNovoProjeto()" data-i18n="btn.novoProjeto">+ Novo projeto</button>
         <div class="filter-panel" id="proj-filter-panel">
           <div class="field"><label data-i18n="f.buscar">BUSCAR (COMMESSA, CLIENTE, DESCRIÇÃO, OM)</label><input id="pf-busca" data-i18n-ph="f.buscarPh" placeholder="buscar..."></div>
           <div class="row2">
@@ -623,8 +623,8 @@
       </div>
       <div class="detail-actions-print-hide" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <span class="pill" id="detail-status-pill">—</span>
-        <button class="btn btn-outline" onclick="abrirEditarProjeto()" data-i18n="btn.editar">✎ Editar</button>
-        <button class="btn btn-danger" onclick="excluirProjeto()" data-i18n="btn.excluir">🗑 Excluir</button>
+        <button class="btn btn-outline" id="detail-btn-editar" onclick="abrirEditarProjeto()" data-i18n="btn.editar">✎ Editar</button>
+        <button class="btn btn-danger" id="detail-btn-excluir" onclick="excluirProjeto()" data-i18n="btn.excluir">🗑 Excluir</button>
       </div>
     </div>
 
@@ -669,6 +669,15 @@
           <input id="detail-checklist-dias" type="number" min="0" max="90" value="0" style="max-width:74px; text-align:center;" data-i18n-title="cr.duracao" title="Duração em dias">
           <button class="btn btn-outline" onclick="addItemChecklist()" data-i18n="cr.adicionar">+ Adicionar</button>
         </div>
+      </div>
+    </div>
+
+    <div class="card panel-pad detail-actions-print-hide" style="margin-top:18px;">
+      <div class="panel-title" data-i18n="chat.titulo">Conversa do projeto</div>
+      <div id="detail-chat-lista" style="max-height:260px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:10px;"></div>
+      <div style="display:flex; gap:8px;">
+        <input id="detail-chat-texto" data-i18n-ph="chat.ph" placeholder="Escreva uma mensagem..." onkeydown="if(event.key==='Enter'){event.preventDefault();enviarChat();}" style="flex:1;">
+        <button class="btn btn-primary" onclick="enviarChat()" data-i18n="chat.enviar">Enviar</button>
       </div>
     </div>
   </div>
@@ -740,10 +749,12 @@
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn btn-outline" onclick="exportarJSON()" data-i18n="cfg.expJson">⭳ Exportar JSON (backup)</button>
           <button class="btn btn-outline" onclick="exportarCSV()" data-i18n="cfg.expCsv">⭳ Exportar CSV (Excel)</button>
+          <span id="dados-acoes-escrita" style="display:contents;">
           <button class="btn btn-outline" onclick="abrirImportador()" data-i18n="cfg.impJson">⭱ Importar JSON</button>
           <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importarJSON(event)">
           <button class="btn btn-danger" onclick="apagarTudo()" data-i18n="cfg.apagarTudo">🗑 Apagar todos os projetos</button>
           <button class="btn btn-danger" onclick="resetarDados()" data-i18n="cfg.reset">Restaurar dados de exemplo</button>
+          </span>
         </div>
       </div>
     </div>
@@ -769,9 +780,12 @@
     <div class="card panel-pad" style="max-width:680px;">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
         <div class="panel-title" style="margin-bottom:0;" data-i18n="cfg.equipe">Equipe</div>
-        <button class="btn btn-primary" id="btn-convidar" style="display:none" onclick="convidarMembro()" data-i18n="cfg.equipeConvidar">+ Convidar alguém</button>
+        <div id="btn-convidar" style="display:none; gap:8px;">
+          <button class="btn btn-outline" onclick="convidarMembro('planejador')" data-i18n="cfg.equipeConvidarPlanejador">+ Convidar planejador</button>
+          <button class="btn btn-primary" onclick="convidarMembro('gp')" data-i18n="cfg.equipeConvidarGp">+ Convidar GP</button>
+        </div>
       </div>
-      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Só entra quem tiver um link de convite do coordenador — sem pendência, quem entra já é membro pleno. O coordenador também pode remover alguém ou passar o cargo adiante.</div>
+      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Só entra quem tiver um link de convite do coordenador ou GP — sem pendência, quem entra já é membro pleno com o cargo do convite. O coordenador também pode mudar o cargo de alguém, remover ou passar o título adiante.</div>
       <div id="equipe-lista"></div>
       <div id="equipe-convites-bloco" style="display:none; margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
         <div style="font-weight:700; font-size:13px; margin-bottom:8px;" data-i18n="cfg.equipeConvitesAbertos">Convites em aberto</div>
@@ -841,6 +855,7 @@
         <div class="field span2"><label data-i18n="fm.descricao">DESCRIÇÃO *</label><input id="f-descricao" placeholder="ex: Estrutura gôndola linha 3"></div>
         <div class="field"><label data-i18n="fm.tipo">TIPO DE SERVIÇO</label><input id="f-tipoServico" list="dl-tipo" placeholder="ex: Fabricação"><datalist id="dl-tipo"></datalist></div>
         <div class="field"><label data-i18n="fm.gp">GP</label><input id="f-gp" list="dl-gp" placeholder="ex: Gui"><datalist id="dl-gp"></datalist></div>
+        <div class="field"><label data-i18n="fm.responsavel">RESPONSÁVEL (PLANEJADOR)</label><select id="f-responsavel"><option value="" data-i18n="fm.semResponsavel">— ninguém designado —</option></select></div>
         <div class="field"><label><span data-i18n="fm.om">ORDEM DE MANUTENÇÃO</span> <span style="font-weight:400; color:var(--ink-faint);" data-i18n="fm.opcional">(opcional)</span></label><input id="f-om" placeholder="ex: OM-4482"></div>
         <div class="field"><label data-i18n="fm.dataSolic">DATA DE SOLICITAÇÃO</label><input id="f-dataSolicitacao" type="date"></div>
       </div>
@@ -1237,11 +1252,17 @@ const I18N = {
     'cr.obsSalvar':'Salvar observação', 'cr.obsApagar':'Apagar', 'cr.obsVer':'Ver observação', 'cr.obsAdd':'Adicionar observação',
     'cr.obsSalva':'Observação salva.', 'cr.obsApagada':'Observação apagada.',
 
+    // chat do projeto
+    'chat.titulo':'Conversa do projeto', 'chat.ph':'Escreva uma mensagem...', 'chat.enviar':'Enviar',
+    'chat.vazio':'Nenhuma mensagem ainda. Comece a conversa.',
+    'chat.erro':'Não consegui enviar a mensagem.',
+
     // formulário
     'fm.novo':'Novo projeto', 'fm.editar':'Editar projeto',
     'fm.incluir':'+ Incluir projeto', 'fm.salvarAlt':'Salvar alterações',
     'fm.commessa':'COMMESSA / CÓDIGO *', 'fm.cliente':'CLIENTE', 'fm.descricao':'DESCRIÇÃO *',
     'fm.tipo':'TIPO DE SERVIÇO', 'fm.gp':'GP', 'fm.om':'ORDEM DE MANUTENÇÃO', 'fm.opcional':'(opcional)',
+    'fm.responsavel':'RESPONSÁVEL (PLANEJADOR)', 'fm.semResponsavel':'— ninguém designado —',
     'fm.dataSolic':'DATA DE SOLICITAÇÃO', 'fm.janelaPcp':'Janela do PCP',
     'fm.janelaPcpNota':'O período do seu trabalho de planejamento. É dentro dele que o cronograma de tarefas se encaixa.',
     'fm.pcpInicio':'INÍCIO DO PCP *', 'fm.pcpFim':'FIM DO PCP *',
@@ -1290,6 +1311,11 @@ const I18N = {
     'cfg.equipeErro':'Não consegui carregar a equipe.',
     'cfg.equipeCoordenador':'coordenador', 'cfg.equipeMembro':'membro',
     'cfg.equipeConvidar':'+ Convidar alguém',
+    'cfg.equipeConvidarPlanejador':'+ Convidar planejador', 'cfg.equipeConvidarGp':'+ Convidar GP',
+    'cfg.papel.gp':'GP', 'cfg.papel.planejador':'planejador',
+    'cfg.papel.tornar.gp':'Tornar GP', 'cfg.papel.tornar.planejador':'Tornar planejador',
+    'cfg.papel.confirmarTrocar':'Mudar o cargo de {0} para {1}?',
+    'cfg.papel.trocado':'Cargo de {0} alterado.',
     'cfg.equipeConvitesAbertos':'Convites em aberto',
     'cfg.equipeCopiarLink':'Copiar link', 'cfg.equipeRevogarConvite':'Revogar',
     'cfg.equipeSemConvites':'Nenhum convite em aberto.',
@@ -1338,6 +1364,9 @@ const I18N = {
     'n.entregaChegando':'{0} — entrega se aproximando',
     'n.entregaHoje':'A entrega é hoje', 'n.entregaFaltam':'Faltam {0} para a entrega',
     'n.paralisado':'{0} — projeto paralisado', 'n.paralisadoM':'Parado há {0}{1}',
+    'notif.tituloDesignacao':'Novo projeto designado', 'notif.tituloObservacao':'Observação numa tarefa sua',
+    'notif.designado':'Você foi designado para o projeto {0}.',
+    'notif.observacao':'Nova observação em “{0}” (projeto {1}).',
 
     // toasts e confirmações
     't.atualizado':'Projeto {0} atualizado.', 't.incluido':'Projeto {0} incluído com as {1} tarefas do PCP.',
@@ -1521,10 +1550,15 @@ const I18N = {
     'cr.obsSalvar':'Save note', 'cr.obsApagar':'Delete', 'cr.obsVer':'View note', 'cr.obsAdd':'Add note',
     'cr.obsSalva':'Note saved.', 'cr.obsApagada':'Note deleted.',
 
+    'chat.titulo':'Project chat', 'chat.ph':'Write a message...', 'chat.enviar':'Send',
+    'chat.vazio':'No messages yet. Start the conversation.',
+    'chat.erro':'Could not send the message.',
+
     'fm.novo':'New project', 'fm.editar':'Edit project',
     'fm.incluir':'+ Add project', 'fm.salvarAlt':'Save changes',
     'fm.commessa':'JOB ORDER / CODE *', 'fm.cliente':'CLIENT', 'fm.descricao':'DESCRIPTION *',
     'fm.tipo':'SERVICE TYPE', 'fm.gp':'PM', 'fm.om':'WORK ORDER', 'fm.opcional':'(optional)',
+    'fm.responsavel':'ASSIGNEE (PLANNER)', 'fm.semResponsavel':'— nobody assigned —',
     'fm.dataSolic':'REQUEST DATE', 'fm.janelaPcp':'PCP window',
     'fm.janelaPcpNota':'The period of your planning work. The task schedule fits inside it.',
     'fm.pcpInicio':'PCP START *', 'fm.pcpFim':'PCP END *',
@@ -1572,6 +1606,11 @@ const I18N = {
     'cfg.equipeErro':'Could not load the team.',
     'cfg.equipeCoordenador':'coordinator', 'cfg.equipeMembro':'member',
     'cfg.equipeConvidar':'+ Invite someone',
+    'cfg.equipeConvidarPlanejador':'+ Invite planner', 'cfg.equipeConvidarGp':'+ Invite PM',
+    'cfg.papel.gp':'PM', 'cfg.papel.planejador':'planner',
+    'cfg.papel.tornar.gp':'Make PM', 'cfg.papel.tornar.planejador':'Make planner',
+    'cfg.papel.confirmarTrocar':'Change {0}\'s role to {1}?',
+    'cfg.papel.trocado':'{0}\'s role changed.',
     'cfg.equipeConvitesAbertos':'Open invites',
     'cfg.equipeCopiarLink':'Copy link', 'cfg.equipeRevogarConvite':'Revoke',
     'cfg.equipeSemConvites':'No open invites.',
@@ -1618,6 +1657,9 @@ const I18N = {
     'n.entregaChegando':'{0} — delivery approaching',
     'n.entregaHoje':'Delivery is today', 'n.entregaFaltam':'{0} until delivery',
     'n.paralisado':'{0} — project on hold', 'n.paralisadoM':'On hold for {0}{1}',
+    'notif.tituloDesignacao':'New project assigned', 'notif.tituloObservacao':'Note on one of your tasks',
+    'notif.designado':'You were assigned to project {0}.',
+    'notif.observacao':'New note on “{0}” (project {1}).',
 
     't.atualizado':'Project {0} updated.', 't.incluido':'Project {0} added with the {1} PCP tasks.',
     't.entregue':'Delivered in {0} from the request.',
@@ -1877,6 +1919,10 @@ const Auth = (function () {
   function souCoordenador() { return logado() && !!coordenadorUid && coordenadorUid === usuario.uid; }
   function existeCoordenador() { return !!coordenadorUid; }
   function coordenadorUidAtual() { return coordenadorUid; }
+  function papel() { return perfil ? perfil.papel : null; }
+  // GP e coordenador têm o mesmo poder de edição; planejador só mexe no que
+  // for designado a ele (a garantia de verdade está na regra do Firestore)
+  function souGPouCoordenador() { return membro() && (souCoordenador() || papel() === 'gp'); }
 
   function entrar(email, senha) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado (veja README.md).'));
@@ -1908,6 +1954,7 @@ const Auth = (function () {
             }
             const novoPerfil = {
               nome: nome, email: email,
+              papel: souPrimeiro ? 'gp' : snapConvite.data().papel,
               criadoEm: new Date().toISOString(),
               tema: 'claro', idioma: 'pt', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao'
             };
@@ -1935,10 +1982,10 @@ const Auth = (function () {
   }
 
   // Convites — só o coordenador cria (a regra do Firestore garante isso)
-  function criarConvite() {
+  function criarConvite(papelConvite) {
     const codigo = (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2))).replace(/-/g, '');
     return firebase.firestore().collection('convites').doc(codigo).set({
-      criadoPor: usuario.uid, usado: false, criadoEm: new Date().toISOString()
+      criadoPor: usuario.uid, usado: false, papel: papelConvite, criadoEm: new Date().toISOString()
     }).then(function () { return codigo; });
   }
   function listarConvites() {
@@ -1955,6 +2002,11 @@ const Auth = (function () {
   function removerMembro(uid) {
     return docPerfil(uid).delete();
   }
+  function alterarPapel(uid, papelNovo) {
+    return docPerfil(uid).update({ papel: papelNovo }).then(function () {
+      if (usuario && uid === usuario.uid) return carregarPerfil(uid);
+    });
+  }
 
   function recuperarSenha(email) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado.'));
@@ -1968,6 +2020,50 @@ const Auth = (function () {
     if (!usuario) return Promise.reject(new Error('sem sessão'));
     return docPerfil(usuario.uid).update(campos).then(function () {
       perfil = Object.assign({}, perfil, campos);
+    });
+  }
+
+  /* ------------------------------------------------------------- notificações
+     De designação de projeto ou de observação numa tarefa — só GP/coordenador
+     geram (a regra do Firestore garante), o destinatário só lê as próprias
+     e marca como lida. */
+  function criarNotificacao(paraUid, tipo, mensagem, projetoId) {
+    if (!usuario || paraUid === usuario.uid) return Promise.resolve(); // não notifica a si mesmo
+    return firebase.firestore().collection('notificacoes').add({
+      paraUid: paraUid, tipo: tipo, mensagem: mensagem, projetoId: projetoId || null,
+      deUid: usuario.uid, deNome: (perfil && perfil.nome) || '',
+      lida: false, criadoEm: new Date().toISOString()
+    }).catch(function (e) { console.warn('notificação não enviada:', e); });
+  }
+  function listarNotificacoes() {
+    if (!usuario) return Promise.resolve([]);
+    return firebase.firestore().collection('notificacoes').where('paraUid', '==', usuario.uid).get().then(function (qs) {
+      const lista = [];
+      qs.forEach(function (doc) { lista.push(Object.assign({ id: doc.id }, doc.data())); });
+      lista.sort(function (a, b) { return (b.criadoEm || '').localeCompare(a.criadoEm || ''); });
+      return lista;
+    });
+  }
+  function marcarNotificacaoLida(id) {
+    return firebase.firestore().collection('notificacoes').doc(id).update({ lida: true });
+  }
+
+  /* --------------------------------------------------------------------- chat
+     Ao vivo (onSnapshot) só aqui — é o único lugar do app onde "atualizar na
+     hora sem recarregar" importa de verdade. */
+  function escutarChat(projetoId, callback) {
+    return firebase.firestore().collection('projetos').doc(projetoId).collection('chat')
+      .orderBy('criadoEm', 'asc').onSnapshot(function (qs) {
+        const msgs = [];
+        qs.forEach(function (doc) { msgs.push(Object.assign({ id: doc.id }, doc.data())); });
+        callback(msgs);
+      }, function (e) { console.warn('chat indisponível:', e); callback([]); });
+  }
+  function enviarMensagemChat(projetoId, texto) {
+    if (!usuario) return Promise.reject(new Error('sem sessão'));
+    return firebase.firestore().collection('projetos').doc(projetoId).collection('chat').add({
+      autorUid: usuario.uid, autorNome: (perfil && perfil.nome) || '',
+      texto: texto, criadoEm: new Date().toISOString()
     });
   }
 
@@ -1987,10 +2083,12 @@ const Auth = (function () {
   }
 
   return { inicializar, logado, usuarioAtual, perfilAtual, membro, podeEditar,
-    souCoordenador, existeCoordenador, coordenadorUidAtual,
+    souCoordenador, existeCoordenador, coordenadorUidAtual, papel, souGPouCoordenador,
     entrar, cadastrar, recuperarSenha, sair, aoMudar, salvarPerfil,
-    listarEquipe, transferirCoordenacao,
-    criarConvite, listarConvites, revogarConvite, removerMembro };
+    listarEquipe, transferirCoordenacao, alterarPapel,
+    criarConvite, listarConvites, revogarConvite, removerMembro,
+    criarNotificacao, listarNotificacoes, marcarNotificacaoLida,
+    escutarChat, enviarMensagemChat };
 })();
 
 /* ---------------------------------------------------------------------------
@@ -2030,6 +2128,7 @@ const Store = (function () {
     o.gp = o.gp || '—';
     o.om = o.om || '';
     o.dataSolicitacao = o.dataSolicitacao || null;
+    o.responsavelUid = o.responsavelUid || null;
     delete o.setor;                                   // campo removido do app
 
     // schema 1 e 2 tinham inicio + prazo. Viram janela do PCP + entrega.
@@ -2070,20 +2169,38 @@ const Store = (function () {
   // Documento único no Firestore — mesma ideia do arquivo dados.json de antes,
   // só que compartilhado. É simples e cabe de sobra no limite de 1 MB do
   // Firestore para o volume de projetos desta ferramenta.
-  function docNuvem() {
-    return firebase.firestore().collection('rostag').doc('dados');
-  }
+  // Cada projeto é um documento próprio (coleção "projetos") — não um array
+  // dentro de um blob só. É o que permite a regra de segurança restringir o
+  // planejador a só ler/escrever o projeto dele.
+  function colProjetos() { return firebase.firestore().collection('projetos'); }
   function carregar() {
     if (!FIREBASE_PRONTO) return Promise.resolve([]);
-    return docNuvem().get().then(function (snap) {
-      if (!snap.exists) return [];
-      try { return migrar(snap.data()).projetos; }
+    // Firestore não filtra resultado de query "solta" por regra — ou o pedido
+    // inteiro é permitido, ou é negado por inteiro. Por isso o planejador
+    // precisa de um where() que combine exatamente com a regra dele (só o
+    // projeto onde é responsavelUid); GP/coordenador pedem a coleção toda.
+    const query = Auth.souGPouCoordenador()
+      ? colProjetos()
+      : colProjetos().where('responsavelUid', '==', Auth.usuarioAtual().uid);
+    return query.get().then(function (qs) {
+      const brutos = [];
+      qs.forEach(function (doc) { brutos.push(doc.data()); });
+      try { return migrar(brutos).projetos; }
       catch (e) { console.warn('Dados na nuvem ilegíveis, voltando ao vazio:', e); return []; }
     });
   }
-  function salvar(projetos) {
+  // Recebe o array inteiro (é como o resto do app já funciona) e calcula
+  // sozinho quem mudou/sumiu, gravando tudo num lote atômico só.
+  function salvar(projetosAtuais) {
     if (!FIREBASE_PRONTO) return false;
-    docNuvem().set({ schema: SCHEMA, salvoEm: new Date().toISOString(), projetos: projetos })
+    const antes = projetosServidor || [];
+    const idsAtuais = {};
+    projetosAtuais.forEach(function (p) { idsAtuais[p.id] = true; });
+    const removidos = antes.filter(function (p) { return !idsAtuais[p.id]; });
+    const batch = firebase.firestore().batch();
+    projetosAtuais.forEach(function (p) { batch.set(colProjetos().doc(p.id), p); });
+    removidos.forEach(function (p) { batch.delete(colProjetos().doc(p.id)); });
+    batch.commit()
       .then(function () { disponivel = true; atualizarInfoArmazenamento(); })
       .catch(function (e) { disponivel = false; console.warn(e); atualizarChip(); });
     return true;   // otimista: a tela já mostra "salvo", a gravação segue em segundo plano
@@ -2486,6 +2603,24 @@ let ordem = { campo:'entrega', dir:1 };
 let editandoId = null;
 let idDetalhe = null;
 let charts = {};
+let notifReais = [];   // designações e observações reais (Firestore) — separadas dos alertas calculados
+
+// Planejador só cuida do checklist/observações do que é dele — criar projeto,
+// mudar dados/status e as ações de dados do app (apagar tudo, importar,
+// restaurar exemplo) são coisa de GP/coordenador.
+function aplicarRestricoesPapel() {
+  const souGpOuCoord = Auth.souGPouCoordenador();
+  const btnNovo = document.getElementById('btn-novo-projeto');
+  if (btnNovo) btnNovo.style.display = souGpOuCoord ? '' : 'none';
+  const dadosEscrita = document.getElementById('dados-acoes-escrita');
+  if (dadosEscrita) dadosEscrita.style.display = souGpOuCoord ? 'contents' : 'none';
+}
+
+function atualizarNotifReais() {
+  if (!Auth.logado()) { notifReais = []; renderNotificacoes(); return; }
+  Auth.listarNotificacoes().then(function (lista) { notifReais = lista; renderNotificacoes(); })
+    .catch(function (e) { console.warn('notificações não carregaram:', e); });
+}
 
 function persistir() {
   if (!Auth.podeEditar()) {
@@ -2499,8 +2634,11 @@ function persistir() {
     return;
   }
   Cronograma.invalidar();
+  // Store.salvar precisa comparar com o estado anterior (pra saber o que foi
+  // excluído) — por isso salva ANTES de atualizar o retrato local.
+  const resultado = Store.salvar(projetos) ? 'Salvo' : null;
   projetosServidor = projetos.map(function (p) { return JSON.parse(JSON.stringify(p)); });
-  atualizarChip(Store.salvar(projetos) ? 'Salvo' : null);
+  atualizarChip(resultado);
 }
 
 function salvarPrefs() {
@@ -2701,8 +2839,15 @@ document.addEventListener('click', function (e) {
 /* ---------------------------------------------------------------------------
    Notificações — interface
 --------------------------------------------------------------------------- */
+function mapNotifReal(n) {
+  return {
+    id: 'real:' + n.id, projetoId: n.projetoId,
+    nivel: 'aviso', titulo: T(n.tipo === 'designacao' ? 'notif.tituloDesignacao' : 'notif.tituloObservacao'),
+    meta: n.mensagem, quando: (n.criadoEm || hojeIso()).slice(0, 10), lida: !!n.lida
+  };
+}
 function renderNotificacoes() {
-  const lista = Notif.gerar();
+  const lista = notifReais.map(mapNotifReal).concat(Notif.gerar());
   const naoLidas = lista.filter(function (n) { return !n.lida; }).length;
   const temAlerta = lista.some(function (n) { return n.nivel === 'alerta' && !n.lida; });
 
@@ -2726,16 +2871,25 @@ function toggleNotificacoes(ev) {
   const painel = document.getElementById('notif-panel');
   const aberto = painel.classList.contains('open');
   fecharPopups();
-  if (!aberto) { renderNotificacoes(); painel.classList.add('open'); }
+  if (!aberto) { renderNotificacoes(); atualizarNotifReais(); painel.classList.add('open'); }
 }
 function abrirNotificacao(id, projetoId) {
-  Notif.marcarLida(id);
+  if (id.indexOf('real:') === 0) {
+    const realId = id.slice(5);
+    const n = notifReais.find(function (x) { return x.id === realId; });
+    if (n && !n.lida) { n.lida = true; Auth.marcarNotificacaoLida(realId).catch(function (e) { console.warn(e); }); }
+  } else {
+    Notif.marcarLida(id);
+  }
   document.getElementById('notif-panel').classList.remove('open');
   renderNotificacoes();
-  abrirProjeto(projetoId);
+  if (projetoId) abrirProjeto(projetoId);
 }
 function marcarTodasLidas() {
   Notif.marcarTodas(Notif.gerar());
+  notifReais.forEach(function (n) {
+    if (!n.lida) { n.lida = true; Auth.marcarNotificacaoLida(n.id).catch(function (e) { console.warn(e); }); }
+  });
   renderNotificacoes();
   toast(T('n.lidas'));
 }
@@ -3085,7 +3239,21 @@ function limparForm() {
   document.getElementById('f-erro').textContent = '';
   previewStatus();
 }
+// Responsável é um select populado da equipe — separado do CAMPOS_FORM porque
+// precisa buscar a lista assíncrona no Firestore antes de ter opções pra marcar.
+function preencherOpcoesResponsavel(selecionado) {
+  const sel = document.getElementById('f-responsavel');
+  if (!sel) return Promise.resolve();
+  return Auth.listarEquipe().then(function (membros) {
+    sel.innerHTML = '<option value="">' + T('fm.semResponsavel') + '</option>' +
+      membros.map(function (m) {
+        return '<option value="' + m.uid + '">' + esc(m.nome || m.email || m.uid) + '</option>';
+      }).join('');
+    sel.value = selecionado || '';
+  }).catch(function (e) { console.warn(e); });
+}
 function abrirNovoProjeto() {
+  if (!Auth.souGPouCoordenador()) return;
   editandoId = null; limparForm();
   const h = hojeIso();
   document.getElementById('f-gp').value = prefs.nome;
@@ -3097,10 +3265,12 @@ function abrirNovoProjeto() {
   document.getElementById('modal-projeto-title').textContent = T('fm.novo');
   document.getElementById('f-submit').textContent = T('fm.incluir');
   previewStatus();
+  preencherOpcoesResponsavel(null);
   abrirModal('modal-projeto');
   setTimeout(function () { document.getElementById('f-commessa').focus(); }, 30);
 }
 function abrirEditarProjeto() {
+  if (!Auth.souGPouCoordenador()) return;
   const p = projetoAtual(); if (!p) return;
   limparForm(); editandoId = p.id;
   CAMPOS_FORM.forEach(function (c) {
@@ -3108,7 +3278,9 @@ function abrirEditarProjeto() {
   });
   document.getElementById('modal-projeto-title').textContent = T('fm.editar');
   document.getElementById('f-submit').textContent = T('fm.salvarAlt');
-  previewStatus(); abrirModal('modal-projeto');
+  previewStatus();
+  preencherOpcoesResponsavel(p.responsavelUid);
+  abrirModal('modal-projeto');
   setTimeout(function () { document.getElementById('f-commessa').focus(); }, 30);
 }
 function previewStatus() {
@@ -3128,6 +3300,8 @@ function salvarProjeto() {
     const el = document.getElementById('f-' + c); el.classList.remove('invalid'); d[c] = el.value.trim();
   });
   d.dataSolicitacao = d.dataSolicitacao || null;
+  const selResp = document.getElementById('f-responsavel');
+  d.responsavelUid = (selResp && selResp.value) || null;
 
   const v = Dominio.validar(d, projetos, editandoId);
   const elErro = document.getElementById('f-erro');
@@ -3141,8 +3315,10 @@ function salvarProjeto() {
   d.gp = d.gp || '—';
 
   const eraEdicao = !!editandoId;
+  let responsavelAnterior = null;
   if (eraEdicao) {
     const p = projetos.find(function (x) { return x.id === editandoId; });
+    responsavelAnterior = p.responsavelUid || null;
     ['pcpFim','entrega'].forEach(function (campo) {
       if (p[campo] !== d[campo]) p.reagendamentos.push({ campo:campo, de:p[campo], para:d[campo], em:hojeIso(), motivo:'edição' });
     });
@@ -3152,6 +3328,10 @@ function salvarProjeto() {
     projetos.push(Object.assign({ id: Store.novoId(), status:'ativo', concluidoEm:null, canceladoEm:null,
       reagendamentos:[], paralisacoes:[], checklist: Store.checklistNovo() }, d));
     toast(T('t.incluido', d.commessa, CHECKLIST_PADRAO.length));
+  }
+  // Designação nova (ou trocada) avisa quem recebeu o projeto.
+  if (d.responsavelUid && d.responsavelUid !== responsavelAnterior) {
+    Auth.criarNotificacao(d.responsavelUid, 'designacao', T('notif.designado', d.commessa), editandoId || projetos[projetos.length - 1].id);
   }
   persistir(); fecharModal(); refreshOpcoes(); renderTudo();
   if (eraEdicao) renderDetalhe();
@@ -3234,8 +3414,15 @@ function renderDetalhe() {
   document.getElementById('detail-info').innerHTML = info;
 
   // --- ações: o cancelamento só existe depois de paralisar ---
+  // Planejador só cuida do checklist/observações — mudar status, reagendar,
+  // editar campos do projeto ou excluir é coisa de GP/coordenador.
+  const souGpOuCoordAcoes = Auth.souGPouCoordenador();
+  document.getElementById('detail-btn-editar').style.display = souGpOuCoordAcoes ? '' : 'none';
+  document.getElementById('detail-btn-excluir').style.display = souGpOuCoordAcoes ? '' : 'none';
   let acoes = '';
-  if (parado) {
+  if (!souGpOuCoordAcoes) {
+    // sem ação alguma pro planejador
+  } else if (parado) {
     acoes += '<button class="btn btn-success" onclick="retomarProjeto()">' + T('d.retomar') + '</button>' +
              '<button class="btn btn-danger" onclick="cancelarProjeto()">' + T('d.cancelarProj') + '</button>' +
              '<button class="btn btn-outline" onclick="abrirReagendar()">' + T('d.reagendar') + '</button>';
@@ -3357,6 +3544,7 @@ function reabrirProjeto() {
   atualizarTudoDoDetalhe(); toast(T('t.reaberto'));
 }
 function excluirProjeto() {
+  if (!Auth.souGPouCoordenador()) return;
   const p = projetoAtual(), indice = projetos.indexOf(p);
   projetos.splice(indice, 1);
   persistir(); refreshOpcoes(); irPara('projetos'); renderTudo();
@@ -3443,10 +3631,16 @@ function fecharObs() {
 }
 function salvarObs() {
   if (obsIdx == null) return;
-  const it = projetoAtual().checklist[obsIdx];
+  const p = projetoAtual(), it = p.checklist[obsIdx];
   const txt = document.getElementById('obs-texto').value.trim();
   it.obs = txt;
   it.obsEm = txt ? hojeIso() : null;
+  // Observação escrita por GP/coordenador avisa quem cuida do projeto — o
+  // planejador não recebe aviso da própria observação (criarNotificacao já
+  // ignora o caso de notificar a si mesmo).
+  if (txt && p.responsavelUid && Auth.souGPouCoordenador()) {
+    Auth.criarNotificacao(p.responsavelUid, 'observacao', T('notif.observacao', it.t, p.commessa), p.id);
+  }
   fecharObs(); atualizarTudoDoDetalhe();
   toast(T(txt ? 'cr.obsSalva' : 'cr.obsApagada'));
 }
@@ -3537,6 +3731,7 @@ function abrirImportador() {
   document.getElementById('import-file').click();
 }
 function importarJSON(ev) {
+  if (!Auth.souGPouCoordenador()) return;
   const file = ev.target.files && ev.target.files[0];
   if (!file) return;
   const leitor = new FileReader();
@@ -3556,6 +3751,7 @@ function importarJSON(ev) {
   leitor.readAsText(file);
 }
 function resetarDados() {
+  if (!Auth.souGPouCoordenador()) return;
   if (!confirm('Isso apaga os projetos atuais e volta aos dados de exemplo. Continuar?')) return;
   const backup = projetos.slice();
   projetos = Store.exemplo();
@@ -3565,6 +3761,7 @@ function resetarDados() {
   } } });
 }
 function apagarTudo() {
+  if (!Auth.souGPouCoordenador()) return;
   if (!confirm(T('cfg.apagarTudoConfirm'))) return;
   const backup = projetos.slice();
   projetos = [];
@@ -3728,11 +3925,45 @@ function aplicarRota() {
     document.getElementById('projeto-detail-view').style.display = existe ? 'block' : 'none';
     renderProjetos();
     if (existe) { fecharReagendar(); renderDetalhe(); window.scrollTo({ top:0, behavior:'smooth' }); }
+    atualizarInscricaoChat();
   } else {
     idDetalhe = null;
+    atualizarInscricaoChat();
   }
 }
 window.addEventListener('hashchange', aplicarRota);
+
+/* ---------------------------------------------------------------------------
+   Chat do projeto — único lugar do app com atualização ao vivo (onSnapshot)
+--------------------------------------------------------------------------- */
+let chatUnsub = null;
+function atualizarInscricaoChat() {
+  if (chatUnsub) { chatUnsub(); chatUnsub = null; }
+  const lista = document.getElementById('detail-chat-lista');
+  if (!idDetalhe || !Auth.logado()) { if (lista) lista.innerHTML = ''; return; }
+  chatUnsub = Auth.escutarChat(idDetalhe, renderChat);
+}
+function renderChat(msgs) {
+  const el = document.getElementById('detail-chat-lista');
+  if (!el) return;
+  const meuUid = Auth.usuarioAtual() && Auth.usuarioAtual().uid;
+  el.innerHTML = msgs.length ? msgs.map(function (m) {
+    const meu = m.autorUid === meuUid;
+    return '<div style="align-self:' + (meu ? 'flex-end' : 'flex-start') + '; max-width:80%; background:var(--bg-panel-alt); border-radius:10px; padding:6px 10px;' +
+      (meu ? ' border:1px solid var(--violet, #7c3aed);' : '') + '">' +
+      '<div style="font-size:10.5px; font-weight:700; color:var(--ink-dim);">' + esc(m.autorNome || '—') + '</div>' +
+      '<div style="font-size:13px; white-space:pre-wrap; word-break:break-word;">' + esc(m.texto) + '</div>' +
+    '</div>';
+  }).join('') : '<div class="hint-txt">' + T('chat.vazio') + '</div>';
+  el.scrollTop = el.scrollHeight;
+}
+function enviarChat() {
+  const input = document.getElementById('detail-chat-texto');
+  const txt = input.value.trim();
+  if (!txt || !idDetalhe) return;
+  input.value = '';
+  Auth.enviarMensagemChat(idDetalhe, txt).catch(function (e) { toast(T('chat.erro'), { tipo:'erro' }); console.warn(e); });
+}
 
 function abaConfig(k) {
   document.querySelectorAll('.settings-tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.stab === k); });
@@ -3856,7 +4087,8 @@ function renderEquipe() {
   const btnConvidar = document.getElementById('btn-convidar');
   if (!Auth.logado()) return;
   const souCoord = Auth.souCoordenador();
-  btnConvidar.style.display = souCoord ? 'inline-block' : 'none';
+  const souGpOuCoord = Auth.souGPouCoordenador();
+  btnConvidar.style.display = souGpOuCoord ? 'flex' : 'none';
 
   lista.innerHTML = '<div class="hint-txt">' + T('cfg.equipeCarregando') + '</div>';
   Auth.listarEquipe().then(function (membros) {
@@ -3865,17 +4097,19 @@ function renderEquipe() {
     lista.innerHTML = membros.map(function (m) {
       const voceMesmo = m.uid === meuUid;
       const ehCoordenador = m.uid === coordUid;
-      const statusTxt = ehCoordenador ? T('cfg.equipeCoordenador') : T('cfg.equipeMembro');
-      const statusCor = ehCoordenador ? 'var(--azul, #2563eb)' : 'var(--green)';
+      const papelTxt = ehCoordenador ? T('cfg.equipeCoordenador') : T('cfg.papel.' + (m.papel || 'planejador'));
+      const statusCor = ehCoordenador ? 'var(--azul, #2563eb)' : (m.papel === 'gp' ? 'var(--violet, #7c3aed)' : 'var(--green)');
       let acoes = '';
       if (souCoord && !ehCoordenador) {
-        acoes += '<button class="btn btn-outline" onclick="transferirCoordenacaoPara(\'' + m.uid + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.equipeTransferir') + '</button> ' +
+        const outroPapel = m.papel === 'gp' ? 'planejador' : 'gp';
+        acoes += '<button class="btn btn-outline" onclick="alterarPapelUI(\'' + m.uid + '\',\'' + outroPapel + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.papel.tornar.' + outroPapel) + '</button> ' +
+          '<button class="btn btn-outline" onclick="transferirCoordenacaoPara(\'' + m.uid + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.equipeTransferir') + '</button> ' +
           '<button class="btn btn-danger" onclick="removerDaEquipe(\'' + m.uid + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.equipeRemover') + '</button>';
       }
       return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); flex-wrap:wrap;">' +
         '<div style="min-width:0;">' +
           '<div style="font-weight:600; font-size:13px;">' + esc(m.nome || '—') + (voceMesmo ? ' <span class="hint-txt">(' + T('cfg.equipeVoce') + ')</span>' : '') + '</div>' +
-          '<div class="hint-txt" style="font-size:11px;">' + esc(m.email || '') + ' · <span style="color:' + statusCor + '">' + statusTxt + '</span></div>' +
+          '<div class="hint-txt" style="font-size:11px;">' + esc(m.email || '') + ' · <span style="color:' + statusCor + '">' + papelTxt + '</span></div>' +
         '</div>' +
         '<div style="display:flex; gap:6px; flex-wrap:wrap;">' + acoes + '</div>' +
       '</div>';
@@ -3885,7 +4119,7 @@ function renderEquipe() {
     lista.innerHTML = '<div class="hint-txt" style="color:var(--rust);">' + T('cfg.equipeErro') + '</div>';
   });
 
-  if (!souCoord) { convitesBloco.style.display = 'none'; return; }
+  if (!souGpOuCoord) { convitesBloco.style.display = 'none'; return; }
   convitesBloco.style.display = 'block';
   convites.innerHTML = '<div class="hint-txt">' + T('cfg.equipeCarregando') + '</div>';
   Auth.listarConvites().then(function (lista2) {
@@ -3901,12 +4135,17 @@ function renderEquipe() {
     }).join('') || '<div class="hint-txt">' + T('cfg.equipeSemConvites') + '</div>';
   }).catch(function (e) { console.warn(e); convites.innerHTML = ''; });
 }
-function convidarMembro() {
-  Auth.criarConvite().then(function (codigo) {
+function convidarMembro(papelConvite) {
+  Auth.criarConvite(papelConvite).then(function (codigo) {
     const link = location.origin + location.pathname + '?convite=' + codigo;
     copiarConvite(link);
     renderEquipe();
   }).catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
+}
+function alterarPapelUI(uid, papelNovo, nome) {
+  if (!confirm(T('cfg.papel.confirmarTrocar', nome, T('cfg.papel.' + papelNovo)))) return;
+  Auth.alterarPapel(uid, papelNovo).then(function () { toast(T('cfg.papel.trocado', nome)); renderEquipe(); })
+    .catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
 }
 function copiarConvite(link) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -3946,7 +4185,7 @@ function atualizarTelaDeAcesso() {
   if (podeVer) {
     if (!appIniciado) {
       appIniciado = true;
-      Store.carregar().then(function (ps) { iniciarApp(ps); })
+      Store.carregar().then(function (ps) { iniciarApp(ps); atualizarNotifReais(); })
         .catch(function (e) { console.error('Não consegui carregar os dados da nuvem:', e); iniciarApp([]); });
     } else {
       const perfil = Auth.perfilAtual();
@@ -3959,6 +4198,7 @@ function atualizarTelaDeAcesso() {
         document.getElementById('tema-btn').textContent = prefs.tema === 'escuro' ? '☀' : '◐';
       }
     }
+    aplicarRestricoesPapel();
     if (abaAtual() === 'config' && document.getElementById('stab-equipe').classList.contains('active')) renderEquipe();
     return;
   }

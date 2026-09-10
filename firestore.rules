@@ -19,16 +19,18 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
-    // Projetos: só membro lê ou escreve. Nada de visitante, nada de pendente.
-    match /rostag/dados {
-      allow read, write: if membro();
+    function meuPapel() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.papel;
+    }
+
+    // Coordenador e GP têm o mesmo poder de edição — criam projeto, designam
+    // quem cuida de cada um, mexem em qualquer campo. Planejador só mexe no
+    // que for designado a ele, e só nas tarefas (ver regra de /projetos).
+    function souGPouCoordenador() {
+      return membro() && (souCoordenador() || meuPapel() == 'gp');
     }
 
     // O documento único que diz quem é o coordenador atual.
-    //  - qualquer logado lê (pra saber quem é e mostrar na aba Equipe)
-    //  - só é criado uma vez, pelo próprio primeiro usuário (o cadastro dele
-    //    grava perfil + coordenador numa transação — ver Auth.cadastrar)
-    //  - só o coordenador atual troca o valor, e só pra alguém que já é membro
     match /sistema/coordenador {
       allow read: if request.auth != null;
       allow create: if request.auth != null
@@ -38,40 +40,77 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/usuarios/$(request.resource.data.uid));
     }
 
-    // Convites: só o coordenador cria. Quem se cadastra com um código válido
-    // (não usado) vira membro na hora — sem aprovação nenhuma depois.
+    // Convites: só coordenador/GP criam. Quem se cadastra com um código
+    // válido (não usado) vira membro na hora, já com o papel do convite.
     match /convites/{codigo} {
       allow read: if request.auth != null;
-      allow create: if souCoordenador() && request.resource.data.usado == false;
-      // marcar como usado: só isso pode mudar, e só quem está virando membro
-      // agora. Não checa exists(usuarios/uid) aqui — essa escrita acontece
-      // na MESMA transação que cria o perfil, e uma escrita não enxerga a
-      // outra ainda não commitada; a garantia real já está em
-      // usuarios/{uid}.create, que exige este convite estar usado==false.
+      allow create: if souGPouCoordenador() && request.resource.data.usado == false
+        && request.resource.data.papel in ['gp', 'planejador'];
       allow update: if request.auth != null
         && resource.data.usado == false
         && request.resource.data.usado == true
         && request.resource.data.usadoPor == request.auth.uid;
-      allow delete: if souCoordenador();
+      allow delete: if souGPouCoordenador();
     }
 
-    // Perfis de usuário (nome, preferências):
-    //  - qualquer logado lê a lista inteira (é o que alimenta a aba Equipe)
+    // Perfis de usuário (nome, preferências, papel):
+    //  - qualquer logado lê a lista inteira (alimenta a aba Equipe)
     //  - um usuário cria o próprio perfil só se for o primeiro do sistema
-    //    (ainda não existe coordenador) OU se estiver consumindo um convite
-    //    válido na mesma transação — sem essas duas condições, não cria
-    //  - o dono edita as próprias preferências livremente
-    //  - só o coordenador remove alguém (não existe mais "revogar")
+    //    (vira coordenador+gp) OU consumindo um convite válido na mesma
+    //    transação, herdando o papel gravado no convite
+    //  - o dono edita as próprias preferências, MAS não o próprio papel —
+    //    só o coordenador muda papel ou remove alguém
     match /usuarios/{uid} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == uid && (
-        !exists(/databases/$(database)/documents/sistema/coordenador)
+        (!exists(/databases/$(database)/documents/sistema/coordenador) && request.resource.data.papel == 'gp')
         || (request.resource.data.viaConvite is string
             && exists(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite))
-            && get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.usado == false)
+            && get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.usado == false
+            && request.resource.data.papel == get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.papel)
       );
-      allow update: if request.auth != null && (request.auth.uid == uid || souCoordenador());
+      allow update: if request.auth != null && (
+        (request.auth.uid == uid && request.resource.data.papel == resource.data.papel)
+        || souCoordenador()
+      );
       allow delete: if souCoordenador();
+    }
+
+    // Projetos: um documento por projeto (não um array num blob só) — é o
+    // que permite restringir o planejador a só ver o que é dele.
+    //  - GP/coordenador leem e escrevem qualquer projeto, qualquer campo
+    //  - planejador só lê o projeto onde é responsavelUid, e só pode mudar
+    //    o campo "checklist" (marcar tarefa feita, escrever observação) —
+    //    nunca datas, responsável ou dados do projeto em si
+    match /projetos/{projetoId} {
+      allow read: if souGPouCoordenador()
+        || (membro() && resource.data.responsavelUid == request.auth.uid);
+      allow create, delete: if souGPouCoordenador();
+      allow update: if souGPouCoordenador() || (
+        membro() && resource.data.responsavelUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checklist'])
+      );
+
+      // Chat do projeto: quem pode ver o projeto pode ver e mandar mensagem;
+      // mensagem não edita nem apaga, pra manter histórico simples e real.
+      match /chat/{msgId} {
+        allow read: if souGPouCoordenador()
+          || (membro() && get(/databases/$(database)/documents/projetos/$(projetoId)).data.responsavelUid == request.auth.uid);
+        allow create: if (souGPouCoordenador()
+            || (membro() && get(/databases/$(database)/documents/projetos/$(projetoId)).data.responsavelUid == request.auth.uid))
+          && request.resource.data.autorUid == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // Notificações — de designação de projeto ou de observação numa tarefa.
+    // Só quem gerou (GP/coordenador) cria; o destinatário só marca como lida.
+    match /notificacoes/{notifId} {
+      allow read: if membro() && resource.data.paraUid == request.auth.uid;
+      allow create: if souGPouCoordenador() && request.resource.data.paraUid is string;
+      allow update: if membro() && resource.data.paraUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida']);
+      allow delete: if membro() && resource.data.paraUid == request.auth.uid;
     }
   }
 }
