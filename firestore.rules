@@ -60,8 +60,7 @@ service cloud.firestore {
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['nome','tema','idioma','alerta','alertaTarefa','fimDeSemana'])
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['equipesCriadas'])
-            && request.resource.data.equipesCriadas ==
-               (resource.data.equipesCriadas == null ? 0 : resource.data.equipesCriadas) + 1)
+            && request.resource.data.equipesCriadas == resource.data.get('equipesCriadas', 0) + 1)
       );
       allow delete: if false;
 
@@ -99,8 +98,7 @@ service cloud.firestore {
         && request.resource.data.coordenadorUid == request.auth.uid
         && request.resource.data.criadoPorUid == request.auth.uid
         && request.resource.data.senhaHash is string
-        && (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.equipesCriadas == null
-            || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.equipesCriadas < 3);
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('equipesCriadas', 0) < 3;
       allow update: if souCoordDe(equipeId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coordenadorUid'])
         && exists(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.resource.data.coordenadorUid));
