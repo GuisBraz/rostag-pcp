@@ -870,7 +870,7 @@
         <div class="field"><label data-i18n="fm.cliente">CLIENTE</label><input id="f-cliente" list="dl-cliente" placeholder="ex: Stellantis"><datalist id="dl-cliente"></datalist></div>
         <div class="field span2"><label data-i18n="fm.descricao">DESCRIÇÃO *</label><input id="f-descricao" placeholder="ex: Estrutura gôndola linha 3"></div>
         <div class="field"><label data-i18n="fm.tipo">TIPO DE SERVIÇO</label><input id="f-tipoServico" list="dl-tipo" placeholder="ex: Fabricação"><datalist id="dl-tipo"></datalist></div>
-        <div class="field"><label data-i18n="fm.gp">GP</label><input id="f-gp" list="dl-gp" placeholder="ex: Gui"><datalist id="dl-gp"></datalist></div>
+        <div class="field"><label data-i18n="fm.gp">GP</label><select id="f-gp"><option value="" data-i18n="fm.semGp">— selecione —</option></select></div>
         <div class="field"><label data-i18n="fm.responsavel">RESPONSÁVEL (PLANEJADOR)</label><select id="f-responsavel"><option value="" data-i18n="fm.semResponsavel">— ninguém designado —</option></select></div>
         <div class="field"><label><span data-i18n="fm.om">ORDEM DE MANUTENÇÃO</span> <span style="font-weight:400; color:var(--ink-faint);" data-i18n="fm.opcional">(opcional)</span></label><input id="f-om" placeholder="ex: OM-4482"></div>
         <div class="field"><label data-i18n="fm.dataSolic">DATA DE SOLICITAÇÃO</label><input id="f-dataSolicitacao" type="date"></div>
@@ -1351,6 +1351,7 @@ const I18N = {
     'fm.commessa':'COMMESSA / CÓDIGO *', 'fm.cliente':'CLIENTE', 'fm.descricao':'DESCRIÇÃO *',
     'fm.tipo':'TIPO DE SERVIÇO', 'fm.gp':'GP', 'fm.om':'ORDEM DE MANUTENÇÃO', 'fm.opcional':'(opcional)',
     'fm.responsavel':'RESPONSÁVEL (PLANEJADOR)', 'fm.semResponsavel':'— ninguém designado —',
+    'fm.semGp':'— selecione —',
     'fm.dataSolic':'DATA DE SOLICITAÇÃO', 'fm.janelaPcp':'Janela do PCP',
     'fm.janelaPcpNota':'O período do seu trabalho de planejamento. É dentro dele que o cronograma de tarefas se encaixa.',
     'fm.pcpInicio':'INÍCIO DO PCP *', 'fm.pcpFim':'FIM DO PCP *',
@@ -1674,6 +1675,7 @@ const I18N = {
     'fm.commessa':'JOB ORDER / CODE *', 'fm.cliente':'CLIENT', 'fm.descricao':'DESCRIPTION *',
     'fm.tipo':'SERVICE TYPE', 'fm.gp':'PM', 'fm.om':'WORK ORDER', 'fm.opcional':'(optional)',
     'fm.responsavel':'ASSIGNEE (PLANNER)', 'fm.semResponsavel':'— nobody assigned —',
+    'fm.semGp':'— select —',
     'fm.dataSolic':'REQUEST DATE', 'fm.janelaPcp':'PCP window',
     'fm.janelaPcpNota':'The period of your planning work. The task schedule fits inside it.',
     'fm.pcpInicio':'PCP START *', 'fm.pcpFim':'PCP END *',
@@ -2502,6 +2504,7 @@ const Store = (function () {
     o.descricao = String(o.descricao || '');
     o.tipoServico = o.tipoServico || '';
     o.gp = o.gp || '—';
+    o.gpUid = o.gpUid || null;
     o.om = o.om || '';
     o.dataSolicitacao = o.dataSolicitacao || null;
     o.responsavelUid = o.responsavelUid || null;
@@ -3120,7 +3123,7 @@ function refreshOpcoes() {
   preencherSelect('df-tipo', tipos, filtroDash.tipo);
   preencherSelect('pf-gp', gps, filtroProj.gp);
   preencherSelect('pf-tipo', tipos, filtroProj.tipo);
-  preencherDatalist('dl-gp', gps); preencherDatalist('dl-tipo', tipos); preencherDatalist('dl-cliente', clientes);
+  preencherDatalist('dl-tipo', tipos); preencherDatalist('dl-cliente', clientes);
 
   const anos = {};
   projetos.forEach(function (p) { if (p.entrega) anos[p.entrega.slice(0,4)] = 1; });
@@ -3524,7 +3527,7 @@ let ordemVisivel = [];
 /* ---------------------------------------------------------------------------
    Modal novo / editar
 --------------------------------------------------------------------------- */
-const CAMPOS_FORM = ['commessa','cliente','descricao','tipoServico','gp','om','dataSolicitacao','pcpInicio','pcpFim','entrega'];
+const CAMPOS_FORM = ['commessa','cliente','descricao','tipoServico','om','dataSolicitacao','pcpInicio','pcpFim','entrega'];
 let focoAnterior = null;
 
 function abrirModal(id) {
@@ -3625,24 +3628,26 @@ function limparForm() {
   document.getElementById('f-erro').textContent = '';
   previewStatus();
 }
-// Responsável é um select populado da equipe — separado do CAMPOS_FORM porque
-// precisa buscar a lista assíncrona no Firestore antes de ter opções pra marcar.
-function preencherOpcoesResponsavel(selecionado) {
-  const sel = document.getElementById('f-responsavel');
-  if (!sel) return Promise.resolve();
+// GP e Responsável são selects populados da equipe — separados do CAMPOS_FORM
+// porque precisam buscar a lista assíncrona no Firestore antes de ter opções
+// pra marcar. Uma busca só, usada pra preencher os dois.
+function preencherOpcoesMembrosForm(gpSelecionado, responsavelSelecionado) {
+  const selGp = document.getElementById('f-gp'), selResp = document.getElementById('f-responsavel');
+  if (!selGp || !selResp) return Promise.resolve();
   return Auth.listarEquipe().then(function (membros) {
-    sel.innerHTML = '<option value="">' + T('fm.semResponsavel') + '</option>' +
-      membros.map(function (m) {
-        return '<option value="' + m.uid + '">' + esc(m.nome || m.email || m.uid) + '</option>';
-      }).join('');
-    sel.value = selecionado || '';
+    const opcoes = membros.map(function (m) {
+      return '<option value="' + m.uid + '">' + esc(m.nome || m.email || m.uid) + '</option>';
+    }).join('');
+    selGp.innerHTML = '<option value="">' + T('fm.semGp') + '</option>' + opcoes;
+    selGp.value = gpSelecionado || '';
+    selResp.innerHTML = '<option value="">' + T('fm.semResponsavel') + '</option>' + opcoes;
+    selResp.value = responsavelSelecionado || '';
   }).catch(function (e) { console.warn(e); });
 }
 function abrirNovoProjeto() {
   if (!Auth.souGPouCoordenador()) return;
   editandoId = null; limparForm();
   const h = hojeIso();
-  document.getElementById('f-gp').value = prefs.nome;
   document.getElementById('f-dataSolicitacao').value = h;
   document.getElementById('f-pcpInicio').value = h;
   // sugestão só para não abrir vazio; as tarefas nascem com 0 dias e você distribui
@@ -3651,7 +3656,8 @@ function abrirNovoProjeto() {
   document.getElementById('modal-projeto-title').textContent = T('fm.novo');
   document.getElementById('f-submit').textContent = T('fm.incluir');
   previewStatus();
-  preencherOpcoesResponsavel(null);
+  // sugestão de GP: quem está criando o projeto, provavelmente é o GP dele
+  preencherOpcoesMembrosForm(Auth.usuarioAtual() ? Auth.usuarioAtual().uid : null, null);
   abrirModal('modal-projeto');
   setTimeout(function () { document.getElementById('f-commessa').focus(); }, 30);
 }
@@ -3665,7 +3671,7 @@ function abrirEditarProjeto() {
   document.getElementById('modal-projeto-title').textContent = T('fm.editar');
   document.getElementById('f-submit').textContent = T('fm.salvarAlt');
   previewStatus();
-  preencherOpcoesResponsavel(p.responsavelUid);
+  preencherOpcoesMembrosForm(p.gpUid, p.responsavelUid);
   abrirModal('modal-projeto');
   setTimeout(function () { document.getElementById('f-commessa').focus(); }, 30);
 }
@@ -3688,6 +3694,9 @@ function salvarProjeto() {
   d.dataSolicitacao = d.dataSolicitacao || null;
   const selResp = document.getElementById('f-responsavel');
   d.responsavelUid = (selResp && selResp.value) || null;
+  const selGp = document.getElementById('f-gp');
+  d.gpUid = (selGp && selGp.value) || null;
+  d.gp = (selGp && selGp.selectedIndex > 0) ? selGp.options[selGp.selectedIndex].textContent : '';
 
   const v = Dominio.validar(d, projetos, editandoId);
   const elErro = document.getElementById('f-erro');
