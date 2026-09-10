@@ -11,12 +11,13 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/sistema/coordenador).data.uid == request.auth.uid;
     }
 
-    // Aprovado = logado + e-mail confirmado + tem perfil em /usuarios com
-    // aprovado:true. Sem isso, nem lê os projetos — o app agora exige login
-    // pra tudo, não só pra editar.
+    // Aprovado = logado + tem perfil em /usuarios com aprovado:true. Sem
+    // isso, nem lê os projetos — o app exige login pra tudo, não só pra
+    // editar. Não exige e-mail confirmado: quem decide quem entra é o
+    // coordenador aprovando manualmente, não o clique num link de e-mail
+    // (que cai no spam do Firebase e é só ruído).
     function aprovado() {
       return request.auth != null
-        && request.auth.token.email_verified == true
         && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
         && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.aprovado == true;
     }

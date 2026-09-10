@@ -980,23 +980,6 @@
       </form>
     </div>
 
-    <!-- ver "confirme seu e-mail" -->
-    <div id="login-view-verificar" style="display:none">
-      <div class="modal-header">
-        <div style="min-width:0;">
-          <h2 data-i18n="auth.tituloVerificar">Confirme seu e-mail</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subVerificar">Mandamos um link de confirmação. Clique nele e depois volte aqui.</div>
-        </div>
-      </div>
-      <div class="modal-body">
-        <div class="hint-txt" id="verificar-email-texto"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" onclick="doLogout()" data-i18n="btn.sair">⏻ Sair</button>
-        <button type="button" class="btn btn-primary" onclick="reenviarVerificacaoEmail()" data-i18n="auth.reenviarBtn">Reenviar e-mail</button>
-      </div>
-    </div>
-
     <!-- ver "aguardando aprovação" -->
     <div id="login-view-aguardando" style="display:none">
       <div class="modal-header">
@@ -1398,10 +1381,7 @@ const I18N = {
     'auth.saiu':'Você saiu. Voltou pro modo visualização.',
     'auth.confirmarSair':'Sair da edição?',
     'auth.somenteLeitura':'Modo visualização — entre para editar.',
-    'auth.precisaVerificar':'Confirme seu e-mail para poder editar — clique no chip pra reenviar.',
     'auth.precisaAprovacao':'Sua conta ainda não foi aprovada pelo coordenador.',
-    'auth.tituloVerificar':'Confirme seu e-mail', 'auth.subVerificar':'Mandamos um link de confirmação. Clique nele e depois volte aqui.',
-    'auth.verificarEnviadoPara':'Enviado para {0}.', 'auth.reenviarBtn':'Reenviar e-mail',
     'auth.tituloAguardando':'Conta criada', 'auth.subAguardando':'O coordenador da equipe ainda precisa aprovar seu acesso.',
     'auth.visitante':'Visitante',
     'auth.esqueciSenha':'Esqueci minha senha', 'auth.criarConta':'Criar conta',
@@ -1418,7 +1398,6 @@ const I18N = {
     'auth.erroCadastro':'Não consegui criar a conta. Tente de novo.',
     'auth.recuperarEnviado':'Se esse e-mail tiver conta, chega um link de redefinição em instantes.',
     'auth.erroRecuperar':'Não consegui enviar o e-mail de recuperação.',
-    'auth.verificarReenviado':'E-mail de verificação reenviado — confira a caixa de entrada.',
   },
 
   en: {
@@ -1671,10 +1650,7 @@ const I18N = {
     'auth.saiu':'Signed out. Back to viewing mode.',
     'auth.confirmarSair':'Sign out of editing?',
     'auth.somenteLeitura':'Viewing mode — sign in to edit.',
-    'auth.precisaVerificar':'Confirm your email to edit — click the chip to resend it.',
     'auth.precisaAprovacao':'Your account has not been approved by the coordinator yet.',
-    'auth.tituloVerificar':'Confirm your email', 'auth.subVerificar':'We sent a confirmation link. Click it, then come back here.',
-    'auth.verificarEnviadoPara':'Sent to {0}.', 'auth.reenviarBtn':'Resend email',
     'auth.tituloAguardando':'Account created', 'auth.subAguardando':'The team coordinator still needs to approve your access.',
     'auth.visitante':'Visitor',
     'auth.esqueciSenha':'Forgot my password', 'auth.criarConta':'Create account',
@@ -1691,7 +1667,6 @@ const I18N = {
     'auth.erroCadastro':'Could not create the account. Try again.',
     'auth.recuperarEnviado':'If that email has an account, a reset link is on its way.',
     'auth.erroRecuperar':'Could not send the recovery email.',
-    'auth.verificarReenviado':'Verification email resent — check your inbox.',
   }
 };
 
@@ -1871,10 +1846,11 @@ const Auth = (function () {
   function logado() { return !!usuario; }
   function usuarioAtual() { return usuario; }
   function perfilAtual() { return perfil; }
-  function emailVerificado() { return !!(usuario && usuario.emailVerified); }
   // aprovado != podeEditar: some se o coordenador revogar, mesmo sem deslogar
   function aprovado() { return !!(perfil && perfil.aprovado); }
-  function podeEditar() { return logado() && emailVerificado() && aprovado(); }
+  // não exige e-mail verificado: quem decide quem entra é o coordenador
+  // aprovando, não um clique num link de e-mail que cai no spam do Firebase
+  function podeEditar() { return logado() && aprovado(); }
   function souCoordenador() { return logado() && !!coordenadorUid && coordenadorUid === usuario.uid; }
   function existeCoordenador() { return !!coordenadorUid; }
   function coordenadorUidAtual() { return coordenadorUid; }
@@ -1912,13 +1888,10 @@ const Auth = (function () {
         perfil = resultado.novoPerfil;
         if (resultado.souPrimeiro) coordenadorUid = cred.user.uid;
         return cred.user.updateProfile({ displayName: nome });
-      }).then(function () { return cred.user.sendEmailVerification(); });
+      });
     });
   }
 
-  function reenviarVerificacao() {
-    return usuario ? usuario.sendEmailVerification() : Promise.reject(new Error('sem sessão'));
-  }
   function recuperarSenha(email) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado.'));
     return firebase.auth().sendPasswordResetEmail(email);
@@ -1955,9 +1928,9 @@ const Auth = (function () {
     });
   }
 
-  return { inicializar, logado, usuarioAtual, perfilAtual, emailVerificado, aprovado, podeEditar,
+  return { inicializar, logado, usuarioAtual, perfilAtual, aprovado, podeEditar,
     souCoordenador, existeCoordenador, coordenadorUidAtual,
-    entrar, cadastrar, reenviarVerificacao, recuperarSenha, sair, aoMudar, salvarPerfil,
+    entrar, cadastrar, recuperarSenha, sair, aoMudar, salvarPerfil,
     listarEquipe, definirAprovacao, transferirCoordenacao };
 })();
 
@@ -3741,12 +3714,11 @@ function renderTudo() {
 --------------------------------------------------------------------------- */
 function mensagemModoAtual() {
   if (!Auth.logado()) return T('auth.somenteLeitura');
-  if (!Auth.emailVerificado()) return T('auth.precisaVerificar');
   if (!Auth.aprovado()) return T('auth.precisaAprovacao');
   return T('auth.somenteLeitura');
 }
 function mostrarViewAcesso(ver) {
-  ['entrar','cadastro','recuperar','verificar','aguardando'].forEach(function (v) {
+  ['entrar','cadastro','recuperar','aguardando'].forEach(function (v) {
     document.getElementById('login-view-' + v).style.display = (v === ver) ? 'block' : 'none';
   });
   const foco = { entrar:'login-email', cadastro:'cadastro-nome', recuperar:'recuperar-email' }[ver];
@@ -3806,10 +3778,6 @@ function fazerRecuperarSenha(ev) {
     erro.textContent = T('auth.erroRecuperar');
     console.warn(e);
   });
-}
-function reenviarVerificacaoEmail() {
-  Auth.reenviarVerificacao().then(function () { toast(T('auth.verificarReenviado')); })
-    .catch(function (e) { console.warn(e); });
 }
 function doLogout() {
   if (!confirm(T('auth.confirmarSair'))) return;
@@ -3903,9 +3871,6 @@ function atualizarTelaDeAcesso() {
 
   if (!Auth.logado()) {
     mostrarViewAcesso('entrar');
-  } else if (!Auth.emailVerificado()) {
-    document.getElementById('verificar-email-texto').textContent = T('auth.verificarEnviadoPara', Auth.usuarioAtual().email);
-    mostrarViewAcesso('verificar');
   } else {
     mostrarViewAcesso('aguardando');
   }
