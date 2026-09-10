@@ -11,54 +11,63 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/sistema/coordenador).data.uid == request.auth.uid;
     }
 
-    // Aprovado = logado + tem perfil em /usuarios com aprovado:true. Sem
-    // isso, nem lê os projetos — o app exige login pra tudo, não só pra
-    // editar. Não exige e-mail confirmado: quem decide quem entra é o
-    // coordenador aprovando manualmente, não o clique num link de e-mail
-    // (que cai no spam do Firebase e é só ruído).
-    function aprovado() {
+    // Membro = logado + tem perfil em /usuarios. Não existe "pendente": ou
+    // a pessoa entrou (primeira do sistema, ou usando um convite válido do
+    // coordenador) e já é membro pleno, ou não tem perfil nenhum.
+    function membro() {
       return request.auth != null
-        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.aprovado == true;
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
-    // Projetos: só quem está aprovado lê ou escreve. Nada de visitante.
+    // Projetos: só membro lê ou escreve. Nada de visitante, nada de pendente.
     match /rostag/dados {
-      allow read, write: if aprovado();
+      allow read, write: if membro();
     }
 
     // O documento único que diz quem é o coordenador atual.
     //  - qualquer logado lê (pra saber quem é e mostrar na aba Equipe)
     //  - só é criado uma vez, pelo próprio primeiro usuário (o cadastro dele
-    //    grava os dois documentos numa transação — ver Auth.cadastrar no app)
-    //  - só o coordenador atual troca o valor, e só pra alguém já aprovado
+    //    grava perfil + coordenador numa transação — ver Auth.cadastrar)
+    //  - só o coordenador atual troca o valor, e só pra alguém que já é membro
     match /sistema/coordenador {
       allow read: if request.auth != null;
       allow create: if request.auth != null
         && !exists(/databases/$(database)/documents/sistema/coordenador)
         && request.resource.data.uid == request.auth.uid;
       allow update: if souCoordenador()
-        && exists(/databases/$(database)/documents/usuarios/$(request.resource.data.uid))
-        && get(/databases/$(database)/documents/usuarios/$(request.resource.data.uid)).data.aprovado == true;
+        && exists(/databases/$(database)/documents/usuarios/$(request.resource.data.uid));
     }
 
-    // Perfis de usuário (nome, preferências, status de aprovação):
+    // Convites: só o coordenador cria. Quem se cadastra com um código válido
+    // (não usado) vira membro na hora — sem aprovação nenhuma depois.
+    match /convites/{codigo} {
+      allow read: if request.auth != null;
+      allow create: if souCoordenador() && request.resource.data.usado == false;
+      // marcar como usado: só isso pode mudar, e só quem está virando membro agora
+      allow update: if request.auth != null
+        && resource.data.usado == false
+        && request.resource.data.usado == true
+        && request.resource.data.usadoPor == request.auth.uid
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+      allow delete: if souCoordenador();
+    }
+
+    // Perfis de usuário (nome, preferências):
     //  - qualquer logado lê a lista inteira (é o que alimenta a aba Equipe)
-    //  - um usuário cria o próprio perfil; só nasce aprovado:true se for
-    //    literalmente o primeiro usuário do sistema (ainda não existe
-    //    coordenador) — todo mundo depois nasce aprovado:false
-    //  - o dono edita o próprio perfil livremente, DESDE que não mude o
-    //    campo aprovado; só o coordenador aprova, revoga ou remove alguém
+    //  - um usuário cria o próprio perfil só se for o primeiro do sistema
+    //    (ainda não existe coordenador) OU se estiver consumindo um convite
+    //    válido na mesma transação — sem essas duas condições, não cria
+    //  - o dono edita as próprias preferências livremente
+    //  - só o coordenador remove alguém (não existe mais "revogar")
     match /usuarios/{uid} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == uid && (
-        (request.resource.data.aprovado == true && !exists(/databases/$(database)/documents/sistema/coordenador))
-        || request.resource.data.aprovado == false
+        !exists(/databases/$(database)/documents/sistema/coordenador)
+        || (request.resource.data.viaConvite is string
+            && exists(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite))
+            && get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.usado == false)
       );
-      allow update: if request.auth != null && (
-        (request.auth.uid == uid && request.resource.data.aprovado == resource.data.aprovado)
-        || souCoordenador()
-      );
+      allow update: if request.auth != null && (request.auth.uid == uid || souCoordenador());
       allow delete: if souCoordenador();
     }
   }

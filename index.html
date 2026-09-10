@@ -767,9 +767,16 @@
 
   <div class="settings-panel" id="stab-equipe">
     <div class="card panel-pad" style="max-width:680px;">
-      <div class="panel-title" data-i18n="cfg.equipe">Equipe</div>
-      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Quem se cadastra entra como pendente — só o coordenador aprova, revoga ou remove. O coordenador também pode passar o cargo para outra pessoa da equipe.</div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+        <div class="panel-title" style="margin-bottom:0;" data-i18n="cfg.equipe">Equipe</div>
+        <button class="btn btn-primary" id="btn-convidar" style="display:none" onclick="convidarMembro()" data-i18n="cfg.equipeConvidar">+ Convidar alguém</button>
+      </div>
+      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Só entra quem tiver um link de convite do coordenador — sem pendência, quem entra já é membro pleno. O coordenador também pode remover alguém ou passar o cargo adiante.</div>
       <div id="equipe-lista"></div>
+      <div id="equipe-convites-bloco" style="display:none; margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
+        <div style="font-weight:700; font-size:13px; margin-bottom:8px;" data-i18n="cfg.equipeConvitesAbertos">Convites em aberto</div>
+        <div id="equipe-convites"></div>
+      </div>
     </div>
   </div>
 
@@ -942,7 +949,7 @@
       <div class="modal-header">
         <div style="min-width:0;">
           <h2 data-i18n="auth.tituloCadastro">Criar conta</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subCadastro">Se você for a primeira pessoa a se cadastrar, vira coordenador automaticamente. Depois disso, o coordenador aprova quem entra.</div>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subCadastro">Se você for a primeira pessoa a se cadastrar, vira coordenador automaticamente. Depois disso, só entra quem tiver um link de convite do coordenador.</div>
         </div>
       </div>
       <form id="cadastro-form" onsubmit="fazerCadastro(event)">
@@ -980,12 +987,12 @@
       </form>
     </div>
 
-    <!-- ver "aguardando aprovação" -->
-    <div id="login-view-aguardando" style="display:none">
+    <!-- ver "sem acesso" (removido da equipe, ou nunca convidado) -->
+    <div id="login-view-semacesso" style="display:none">
       <div class="modal-header">
         <div style="min-width:0;">
-          <h2 data-i18n="auth.tituloAguardando">Conta criada</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subAguardando">O coordenador da equipe ainda precisa aprovar seu acesso.</div>
+          <h2 data-i18n="auth.tituloSemAcesso">Sem acesso</h2>
+          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subSemAcesso">Essa conta não faz parte da equipe. Peça um link de convite ao coordenador.</div>
         </div>
       </div>
       <div class="modal-footer">
@@ -1278,18 +1285,24 @@ const I18N = {
     'cfg.nomeExibNota':'Aparece como GP padrão nos projetos novos e no rodapé do menu.',
     'cfg.dadosConta':'Dados da conta', 'cfg.email':'E-MAIL', 'cfg.empresa':'EMPRESA', 'cfg.plano':'PLANO',
     'cfg.planoInterno':'Interno', 'cfg.sairConta':'Sair da conta',
-    'cfg.equipeNota2':'Quem se cadastra entra como pendente — só o coordenador aprova, revoga ou remove. O coordenador também pode passar o cargo para outra pessoa da equipe.',
-    'cfg.equipeCarregando':'Carregando...', 'cfg.equipeVazia':'Ninguém cadastrado ainda.',
+    'cfg.equipeNota2':'Só entra quem tiver um link de convite do coordenador — sem pendência, quem entra já é membro pleno. O coordenador também pode remover alguém ou passar o cargo adiante.',
+    'cfg.equipeCarregando':'Carregando...', 'cfg.equipeVazia':'Ninguém na equipe ainda.',
     'cfg.equipeErro':'Não consegui carregar a equipe.',
-    'cfg.equipeCoordenador':'coordenador',
+    'cfg.equipeCoordenador':'coordenador', 'cfg.equipeMembro':'membro',
+    'cfg.equipeConvidar':'+ Convidar alguém',
+    'cfg.equipeConvitesAbertos':'Convites em aberto',
+    'cfg.equipeCopiarLink':'Copiar link', 'cfg.equipeRevogarConvite':'Revogar',
+    'cfg.equipeSemConvites':'Nenhum convite em aberto.',
+    'cfg.equipeLinkCopiado':'Link copiado — mande para a pessoa.',
+    'cfg.equipeLinkPronto':'Copie este link e mande para a pessoa:',
+    'cfg.equipeConviteRevogado':'Convite revogado.',
     'cfg.equipeTransferir':'Transferir cargo',
     'cfg.equipeConfirmarTransferir':'Transferir o cargo de coordenador para {0}? Você deixa de ser coordenador imediatamente.',
     'cfg.equipeTransferido':'{0} agora é o coordenador.',
-    'cfg.equipeAprovado':'aprovado', 'cfg.equipePendente':'pendente de aprovação',
     'cfg.equipeVoce':'você',
-    'cfg.equipeAprovar':'Aprovar', 'cfg.equipeRevogar':'Revogar',
-    'cfg.equipeConfirmarRevogar':'Revogar o acesso de edição dessa pessoa?',
-    'cfg.equipeAprovadoFeito':'Acesso aprovado.', 'cfg.equipeRevogadoFeito':'Acesso revogado.',
+    'cfg.equipeRemover':'Remover',
+    'cfg.equipeConfirmarRemover':'Remover {0} da equipe? A pessoa perde acesso na hora e precisa de um novo convite pra voltar.',
+    'cfg.equipeRemovidoFeito':'{0} removido da equipe.',
     'cfg.equipeErroAcao':'Não consegui fazer essa alteração.',
     'cfg.paleta':'Paleta de cores',
     'cfg.paletaNota':'A escolha fica salva e vale para as próximas vezes que você abrir o app.',
@@ -1381,12 +1394,14 @@ const I18N = {
     'auth.saiu':'Você saiu. Voltou pro modo visualização.',
     'auth.confirmarSair':'Sair da edição?',
     'auth.somenteLeitura':'Modo visualização — entre para editar.',
-    'auth.precisaAprovacao':'Sua conta ainda não foi aprovada pelo coordenador.',
-    'auth.tituloAguardando':'Conta criada', 'auth.subAguardando':'O coordenador da equipe ainda precisa aprovar seu acesso.',
+    'auth.semAcesso':'Essa conta não faz parte da equipe.',
+    'auth.tituloSemAcesso':'Sem acesso', 'auth.subSemAcesso':'Essa conta não faz parte da equipe. Peça um link de convite ao coordenador.',
+    'auth.precisaConvite':'Cadastro exige um link de convite do coordenador — peça um a ele.',
+    'auth.conviteInvalido':'Esse link de convite já foi usado ou não existe mais. Peça um novo.',
     'auth.visitante':'Visitante',
     'auth.esqueciSenha':'Esqueci minha senha', 'auth.criarConta':'Criar conta',
     'auth.tituloCadastro':'Criar conta',
-    'auth.subCadastro':'Depois de criar, um administrador precisa aprovar antes de você poder editar.',
+    'auth.subCadastro':'Se você for a primeira pessoa a se cadastrar, vira coordenador automaticamente. Depois disso, só entra quem tiver um link de convite do coordenador.',
     'auth.nome':'NOME', 'auth.confirmarSenha':'CONFIRMAR SENHA',
     'auth.jaTenhoConta':'Já tenho conta', 'auth.criarContaBtn':'Criar conta',
     'auth.tituloRecuperar':'Recuperar senha', 'auth.subRecuperar':'Manda um link de redefinição para o seu e-mail.',
@@ -1552,18 +1567,24 @@ const I18N = {
     'cfg.nomeExibNota':'Used as the default PM on new projects and in the menu footer.',
     'cfg.dadosConta':'Account details', 'cfg.email':'E-MAIL', 'cfg.empresa':'COMPANY', 'cfg.plano':'PLAN',
     'cfg.planoInterno':'Internal', 'cfg.sairConta':'Sign out',
-    'cfg.equipeNota2':'People who sign up land here as pending — only the coordinator approves, revokes or removes. The coordinator can also pass the role to someone else on the team.',
-    'cfg.equipeCarregando':'Loading...', 'cfg.equipeVazia':'Nobody signed up yet.',
+    'cfg.equipeNota2':'Only people with an invite link from the coordinator can join — no pending state, joining means being a full member right away. The coordinator can also remove someone or pass the role along.',
+    'cfg.equipeCarregando':'Loading...', 'cfg.equipeVazia':'Nobody on the team yet.',
     'cfg.equipeErro':'Could not load the team.',
-    'cfg.equipeCoordenador':'coordinator',
+    'cfg.equipeCoordenador':'coordinator', 'cfg.equipeMembro':'member',
+    'cfg.equipeConvidar':'+ Invite someone',
+    'cfg.equipeConvitesAbertos':'Open invites',
+    'cfg.equipeCopiarLink':'Copy link', 'cfg.equipeRevogarConvite':'Revoke',
+    'cfg.equipeSemConvites':'No open invites.',
+    'cfg.equipeLinkCopiado':'Link copied — send it to the person.',
+    'cfg.equipeLinkPronto':'Copy this link and send it to the person:',
+    'cfg.equipeConviteRevogado':'Invite revoked.',
     'cfg.equipeTransferir':'Transfer role',
     'cfg.equipeConfirmarTransferir':'Transfer the coordinator role to {0}? You stop being coordinator immediately.',
     'cfg.equipeTransferido':'{0} is now the coordinator.',
-    'cfg.equipeAprovado':'approved', 'cfg.equipePendente':'pending approval',
     'cfg.equipeVoce':'you',
-    'cfg.equipeAprovar':'Approve', 'cfg.equipeRevogar':'Revoke',
-    'cfg.equipeConfirmarRevogar':'Revoke this person’s edit access?',
-    'cfg.equipeAprovadoFeito':'Access approved.', 'cfg.equipeRevogadoFeito':'Access revoked.',
+    'cfg.equipeRemover':'Remove',
+    'cfg.equipeConfirmarRemover':'Remove {0} from the team? They lose access immediately and need a new invite to come back.',
+    'cfg.equipeRemovidoFeito':'{0} removed from the team.',
     'cfg.equipeErroAcao':'Could not make that change.',
     'cfg.paleta':'Colour palette',
     'cfg.paletaNota':'The choice is saved and applies the next time you open the app.',
@@ -1650,12 +1671,14 @@ const I18N = {
     'auth.saiu':'Signed out. Back to viewing mode.',
     'auth.confirmarSair':'Sign out of editing?',
     'auth.somenteLeitura':'Viewing mode — sign in to edit.',
-    'auth.precisaAprovacao':'Your account has not been approved by the coordinator yet.',
-    'auth.tituloAguardando':'Account created', 'auth.subAguardando':'The team coordinator still needs to approve your access.',
+    'auth.semAcesso':'This account is not part of the team.',
+    'auth.tituloSemAcesso':'No access', 'auth.subSemAcesso':'This account is not part of the team. Ask the coordinator for an invite link.',
+    'auth.precisaConvite':'Signing up requires an invite link from the coordinator — ask them for one.',
+    'auth.conviteInvalido':'That invite link was already used or no longer exists. Ask for a new one.',
     'auth.visitante':'Visitor',
     'auth.esqueciSenha':'Forgot my password', 'auth.criarConta':'Create account',
     'auth.tituloCadastro':'Create account',
-    'auth.subCadastro':'Once created, an admin needs to approve you before you can edit.',
+    'auth.subCadastro':'If you are the first person to sign up, you automatically become coordinator. After that, only people with an invite link from the coordinator can join.',
     'auth.nome':'NAME', 'auth.confirmarSenha':'CONFIRM PASSWORD',
     'auth.jaTenhoConta':'I already have an account', 'auth.criarContaBtn':'Create account',
     'auth.tituloRecuperar':'Recover password', 'auth.subRecuperar':'Sends a reset link to your email.',
@@ -1846,11 +1869,11 @@ const Auth = (function () {
   function logado() { return !!usuario; }
   function usuarioAtual() { return usuario; }
   function perfilAtual() { return perfil; }
-  // aprovado != podeEditar: some se o coordenador revogar, mesmo sem deslogar
-  function aprovado() { return !!(perfil && perfil.aprovado); }
-  // não exige e-mail verificado: quem decide quem entra é o coordenador
-  // aprovando, não um clique num link de e-mail que cai no spam do Firebase
-  function podeEditar() { return logado() && aprovado(); }
+  // membro = tem perfil em /usuarios — some na hora se o coordenador remover,
+  // mesmo sem essa pessoa deslogar. Não existe mais "pendente": ou tem
+  // perfil (entrou pelo primeiro cadastro ou por um convite válido) ou não.
+  function membro() { return !!perfil; }
+  function podeEditar() { return logado() && membro(); }
   function souCoordenador() { return logado() && !!coordenadorUid && coordenadorUid === usuario.uid; }
   function existeCoordenador() { return !!coordenadorUid; }
   function coordenadorUidAtual() { return coordenadorUid; }
@@ -1863,22 +1886,37 @@ const Auth = (function () {
   // O primeiro usuário do sistema vira coordenador automaticamente — os dois
   // documentos (perfil + coordenador) nascem juntos numa transação, pra nunca
   // dar duas pessoas se declarando coordenador ao mesmo tempo.
-  function cadastrar(nome, email, senha) {
+  // Sem convite só dá pra criar conta se for a primeira pessoa do sistema
+  // (vira coordenador). Depois disso, todo cadastro exige um código de
+  // convite válido — e quem entra assim já é membro pleno na hora, sem
+  // pendência nenhuma.
+  function cadastrar(nome, email, senha, codigoConvite) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado (veja README.md).'));
     return firebase.auth().createUserWithEmailAndPassword(email, senha).then(function (cred) {
       const db = firebase.firestore();
       const refCoord = docCoordenador(), refPerfil = docPerfil(cred.user.uid);
+      const refConvite = codigoConvite ? db.collection('convites').doc(codigoConvite) : null;
       return db.runTransaction(function (tx) {
         return tx.get(refCoord).then(function (snapCoord) {
           const souPrimeiro = !snapCoord.exists;
-          const novoPerfil = {
-            nome: nome, email: email, aprovado: souPrimeiro,
-            criadoEm: new Date().toISOString(),
-            tema: 'claro', idioma: 'pt', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao'
-          };
-          tx.set(refPerfil, novoPerfil);
-          if (souPrimeiro) tx.set(refCoord, { uid: cred.user.uid });
-          return { novoPerfil: novoPerfil, souPrimeiro: souPrimeiro };
+          const checarConvite = (!souPrimeiro && refConvite) ? tx.get(refConvite) : Promise.resolve(null);
+          return checarConvite.then(function (snapConvite) {
+            if (!souPrimeiro) {
+              if (!snapConvite || !snapConvite.exists || snapConvite.data().usado) {
+                throw new Error('convite-invalido');
+              }
+            }
+            const novoPerfil = {
+              nome: nome, email: email,
+              criadoEm: new Date().toISOString(),
+              tema: 'claro', idioma: 'pt', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao'
+            };
+            if (!souPrimeiro) novoPerfil.viaConvite = codigoConvite;
+            tx.set(refPerfil, novoPerfil);
+            if (souPrimeiro) tx.set(refCoord, { uid: cred.user.uid });
+            else tx.update(refConvite, { usado: true, usadoPor: cred.user.uid, usadoEm: new Date().toISOString() });
+            return { novoPerfil: novoPerfil, souPrimeiro: souPrimeiro };
+          });
         });
       }).then(function (resultado) {
         // criação do usuário já disparou onAuthStateChanged antes da transação
@@ -1888,8 +1926,34 @@ const Auth = (function () {
         perfil = resultado.novoPerfil;
         if (resultado.souPrimeiro) coordenadorUid = cred.user.uid;
         return cred.user.updateProfile({ displayName: nome });
+      }).catch(function (e) {
+        // o cadastro no Auth já aconteceu; se a transação falhar (convite
+        // inválido), desfaz pra não deixar uma conta órfã sem perfil
+        return cred.user.delete().catch(function () {}).then(function () { throw e; });
       });
     });
+  }
+
+  // Convites — só o coordenador cria (a regra do Firestore garante isso)
+  function criarConvite() {
+    const codigo = (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2))).replace(/-/g, '');
+    return firebase.firestore().collection('convites').doc(codigo).set({
+      criadoPor: usuario.uid, usado: false, criadoEm: new Date().toISOString()
+    }).then(function () { return codigo; });
+  }
+  function listarConvites() {
+    return firebase.firestore().collection('convites').where('usado', '==', false).get().then(function (qs) {
+      const lista = [];
+      qs.forEach(function (doc) { lista.push(Object.assign({ codigo: doc.id }, doc.data())); });
+      lista.sort(function (a, b) { return (b.criadoEm || '').localeCompare(a.criadoEm || ''); });
+      return lista;
+    });
+  }
+  function revogarConvite(codigo) {
+    return firebase.firestore().collection('convites').doc(codigo).delete();
+  }
+  function removerMembro(uid) {
+    return docPerfil(uid).delete();
   }
 
   function recuperarSenha(email) {
@@ -1916,22 +1980,17 @@ const Auth = (function () {
       return lista;
     });
   }
-  // só o coordenador consegue de verdade (a regra do Firestore garante isso)
-  function definirAprovacao(uid, valor) {
-    return docPerfil(uid).update({ aprovado: valor }).then(function () {
-      if (usuario && uid === usuario.uid) return carregarPerfil(uid);
-    });
-  }
   function transferirCoordenacao(novoUid) {
     return docCoordenador().update({ uid: novoUid }).then(function () {
       return carregarCoordenador();
     });
   }
 
-  return { inicializar, logado, usuarioAtual, perfilAtual, aprovado, podeEditar,
+  return { inicializar, logado, usuarioAtual, perfilAtual, membro, podeEditar,
     souCoordenador, existeCoordenador, coordenadorUidAtual,
     entrar, cadastrar, recuperarSenha, sair, aoMudar, salvarPerfil,
-    listarEquipe, definirAprovacao, transferirCoordenacao };
+    listarEquipe, transferirCoordenacao,
+    criarConvite, listarConvites, revogarConvite, removerMembro };
 })();
 
 /* ---------------------------------------------------------------------------
@@ -3714,11 +3773,11 @@ function renderTudo() {
 --------------------------------------------------------------------------- */
 function mensagemModoAtual() {
   if (!Auth.logado()) return T('auth.somenteLeitura');
-  if (!Auth.aprovado()) return T('auth.precisaAprovacao');
+  if (!Auth.membro()) return T('auth.semAcesso');
   return T('auth.somenteLeitura');
 }
 function mostrarViewAcesso(ver) {
-  ['entrar','cadastro','recuperar','aguardando'].forEach(function (v) {
+  ['entrar','cadastro','recuperar','semacesso'].forEach(function (v) {
     document.getElementById('login-view-' + v).style.display = (v === ver) ? 'block' : 'none';
   });
   const foco = { entrar:'login-email', cadastro:'cadastro-nome', recuperar:'recuperar-email' }[ver];
@@ -3750,14 +3809,17 @@ function fazerCadastro(ev) {
   const btn = document.getElementById('cadastro-submit');
   erro.textContent = '';
   if (senha !== senha2) { erro.textContent = T('auth.senhasDiferentes'); return; }
+  if (!convitePendente && Auth.existeCoordenador()) { erro.textContent = T('auth.precisaConvite'); return; }
   btn.disabled = true;
-  Auth.cadastrar(nome, email, senha).then(function () {
+  Auth.cadastrar(nome, email, senha, convitePendente).then(function () {
     btn.disabled = false;
+    convitePendente = null;
     atualizarTelaDeAcesso();
   }).catch(function (e) {
     btn.disabled = false;
     erro.textContent = (e && e.code === 'auth/email-already-in-use') ? T('auth.emailJaExiste')
       : (e && e.code === 'auth/weak-password') ? T('auth.senhaFraca')
+      : (e && e.message === 'convite-invalido') ? T('auth.conviteInvalido')
       : T('auth.erroCadastro');
     console.warn(e);
   });
@@ -3785,29 +3847,30 @@ function doLogout() {
 }
 
 /* ---------------------------------------------------------------------------
-   Equipe — só o coordenador aprova, revoga ou transfere o cargo
+   Equipe — só o coordenador convida, remove ou transfere o cargo
 --------------------------------------------------------------------------- */
 function renderEquipe() {
   const lista = document.getElementById('equipe-lista');
+  const convitesBloco = document.getElementById('equipe-convites-bloco');
+  const convites = document.getElementById('equipe-convites');
+  const btnConvidar = document.getElementById('btn-convidar');
   if (!Auth.logado()) return;
+  const souCoord = Auth.souCoordenador();
+  btnConvidar.style.display = souCoord ? 'inline-block' : 'none';
+
   lista.innerHTML = '<div class="hint-txt">' + T('cfg.equipeCarregando') + '</div>';
   Auth.listarEquipe().then(function (membros) {
     const meuUid = Auth.usuarioAtual().uid;
     const coordUid = Auth.coordenadorUidAtual();
-    const souCoord = Auth.souCoordenador();
     lista.innerHTML = membros.map(function (m) {
       const voceMesmo = m.uid === meuUid;
       const ehCoordenador = m.uid === coordUid;
-      const statusTxt = ehCoordenador ? T('cfg.equipeCoordenador') : (m.aprovado ? T('cfg.equipeAprovado') : T('cfg.equipePendente'));
-      const statusCor = ehCoordenador ? 'var(--azul, #2563eb)' : (m.aprovado ? 'var(--green)' : 'var(--amber, #b8860b)');
+      const statusTxt = ehCoordenador ? T('cfg.equipeCoordenador') : T('cfg.equipeMembro');
+      const statusCor = ehCoordenador ? 'var(--azul, #2563eb)' : 'var(--green)';
       let acoes = '';
       if (souCoord && !ehCoordenador) {
-        acoes += m.aprovado
-          ? '<button class="btn btn-outline" onclick="revogarMembro(\'' + m.uid + '\')">' + T('cfg.equipeRevogar') + '</button>'
-          : '<button class="btn btn-primary" onclick="aprovarMembro(\'' + m.uid + '\')">' + T('cfg.equipeAprovar') + '</button>';
-        if (m.aprovado) {
-          acoes += ' <button class="btn btn-outline" onclick="transferirCoordenacaoPara(\'' + m.uid + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.equipeTransferir') + '</button>';
-        }
+        acoes += '<button class="btn btn-outline" onclick="transferirCoordenacaoPara(\'' + m.uid + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.equipeTransferir') + '</button> ' +
+          '<button class="btn btn-danger" onclick="removerDaEquipe(\'' + m.uid + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.equipeRemover') + '</button>';
       }
       return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); flex-wrap:wrap;">' +
         '<div style="min-width:0;">' +
@@ -3821,14 +3884,45 @@ function renderEquipe() {
     console.warn(e);
     lista.innerHTML = '<div class="hint-txt" style="color:var(--rust);">' + T('cfg.equipeErro') + '</div>';
   });
+
+  if (!souCoord) { convitesBloco.style.display = 'none'; return; }
+  convitesBloco.style.display = 'block';
+  convites.innerHTML = '<div class="hint-txt">' + T('cfg.equipeCarregando') + '</div>';
+  Auth.listarConvites().then(function (lista2) {
+    convites.innerHTML = lista2.map(function (c) {
+      const link = location.origin + location.pathname + '?convite=' + c.codigo;
+      return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap;">' +
+        '<div class="hint-txt" style="font-size:11px; word-break:break-all;">' + esc(link) + '</div>' +
+        '<div style="display:flex; gap:6px; flex-shrink:0;">' +
+          '<button class="btn btn-outline" onclick="copiarConvite(\'' + esc(link) + '\')">' + T('cfg.equipeCopiarLink') + '</button>' +
+          '<button class="btn btn-danger" onclick="revogarConviteUI(\'' + c.codigo + '\')">' + T('cfg.equipeRevogarConvite') + '</button>' +
+        '</div>' +
+      '</div>';
+    }).join('') || '<div class="hint-txt">' + T('cfg.equipeSemConvites') + '</div>';
+  }).catch(function (e) { console.warn(e); convites.innerHTML = ''; });
 }
-function aprovarMembro(uid) {
-  Auth.definirAprovacao(uid, true).then(function () { toast(T('cfg.equipeAprovadoFeito')); renderEquipe(); })
+function convidarMembro() {
+  Auth.criarConvite().then(function (codigo) {
+    const link = location.origin + location.pathname + '?convite=' + codigo;
+    copiarConvite(link);
+    renderEquipe();
+  }).catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
+}
+function copiarConvite(link) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(function () { toast(T('cfg.equipeLinkCopiado')); })
+      .catch(function () { prompt(T('cfg.equipeLinkPronto'), link); });
+  } else {
+    prompt(T('cfg.equipeLinkPronto'), link);
+  }
+}
+function revogarConviteUI(codigo) {
+  Auth.revogarConvite(codigo).then(function () { toast(T('cfg.equipeConviteRevogado')); renderEquipe(); })
     .catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
 }
-function revogarMembro(uid) {
-  if (!confirm(T('cfg.equipeConfirmarRevogar'))) return;
-  Auth.definirAprovacao(uid, false).then(function () { toast(T('cfg.equipeRevogadoFeito')); renderEquipe(); })
+function removerDaEquipe(uid, nome) {
+  if (!confirm(T('cfg.equipeConfirmarRemover', nome))) return;
+  Auth.removerMembro(uid).then(function () { toast(T('cfg.equipeRemovidoFeito', nome)); renderEquipe(); })
     .catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
 }
 function transferirCoordenacaoPara(uid, nome) {
@@ -3870,9 +3964,10 @@ function atualizarTelaDeAcesso() {
   }
 
   if (!Auth.logado()) {
-    mostrarViewAcesso('entrar');
+    mostrarViewAcesso(convitePendente ? 'cadastro' : 'entrar');
   } else {
-    mostrarViewAcesso('aguardando');
+    // logado mas sem perfil: ou nunca teve (link errado), ou o coordenador removeu
+    mostrarViewAcesso('semacesso');
   }
 }
 Auth.aoMudar(atualizarTelaDeAcesso);
@@ -3917,6 +4012,11 @@ function iniciarApp(dadosIniciais) {
       esc(err.message) + '</div><div style="font-size:12px; margin-top:8px;">' + T('x.erroBootAjuda') + '</div></div>');
   }
 }
+
+// ?convite=codigo na URL: quem abre o link vai direto pro cadastro, já
+// vinculado a esse convite (sem precisar digitar código nenhum)
+let convitePendente = new URLSearchParams(location.search).get('convite') || null;
+if (convitePendente) history.replaceState(null, '', location.pathname);
 
 /* Boot: a tela de acesso já nasce visível no HTML (display:flex por padrão
    só aparece se o CSS assim definir — aqui é JS que decide). Auth.inicializar()
