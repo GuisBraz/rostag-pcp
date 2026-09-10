@@ -43,12 +43,15 @@ service cloud.firestore {
     match /convites/{codigo} {
       allow read: if request.auth != null;
       allow create: if souCoordenador() && request.resource.data.usado == false;
-      // marcar como usado: só isso pode mudar, e só quem está virando membro agora
+      // marcar como usado: só isso pode mudar, e só quem está virando membro
+      // agora. Não checa exists(usuarios/uid) aqui — essa escrita acontece
+      // na MESMA transação que cria o perfil, e uma escrita não enxerga a
+      // outra ainda não commitada; a garantia real já está em
+      // usuarios/{uid}.create, que exige este convite estar usado==false.
       allow update: if request.auth != null
         && resource.data.usado == false
         && request.resource.data.usado == true
-        && request.resource.data.usadoPor == request.auth.uid
-        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+        && request.resource.data.usadoPor == request.auth.uid;
       allow delete: if souCoordenador();
     }
 
