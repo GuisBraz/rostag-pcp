@@ -81,6 +81,8 @@
   .sidebar.collapsed .sidebar-top-text { display: none; }
   .sidebar.collapsed .sidebar-top { justify-content: center; padding: 16px 8px; }
   .sidebar.collapsed .profile-name { display: none; }
+  .sidebar.collapsed #sidebar-equipe-nome, .sidebar.collapsed .sidebar-equipe span[aria-hidden="true"]:last-child { display: none; }
+  .sidebar.collapsed .sidebar-equipe { justify-content: center; padding: 7px; }
   .sidebar.collapsed .sidebar-bottom { flex-direction: column; gap: 8px; padding: 10px 8px; }
   .sidebar.collapsed .sidebar-collapse-btn { transform: rotate(180deg); }
   .sidebar-nav { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 4px; }
@@ -2045,9 +2047,17 @@ const Auth = (function () {
   // for designado a ele (a garantia de verdade está na regra do Firestore)
   function souGPouCoordenador() { return membro() && (souCoordenador() || papel() === 'gp'); }
 
+  // Depois do login, carrega perfil/equipes ANTES de resolver — o
+  // onAuthStateChanged endógeno do Firebase também vai carregar tudo de
+  // novo (redundante, mas inofensivo), porém sem isto quem encadeia uma
+  // ação logo após entrar() (como consumir um convite pendente) corre com
+  // usuario/perfil ainda vazios.
   function entrar(email, senha) {
     if (!FIREBASE_PRONTO) return Promise.reject(new Error('Firebase não configurado (veja README.md).'));
-    return firebase.auth().signInWithEmailAndPassword(email, senha);
+    return firebase.auth().signInWithEmailAndPassword(email, senha).then(function (cred) {
+      return carregarPerfil(cred.user.uid).then(function () { return carregarMinhasEquipes(cred.user.uid); })
+        .then(escolherEquipeInicial).then(function () { usuario = cred.user; });
+    });
   }
 
   // Cria só a conta + perfil pessoal (nome, preferências) — não entra em
