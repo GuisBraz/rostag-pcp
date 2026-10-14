@@ -1,0 +1,48 @@
+/* ---------------------------------------------------------------------------
+   Service worker do ROSTAG PCP — deixa o app instalado abrir sem internet.
+
+   Estratégia "rede primeiro": sempre tenta buscar a versão mais nova do
+   site; só usa a cópia guardada quando está offline. Assim uma publicação
+   nova aparece no próximo carregamento, sem ficar presa em cache.
+   Os dados (Firestore) não passam por aqui: o próprio SDK guarda o cache.
+--------------------------------------------------------------------------- */
+const CACHE = 'rostag-pcp-v3';
+const ARQUIVOS = [
+  './', 'index.html', 'manifest.json', 'css/app.css', 'vendor/chart.umd.min.js',
+  'img/logo.png', 'img/favicon.png', 'img/sobre.jpg', 'icon-192.png', 'icon-512.png',
+  'js/main.js', 'js/estado.js',
+  'js/nucleo/prefs.js', 'js/nucleo/fmt.js',
+  'js/i18n/index.js', 'js/i18n/pt.js', 'js/i18n/en.js',
+  'js/dominio/constantes.js', 'js/dominio/cronograma.js', 'js/dominio/projeto.js', 'js/dominio/serie.js', 'js/dominio/alertas.js',
+  'js/dados/firebase.js', 'js/dados/auth.js', 'js/dados/store.js',
+  'js/ui/dom.js', 'js/ui/toast.js', 'js/ui/modal.js', 'js/ui/app.js', 'js/ui/rota.js', 'js/ui/preferencias.js',
+  'js/ui/painel.js', 'js/ui/graficos.js', 'js/ui/filtros.js', 'js/ui/projetos.js', 'js/ui/formulario.js',
+  'js/ui/detalhe.js', 'js/ui/linha.js', 'js/ui/ano.js', 'js/ui/notificacoes.js', 'js/ui/dados.js',
+  'js/ui/atalhos.js', 'js/ui/equipe.js', 'js/ui/acesso.js'
+];
+
+self.addEventListener('install', function (e) {
+  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(ARQUIVOS); }).then(function () { return self.skipWaiting(); }));
+});
+
+self.addEventListener('activate', function (e) {
+  e.waitUntil(caches.keys().then(function (nomes) {
+    return Promise.all(nomes.filter(function (n) { return n !== CACHE; }).map(function (n) { return caches.delete(n); }));
+  }).then(function () { return self.clients.claim(); }));
+});
+
+self.addEventListener('fetch', function (e) {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  // Firebase, fontes e CDN: direto na rede, sem passar pelo cache daqui
+  if (url.origin !== self.location.origin) return;
+  e.respondWith(fetch(req).then(function (resp) {
+    if (resp.ok) { const copia = resp.clone(); caches.open(CACHE).then(function (c) { c.put(req, copia); }); }
+    return resp;
+  }).catch(function () {
+    return caches.match(req, { ignoreSearch: true }).then(function (r) {
+      return r || (req.mode === 'navigate' ? caches.match('index.html') : Response.error());
+    });
+  }));
+});

@@ -2,8 +2,9 @@
 
 Planejamento e Controle de Produção — controle de projetos e commessas.
 
-Site estático hospedado no GitHub Pages. Os dados ficam guardados no
-Firebase (Firestore), compartilhados entre todo mundo que abrir o link.
+Site estático hospedado no GitHub Pages, sem etapa de build. Os dados ficam
+no Firebase (Firestore), compartilhados ao vivo entre os membros de cada
+equipe, e o app pode ser instalado no PC e no celular (funciona offline).
 
 ## Como funciona o acesso
 
@@ -48,9 +49,11 @@ O site sozinho não guarda nada até você conectar um projeto Firebase seu —
    web. Dê um apelido qualquer e **não** marque "Firebase Hosting" (o site já
    está no GitHub Pages). Ao final, o Firebase mostra um bloco `firebaseConfig`
    — copie ele inteiro.
-3. Abra `index.html` (aqui no repositório, dá pra editar direto pelo site do
-   GitHub, no ícone de lápis) e cole os valores dentro de `FIREBASE_CONFIG`,
-   perto do topo do arquivo. É normal e seguro esses valores ficarem públicos
+3. Abra [`js/dados/firebase.js`](js/dados/firebase.js) (dá pra editar direto
+   pelo site do GitHub, no ícone de lápis) e cole os valores dentro de
+   `FIREBASE_CONFIG`. Se o projeto não se chamar `rostag-pcp`, troque também o
+   endereço `rostag-pcp.firebaseapp.com` na linha `Content-Security-Policy`
+   do `index.html`. É normal e seguro esses valores ficarem públicos
    — a segurança do Firebase não depende de esconder essa chave, e sim das
    regras do Firestore e do login (próximos passos).
 4. No menu lateral do console, **Build → Firestore Database → Criar banco de
@@ -61,7 +64,7 @@ O site sozinho não guarda nada até você conectar um projeto Firebase seu —
 6. **Build → Authentication → Vamos começar → Método de login → E-mail/senha**
    → ative. Não precisa cadastrar ninguém à mão: cada pessoa cria a própria
    conta pela tela do app.
-7. Salve o `index.html` com o `FIREBASE_CONFIG` preenchido e envie
+7. Salve o `js/dados/firebase.js` com o `FIREBASE_CONFIG` preenchido e envie
    (`git add`, `git commit`, `git push`) — o GitHub Pages publica sozinho em
    cerca de 1 minuto.
 
@@ -69,11 +72,11 @@ Pronto: abra o link, crie sua conta e depois sua primeira equipe.
 
 ## Atualizar o site e as regras
 
-Quando uma mudança mexe tanto no `index.html` quanto no `firestore.rules`,
-a ordem importa:
+Quando uma mudança mexe tanto no site quanto no `firestore.rules`, a ordem
+importa:
 
-1. Primeiro envie o `index.html` (`git push`) e espere o GitHub Pages
-   publicar (cerca de 1 minuto).
+1. Primeiro envie o site (`git push`) e espere o GitHub Pages publicar
+   (cerca de 1 minuto).
 2. Só depois cole o `firestore.rules` novo no console e publique.
 
 Se as regras forem publicadas antes, quem ainda estiver com o site antigo
@@ -81,9 +84,66 @@ aberto pode ter ações recusadas até recarregar a página.
 
 ## Rodar localmente (sem publicar)
 
-Basta abrir `index.html` com dois cliques — funciona igual ao site
-publicado, contanto que o `FIREBASE_CONFIG` já esteja preenchido (senão
-aparece um aviso de Firebase não configurado e não dá pra entrar).
+O JavaScript é dividido em módulos, que o navegador não carrega com o
+arquivo aberto por dois cliques. Sirva a pasta com qualquer servidor local:
+
+```bash
+python -m http.server 5173
+```
+
+e abra `http://localhost:5173`. Atenção: a versão local usa o **mesmo banco**
+do site publicado — o que você mexer ali vale de verdade.
+
+## Estrutura do código
+
+```
+index.html            marcação das telas (sem script inline)
+css/app.css           estilos, tema claro e escuro
+js/main.js            ponto de entrada: liga login, equipe e telas
+js/nucleo/            preferências e formatação (datas, escape de HTML)
+js/i18n/              textos em português (pt.js) e inglês (en.js)
+js/dominio/           regras de negócio puras: cronograma, status, alertas
+js/dados/             Firebase: conta e equipes (auth.js), projetos (store.js)
+js/ui/                uma tela ou componente por arquivo
+vendor/               Chart.js (servido junto, sem CDN)
+sw.js                 service worker: abre o app instalado sem internet
+firestore.rules       regras de segurança do banco
+tests/                testes automáticos das regras de negócio
+```
+
+Alguns princípios que o código segue:
+
+- **Nada de `onclick` no HTML.** Botões usam `data-acao="nome"` e o
+  despachante em `js/ui/dom.js` chama a função registrada com
+  `registrarAcoes()`. A página tem uma política de segurança (CSP) que
+  bloqueia qualquer script inline — texto digitado nunca vira código.
+- **Gravação por diferença.** `js/dados/store.js` envia só os projetos e os
+  campos que mudaram e confirma cada gravação; se o servidor recusar, a tela
+  volta para a última versão boa e avisa. Mudanças de colegas chegam ao vivo.
+- **Todo texto passa por `T()`** (`js/i18n/`). Texto novo entra nos dois
+  dicionários.
+- **Datas são strings `AAAA-MM-DD` locais** — nunca `toISOString()`, que
+  converte para UTC e pode mudar o dia.
+
+## Testes e verificação
+
+Precisa só do [Node.js](https://nodejs.org) (versão 20 ou mais nova):
+
+```bash
+npm test
+```
+
+roda os testes do cronograma, status, validação, migração de dados e da
+gravação por diferença.
+
+```bash
+npm run check
+```
+
+confere que todo módulo compila, que todo botão tem uma ação registrada, que
+não sobrou script inline e que o service worker lista todos os arquivos.
+Rode os dois antes de cada `git push`. Ao adicionar um arquivo em `js/`,
+inclua o caminho na lista `ARQUIVOS` do `sw.js` e troque a versão em `CACHE`.
 
 ## Atalhos
 

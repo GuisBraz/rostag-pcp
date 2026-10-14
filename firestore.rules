@@ -161,8 +161,14 @@ service cloud.firestore {
           || convitePraMim(equipeId, request.resource.data.papel)
           || senhaConfere(equipeId, request.resource.data.papel)
         );
-        allow update: if souCoordDe(equipeId)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['papel']);
+        // Coordenador muda o papel (só para gp/planejador); cada um pode
+        // atualizar o próprio nome de exibição.
+        allow update: if (souCoordDe(equipeId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['papel'])
+            && request.resource.data.papel in ['gp', 'planejador'])
+          || (request.auth != null && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome'])
+            && request.resource.data.nome is string && request.resource.data.nome.size() <= 60);
         allow delete: if souCoordDe(equipeId) || (request.auth != null && request.auth.uid == uid);
       }
 
@@ -187,7 +193,10 @@ service cloud.firestore {
             || (membroDe(equipeId) && get(/databases/$(database)/documents/equipes/$(equipeId)/projetos/$(projetoId)).data.responsavelUid == request.auth.uid);
           allow create: if (souGPouCoordDe(equipeId)
               || (membroDe(equipeId) && get(/databases/$(database)/documents/equipes/$(equipeId)/projetos/$(projetoId)).data.responsavelUid == request.auth.uid))
-            && request.resource.data.autorUid == request.auth.uid;
+            && request.resource.data.autorUid == request.auth.uid
+            && request.resource.data.keys().hasOnly(['autorUid', 'autorNome', 'texto', 'criadoEm'])
+            && request.resource.data.texto is string
+            && request.resource.data.texto.size() > 0 && request.resource.data.texto.size() <= 2000;
           allow update, delete: if false;
         }
       }
@@ -218,12 +227,19 @@ service cloud.firestore {
 
     // Notificações — cross-equipe (uma pessoa pode estar em mais de uma
     // equipe e receber avisos de qualquer uma). Só quem gera (GP/coordenador
-    // daquela equipe) cria; o destinatário só marca como lida.
+    // daquela equipe) cria, e só para quem também é membro dela; o
+    // destinatário só marca como lida.
     match /notificacoes/{notifId} {
       allow read: if request.auth != null && resource.data.paraUid == request.auth.uid;
       allow create: if request.auth != null
         && souGPouCoordDe(request.resource.data.equipeId)
-        && request.resource.data.paraUid is string;
+        && request.resource.data.paraUid is string
+        && request.resource.data.deUid == request.auth.uid
+        && request.resource.data.tipo in ['designacao', 'observacao']
+        && request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 500
+        && (request.resource.data.projetoId == null || request.resource.data.projetoId is string)
+        && request.resource.data.lida == false
+        && exists(/databases/$(database)/documents/equipes/$(request.resource.data.equipeId)/membros/$(request.resource.data.paraUid));
       allow update: if request.auth != null && resource.data.paraUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida']);
       allow delete: if request.auth != null && resource.data.paraUid == request.auth.uid;
