@@ -31,21 +31,28 @@ service cloud.firestore {
     }
     // Segunda forma de entrar numa equipe (além do link de convite): nome +
     // senha da equipe. Quem entra assim sempre vira planejador (papel mais
-    // restrito) — o coordenador promove depois se quiser. O hash enviado é
-    // comparado com o hash guardado em /equipes/{id}, que só é lido aqui
-    // dentro da regra — nunca exposto de volta pro cliente que está tentando
-    // entrar (só quem já é membro consegue ler o documento da equipe).
+    // restrito) — o coordenador promove depois se quiser. O cliente grava o
+    // hash digitado em /equipeSegredos/{id}/entradas/{meu uid} no MESMO lote
+    // que o /membros, e aqui ele é comparado (getAfter) com o hash guardado
+    // em /equipeSegredos/{id}. Nenhum dos dois é legível por cliente algum.
+    // Equipe antiga, sem /equipeSegredos ainda: compara com o SHA-256 puro
+    // que ficava no próprio /equipes/{id} até o coordenador redefinir.
     function senhaConfere(equipeId, papelAlvo) {
+      let entrada = /databases/$(database)/documents/equipeSegredos/$(equipeId)/entradas/$(request.auth.uid);
+      let segredo = /databases/$(database)/documents/equipeSegredos/$(equipeId);
       return papelAlvo == 'planejador'
-        && request.resource.data.senhaHash is string
-        && request.resource.data.senhaHash == get(/databases/$(database)/documents/equipes/$(equipeId)).data.senhaHash;
+        && existsAfter(entrada)
+        && getAfter(entrada).data.senhaHash is string
+        && ((exists(segredo) && getAfter(entrada).data.senhaHash == get(segredo).data.senhaHash)
+          || (!exists(segredo) && getAfter(entrada).data.senhaHash
+                == get(/databases/$(database)/documents/equipes/$(equipeId)).data.get('senhaHash', null)));
     }
     // Índice pessoal criado depois do /membros/{uid} (nessa ordem, de
     // propósito) — em vez de mandar a senha de novo, só confirma que meu
-    // próprio /membros/{uid} já existe com o hash validado.
+    // próprio /membros/{uid} já existe como planejador (e o /membros só
+    // nasce por um dos caminhos validados acima).
     function jaEntreiPorSenha(equipeId) {
-      return get(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.auth.uid)).data.papel == 'planejador'
-        && get(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.auth.uid)).data.senhaHash is string;
+      return membroDe(equipeId) && papelEm(equipeId) == 'planejador';
     }
 
     // ------------------------------------------------------- perfil pessoal
@@ -53,7 +60,9 @@ service cloud.firestore {
     // agora é por equipe. equipesCriadas é o contador do limite de 3 equipes
     // criadas por pessoa; só muda em +1 de cada vez (via criação de equipe).
     match /usuarios/{uid} {
-      allow read: if request.auth != null;
+      // Só o próprio dono lê (o app nunca lista nem lê o perfil de outra
+      // pessoa — nome/e-mail dos colegas vêm de /equipes/{id}/membros).
+      allow get: if request.auth != null && request.auth.uid == uid;
       allow create: if request.auth != null && request.auth.uid == uid
         && request.resource.data.equipesCriadas == 0;
       allow update: if request.auth != null && request.auth.uid == uid && (
@@ -82,26 +91,67 @@ service cloud.firestore {
     // (isso continua protegido por membroDe()). O id do documento é um hash
     // do nome normalizado, não o nome cru (evita problema de caractere
     // inválido em id de documento). Imutável: o "create" só é permitido se
-    // o nome ainda não tiver dono; depois disso não muda nem apaga.
+    // o nome ainda não tiver dono; depois disso não muda nem apaga — exceto
+    // o "sal" da senha, que o coordenador troca ao redefinir a senha.
+    // Só get (pelo hash do nome); listar todas as equipes não é permitido.
     match /equipeNomes/{nomeHash} {
-      allow read: if request.auth != null;
+      allow get: if request.auth != null;
       allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['equipeId', 'sal'])
         && request.resource.data.equipeId is string
+        && request.resource.data.sal is string
         && get(/databases/$(database)/documents/equipes/$(request.resource.data.equipeId)).data.criadoPorUid == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if souCoordDe(resource.data.equipeId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sal'])
+        && request.resource.data.sal is string;
+      allow delete: if false;
+    }
+
+    // Hash da senha da equipe (PBKDF2 com o sal de /equipeNomes). Ninguém lê
+    // — só as regras, via get()/getAfter(). Gravado pelo coordenador: na
+    // criação da equipe (mesma transação, por isso getAfter) ou ao redefinir.
+    match /equipeSegredos/{equipeId} {
+      allow read: if false;
+      allow create, update: if request.auth != null
+        && getAfter(/databases/$(database)/documents/equipes/$(equipeId)).data.coordenadorUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['senhaHash'])
+        && request.resource.data.senhaHash is string;
+      allow delete: if false;
+
+      // Tentativa de senha de quem quer entrar pelo nome (ver senhaConfere);
+      // o próprio dono grava e apaga, ninguém lê.
+      match /entradas/{uid} {
+        allow read: if false;
+        allow create, update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['senhaHash'])
+          && request.resource.data.senhaHash is string;
+        allow delete: if request.auth != null && request.auth.uid == uid;
+      }
     }
 
     // ------------------------------------------------------------- equipes
     match /equipes/{equipeId} {
       allow read: if membroDe(equipeId);
+      // Limite de 3 equipes criadas por pessoa: além de ler o contador, exige
+      // (getAfter) que ele suba +1 na mesma transação — sem isso dava pra
+      // criar equipes sem nunca incrementar. O hash da senha vai em
+      // /equipeSegredos, também na mesma transação, nunca aqui.
       allow create: if request.auth != null
         && request.resource.data.coordenadorUid == request.auth.uid
         && request.resource.data.criadoPorUid == request.auth.uid
-        && request.resource.data.senhaHash is string
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('equipesCriadas', 0) < 3;
-      allow update: if souCoordDe(equipeId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coordenadorUid'])
-        && exists(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.resource.data.coordenadorUid));
+        && !('senhaHash' in request.resource.data)
+        && existsAfter(/databases/$(database)/documents/equipeSegredos/$(equipeId))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('equipesCriadas', 0) < 3
+        && getAfter(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('equipesCriadas', 0)
+             == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('equipesCriadas', 0) + 1;
+      // Transferir coordenação, ou apagar o hash antigo (sem sal) que ficava
+      // aqui — feito ao redefinir a senha da equipe.
+      allow update: if souCoordDe(equipeId) && (
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coordenadorUid'])
+          && exists(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.resource.data.coordenadorUid)))
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['senhaHash'])
+          && !('senhaHash' in request.resource.data))
+      );
       allow delete: if false;
 
       match /membros/{uid} {

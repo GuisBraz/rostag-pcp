@@ -814,6 +814,19 @@
         <div style="font-weight:700; font-size:13px; margin-bottom:8px;" data-i18n="cfg.equipeConvitesAbertos">Convites em aberto</div>
         <div id="equipe-convites"></div>
       </div>
+      <div id="equipe-senha-bloco" style="display:none; margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
+        <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="cfg.equipeSenhaTit">Senha da equipe</div>
+        <div id="equipe-senha-aviso" class="hint-txt" style="display:none; color:var(--rust); margin-bottom:8px;" data-i18n="cfg.equipeSenhaAntiga">Esta equipe ainda usa o formato antigo de senha. Redefina a senha para protegê-la melhor.</div>
+        <div class="hint-txt" style="margin-bottom:10px;" data-i18n="cfg.equipeSenhaNota">É a senha usada para entrar na equipe pelo nome. Trocar não tira ninguém da equipe — só vale para quem entrar daqui em diante.</div>
+        <div class="field"><label data-i18n="cfg.equipeSenhaNova">NOVA SENHA</label>
+          <div class="campo-senha"><input id="equipe-senha-nova" type="password" autocomplete="new-password">
+            <button type="button" class="btn-olho" onclick="toggleSenhaVisivel('equipe-senha-nova', this)" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button></div></div>
+        <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label>
+          <div class="campo-senha"><input id="equipe-senha-nova2" type="password" autocomplete="new-password">
+            <button type="button" class="btn-olho" onclick="toggleSenhaVisivel('equipe-senha-nova2', this)" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button></div></div>
+        <div id="equipe-senha-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+        <button class="btn btn-primary" id="equipe-senha-submit" onclick="redefinirSenhaEquipeUI()" data-i18n="cfg.equipeSenhaBtn">Trocar senha da equipe</button>
+      </div>
     </div>
   </div>
 
@@ -964,6 +977,12 @@
     </div>
     <div class="modal-body">
       <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="nova-equipe-nome" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
+      <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
+        <div class="campo-senha"><input id="nova-equipe-senha" type="password" autocomplete="new-password" data-i18n-ph="hub.senhaEquipePh" placeholder="crie uma senha">
+          <button type="button" class="btn-olho" onclick="toggleSenhaVisivel('nova-equipe-senha', this)" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button></div></div>
+      <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label>
+        <div class="campo-senha"><input id="nova-equipe-senha2" type="password" autocomplete="new-password">
+          <button type="button" class="btn-olho" onclick="toggleSenhaVisivel('nova-equipe-senha2', this)" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button></div></div>
       <div id="nova-equipe-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
     </div>
     <div class="modal-footer">
@@ -1431,6 +1450,10 @@ const I18N = {
     'cfg.equipeConfirmarRemover':'Remover {0} da equipe? A pessoa perde acesso na hora e precisa de um novo convite pra voltar.',
     'cfg.equipeRemovidoFeito':'{0} removido da equipe.',
     'cfg.equipeErroAcao':'Não consegui fazer essa alteração.',
+    'cfg.equipeSenhaTit':'Senha da equipe', 'cfg.equipeSenhaNova':'NOVA SENHA',
+    'cfg.equipeSenhaBtn':'Trocar senha da equipe', 'cfg.equipeSenhaTrocada':'Senha da equipe trocada.',
+    'cfg.equipeSenhaNota':'É a senha usada para entrar na equipe pelo nome. Trocar não tira ninguém da equipe — só vale para quem entrar daqui em diante.',
+    'cfg.equipeSenhaAntiga':'Esta equipe ainda usa o formato antigo de senha. Redefina a senha para protegê-la melhor.',
     'cfg.paleta':'Paleta de cores',
     'cfg.paletaNota':'A escolha fica salva e vale para as próximas vezes que você abrir o app.',
     'cfg.paletaClara':'Azul & Navy', 'cfg.paletaEscura':'Dark', 'cfg.paletaEscuraSub':'(preto & azul royal)',
@@ -1754,6 +1777,10 @@ const I18N = {
     'cfg.equipeConfirmarRemover':'Remove {0} from the team? They lose access immediately and need a new invite to come back.',
     'cfg.equipeRemovidoFeito':'{0} removed from the team.',
     'cfg.equipeErroAcao':'Could not make that change.',
+    'cfg.equipeSenhaTit':'Team password', 'cfg.equipeSenhaNova':'NEW PASSWORD',
+    'cfg.equipeSenhaBtn':'Change team password', 'cfg.equipeSenhaTrocada':'Team password changed.',
+    'cfg.equipeSenhaNota':'This is the password used to join the team by name. Changing it does not remove anyone — it only applies to people joining from now on.',
+    'cfg.equipeSenhaAntiga':'This team still uses the old password format. Reset the password to protect it better.',
     'cfg.paleta':'Colour palette',
     'cfg.paletaNota':'The choice is saved and applies the next time you open the app.',
     'cfg.paletaClara':'Blue & Navy', 'cfg.paletaEscura':'Dark', 'cfg.paletaEscuraSub':'(black & royal blue)',
@@ -2055,6 +2082,25 @@ const Auth = (function () {
   function docNomeEquipe(nomeNormalizado) {
     return sha256Hex(nomeNormalizado).then(function (h) { return firebase.firestore().collection('equipeNomes').doc(h); });
   }
+  // Senha da equipe: PBKDF2 com sal aleatório por equipe (o sal fica no
+  // /equipeNomes, que qualquer pessoa logada pode ler pelo nome — é o que
+  // permite calcular o hash antes de tentar entrar). O hash em si fica em
+  // /equipeSegredos/{id}, que nenhum cliente consegue ler; só a regra do
+  // Firestore compara. Equipe antiga (sem sal) ainda usa o SHA-256 puro até
+  // o coordenador redefinir a senha (ver redefinirSenhaEquipe).
+  const ITERACOES_SENHA = 150000;
+  function hexDe(buf) {
+    return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
+  function novoSal() { return hexDe(crypto.getRandomValues(new Uint8Array(16))); }
+  function hashSenhaEquipe(senha, sal) {
+    if (!sal) return sha256Hex(senha || '');
+    const enc = new TextEncoder();
+    return crypto.subtle.importKey('raw', enc.encode(senha || ''), 'PBKDF2', false, ['deriveBits']).then(function (chave) {
+      return crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(sal), iterations: ITERACOES_SENHA, hash: 'SHA-256' }, chave, 256);
+    }).then(hexDe);
+  }
+  function docSegredoEquipe(equipeId) { return firebase.firestore().collection('equipeSegredos').doc(equipeId); }
 
   function lerEquipeLocal() {
     try { return localStorage.getItem(CHAVE_EQUIPE); } catch (e) { return null; }
@@ -2210,19 +2256,24 @@ const Auth = (function () {
     const nomeNorm = normalizarNome(nome);
     if (!nomeNorm) return Promise.reject(new Error('nome-vazio'));
     const db = firebase.firestore();
+    if (!senha) return Promise.reject(new Error('senha-vazia'));
+    const sal = novoSal();
     return docNomeEquipe(nomeNorm).then(function (refNome) {
       return refNome.get().then(function (snapNome) {
         if (snapNome.exists) throw new Error('nome-indisponivel');
-        return sha256Hex(senha || '');
+        return hashSenhaEquipe(senha, sal);
       }).then(function (senhaHash) {
         const refEquipe = db.collection('equipes').doc();
         const novoId = refEquipe.id;
         const refPerfil = docPerfil(usuario.uid);
+        // equipe, segredo (hash da senha) e contador +1 juntos: a regra de
+        // /equipes exige ver o contador incrementado nesta mesma transação
         return db.runTransaction(function (tx) {
           return tx.get(refPerfil).then(function (snap) {
             const atual = (snap.exists && snap.data().equipesCriadas) || 0;
             if (atual >= 3) throw new Error('limite-equipes');
-            tx.set(refEquipe, { nome: nomeLimpo, coordenadorUid: usuario.uid, criadoPorUid: usuario.uid, criadoEm: new Date().toISOString(), senhaHash: senhaHash });
+            tx.set(refEquipe, { nome: nomeLimpo, coordenadorUid: usuario.uid, criadoPorUid: usuario.uid, criadoEm: new Date().toISOString() });
+            tx.set(docSegredoEquipe(novoId), { senhaHash: senhaHash });
             tx.update(refPerfil, { equipesCriadas: atual + 1 });
           });
         }).then(function () {
@@ -2235,7 +2286,7 @@ const Auth = (function () {
             // criando o mesmo nome ao mesmo tempo, a equipe ainda é criada,
             // só não fica achável pelo nome (o coordenador pode recriar com
             // outro nome se isso acontecer)
-            return refNome.set({ equipeId: novoId }).catch(function (e) { console.warn('nome da equipe não reservado:', e); });
+            return refNome.set({ equipeId: novoId, sal: sal }).catch(function (e) { console.warn('nome da equipe não reservado:', e); });
           });
         }).then(function () { return carregarMinhasEquipes(usuario.uid); })
           .then(function () { return trocarEquipe(novoId); })
@@ -2246,24 +2297,35 @@ const Auth = (function () {
 
   // Segunda forma de entrar numa equipe (a primeira é o link de convite):
   // nome + senha. Quem entra assim sempre vira planejador — o coordenador
-  // promove depois se quiser dar mais acesso.
+  // promove depois se quiser dar mais acesso. O hash digitado vai num
+  // documento à parte (/equipeSegredos/{id}/entradas/{uid}, ilegível pra
+  // qualquer cliente), gravado no mesmo lote que o /membros — a regra
+  // compara os dois ali; o /membros não guarda hash nenhum. Depois de
+  // entrar, a tentativa é apagada.
   function entrarPorNomeSenha(nome, senha) {
     if (!usuario) return Promise.reject(new Error('sem sessão'));
     const nomeNorm = normalizarNome(nome);
     if (!nomeNorm) return Promise.reject(new Error('nome-vazio'));
+    if (!senha) return Promise.reject(new Error('senha-incorreta'));
     return docNomeEquipe(nomeNorm).then(function (refNome) {
       return refNome.get().then(function (snapNome) {
         if (!snapNome.exists) throw new Error('equipe-nao-encontrada');
         const equipeId = snapNome.data().equipeId;
         if (minhasEquipes.some(function (e) { return e.id === equipeId; })) throw new Error('ja-e-membro');
-        return sha256Hex(senha || '').then(function (senhaHash) {
-          return colMembros(equipeId).doc(usuario.uid).set({
+        const refEntrada = docSegredoEquipe(equipeId).collection('entradas').doc(usuario.uid);
+        return hashSenhaEquipe(senha, snapNome.data().sal).then(function (senhaHash) {
+          const lote = firebase.firestore().batch();
+          lote.set(refEntrada, { senhaHash: senhaHash });
+          lote.set(colMembros(equipeId).doc(usuario.uid), {
             nome: (perfil && perfil.nome) || '', email: usuario.email || '', papel: 'planejador',
-            entrouEm: new Date().toISOString(), senhaHash: senhaHash
-          }).catch(function (e) {
+            entrouEm: new Date().toISOString()
+          });
+          return lote.commit().catch(function (e) {
             if (e && e.code === 'permission-denied') throw new Error('senha-incorreta');
             throw e;
           });
+        }).then(function () {
+          refEntrada.delete().catch(function (e) { console.warn('tentativa de senha não apagada:', e); });
         }).then(function () {
           return docEquipe(equipeId).get().then(function (snapEquipe) {
             const nomeEquipe = snapEquipe.exists ? snapEquipe.data().nome : '';
@@ -2436,6 +2498,28 @@ const Auth = (function () {
     if (!equipeAtualId_) return Promise.reject(new Error('sem equipe selecionada'));
     return docEquipe(equipeAtualId_).update({ coordenadorUid: novoUid }).then(carregarEquipeAtual);
   }
+  // Equipe criada antes do sal/PBKDF2: o hash SHA-256 puro ainda está no
+  // próprio /equipes/{id} (legível por todo membro). Redefinir a senha migra
+  // pro formato novo e apaga esse campo antigo.
+  function senhaFormatoAntigo() { return !!(equipeAtual && equipeAtual.senhaHash); }
+  function redefinirSenhaEquipe(senhaNova) {
+    if (!equipeAtualId_ || !equipeAtual) return Promise.reject(new Error('sem equipe selecionada'));
+    if (!senhaNova) return Promise.reject(new Error('senha-vazia'));
+    const equipeId = equipeAtualId_;
+    const sal = novoSal();
+    return docNomeEquipe(normalizarNome(equipeAtual.nome)).then(function (refNome) {
+      return Promise.all([refNome.get(), hashSenhaEquipe(senhaNova, sal)]).then(function (r) {
+        const snapNome = r[0], senhaHash = r[1];
+        const lote = firebase.firestore().batch();
+        lote.set(docSegredoEquipe(equipeId), { senhaHash: senhaHash });
+        // nome pode não ter ficado reservado (corrida rara na criação) — aí
+        // ninguém entra pelo nome mesmo, só não há sal pra atualizar
+        if (snapNome.exists && snapNome.data().equipeId === equipeId) lote.update(refNome, { sal: sal });
+        if (equipeAtual.senhaHash) lote.update(docEquipe(equipeId), { senhaHash: firebase.firestore.FieldValue.delete() });
+        return lote.commit();
+      });
+    }).then(function () { return carregarEquipeAtual(); });
+  }
 
   /* --------------------------------------------------------- migração (legado)
      Antes de existir o sistema de equipes havia um workspace só. Detecta se
@@ -2475,7 +2559,7 @@ const Auth = (function () {
     temEquipe, minhasEquipesLista, equipeAtualId, equipeAtualNome, trocarEquipe, criarEquipe, entrarComConvite, entrarPorNomeSenha,
     souCoordenador, coordenadorUidAtual, papel, souGPouCoordenador,
     entrar, cadastrar, recuperarSenha, sair, aoMudar, salvarPerfil,
-    listarEquipe, transferirCoordenacao, alterarPapel,
+    listarEquipe, transferirCoordenacao, alterarPapel, senhaFormatoAntigo, redefinirSenhaEquipe,
     criarConvite, listarConvites, revogarConvite, removerMembro,
     criarNotificacao, listarNotificacoes, marcarNotificacaoLida,
     escutarChat, enviarMensagemChat,
@@ -4524,6 +4608,8 @@ function renderEquipe() {
   const souCoord = Auth.souCoordenador();
   const souGpOuCoord = Auth.souGPouCoordenador();
   btnConvidar.style.display = souGpOuCoord ? 'flex' : 'none';
+  document.getElementById('equipe-senha-bloco').style.display = souCoord ? 'block' : 'none';
+  document.getElementById('equipe-senha-aviso').style.display = (souCoord && Auth.senhaFormatoAntigo()) ? 'block' : 'none';
 
   lista.innerHTML = '<div class="hint-txt">' + T('cfg.equipeCarregando') + '</div>';
   Auth.listarEquipe().then(function (membros) {
@@ -4598,6 +4684,26 @@ function removerDaEquipe(uid, nome) {
   if (!confirm(T('cfg.equipeConfirmarRemover', nome))) return;
   Auth.removerMembro(uid).then(function () { toast(T('cfg.equipeRemovidoFeito', nome)); renderEquipe(); })
     .catch(function (e) { toast(T('cfg.equipeErroAcao'), { tipo:'erro' }); console.warn(e); });
+}
+function redefinirSenhaEquipeUI() {
+  const campo = document.getElementById('equipe-senha-nova');
+  const campo2 = document.getElementById('equipe-senha-nova2');
+  const erro = document.getElementById('equipe-senha-erro');
+  const btn = document.getElementById('equipe-senha-submit');
+  erro.textContent = '';
+  if (!campo.value) { erro.textContent = T('hub.erroSenhaVazia'); return; }
+  if (campo.value !== campo2.value) { erro.textContent = T('auth.senhasDiferentes'); return; }
+  btn.disabled = true;
+  Auth.redefinirSenhaEquipe(campo.value).then(function () {
+    btn.disabled = false;
+    campo.value = ''; campo2.value = '';
+    toast(T('cfg.equipeSenhaTrocada'));
+    renderEquipe();
+  }).catch(function (e) {
+    btn.disabled = false;
+    erro.textContent = T('cfg.equipeErroAcao') + (e && e.code ? ' (' + e.code + ')' : '');
+    console.warn(e);
+  });
 }
 function transferirCoordenacaoPara(uid, nome) {
   if (!confirm(T('cfg.equipeConfirmarTransferir', nome))) return;
@@ -4712,6 +4818,7 @@ function mensagemErroEquipe(e) {
   if (e && e.message === 'nome-indisponivel') return T('hub.erroNomeIndisponivel');
   if (e && e.message === 'equipe-nao-encontrada') return T('hub.erroEquipeNaoEncontrada');
   if (e && e.message === 'senha-incorreta') return T('hub.erroSenhaIncorreta');
+  if (e && e.message === 'senha-vazia') return T('hub.erroSenhaVazia');
   if (e && e.message === 'ja-e-membro') return T('hub.erroJaEMembro');
   if (e && e.code) return T('hub.erroCriar') + ' (' + e.code + ')';
   return T('hub.erroCriar');
@@ -4811,6 +4918,8 @@ function trocarEquipeUI(equipeId) {
 function abrirCriarEquipeModal() {
   document.getElementById('equipe-menu').classList.remove('open');
   document.getElementById('nova-equipe-nome').value = '';
+  document.getElementById('nova-equipe-senha').value = '';
+  document.getElementById('nova-equipe-senha2').value = '';
   document.getElementById('nova-equipe-erro').textContent = '';
   abrirModal('modal-criar-equipe');
   setTimeout(function () { document.getElementById('nova-equipe-nome').focus(); }, 30);
@@ -4820,18 +4929,22 @@ function fecharModalCriarEquipe() {
 }
 function criarEquipeMenuUI() {
   const nome = document.getElementById('nova-equipe-nome').value.trim();
+  const senha = document.getElementById('nova-equipe-senha').value;
+  const senha2 = document.getElementById('nova-equipe-senha2').value;
   const erro = document.getElementById('nova-equipe-erro');
   const btn = document.getElementById('nova-equipe-submit');
   erro.textContent = '';
   if (!nome) { erro.textContent = T('hub.erroNome'); return; }
+  if (!senha) { erro.textContent = T('hub.erroSenhaVazia'); return; }
+  if (senha !== senha2) { erro.textContent = T('auth.senhasDiferentes'); return; }
   btn.disabled = true;
-  Auth.criarEquipe(nome).then(function () {
+  Auth.criarEquipe(nome, senha).then(function () {
     btn.disabled = false;
     fecharModalCriarEquipe();
     toast(T('hub.equipeCriada', nome));
   }).catch(function (e) {
     btn.disabled = false;
-    erro.textContent = (e && e.message === 'limite-equipes') ? T('hub.erroLimite') : T('hub.erroCriar');
+    erro.textContent = mensagemErroEquipe(e);
     console.warn(e);
   });
 }

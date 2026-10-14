@@ -5,16 +5,36 @@ Planejamento e Controle de Produção — controle de projetos e commessas.
 Site estático hospedado no GitHub Pages. Os dados ficam guardados no
 Firebase (Firestore), compartilhados entre todo mundo que abrir o link.
 
-## Dois modos
+## Como funciona o acesso
 
-- **Visualização** — qualquer pessoa com o link abre o site e vê tudo:
-  painel, projetos, linha do tempo. Não precisa de conta nem login.
-- **Edição** — só quem faz login (Firebase Authentication) pode criar,
-  editar, apagar ou reorganizar projetos. Sem login, qualquer tentativa de
-  editar abre a tela de login; se você tentar mesmo assim, o **Firestore
-  recusa a gravação** — a trava de verdade é lá, não na tela.
+- **Login obrigatório.** Nada aparece sem entrar. Qualquer pessoa pode
+  **criar uma conta** (e-mail e senha) na própria tela de acesso.
+- **Equipes.** Cada equipe tem seus próprios projetos; uma conta pode estar
+  em várias equipes e trocar entre elas pelo menu lateral. Cada pessoa pode
+  **criar até 3 equipes**.
+- **Papéis dentro da equipe:**
+  - **Coordenador** — quem criou a equipe (o cargo pode ser transferido).
+    Faz tudo o que o GP faz e ainda muda o cargo das pessoas, remove membros
+    e troca a senha da equipe.
+  - **GP** — cria, edita e apaga qualquer projeto da equipe e gera convites.
+  - **Planejador** — só vê os projetos designados a ele e só marca o
+    checklist das tarefas.
+- **Como alguém entra numa equipe:**
+  - pelo **link de convite** (Configurações → Equipe), já com o cargo do
+    convite (GP ou planejador); ou
+  - pela aba **Entrar em equipe**, digitando o **nome + senha da equipe** —
+    quem entra assim vira planejador.
 
-Para logar, use o botão **🔓 Entrar** no rodapé do menu.
+A trava de verdade fica nas regras do Firestore
+([`firestore.rules`](firestore.rules)), não na tela: mesmo que alguém mexa no
+código do navegador, o banco recusa o que o papel da pessoa não permite.
+
+**Senha da equipe.** Nunca é guardada em texto puro: o app calcula um hash
+(PBKDF2 com um "sal" aleatório por equipe) e esse hash fica num lugar que
+nenhum usuário consegue ler — só as regras do Firestore comparam. Equipes
+criadas antes dessa mudança usam um formato antigo; o coordenador vê um aviso
+em **Configurações → Equipe** e basta **trocar a senha da equipe** ali para
+migrar.
 
 ## Configurar o Firebase
 
@@ -39,22 +59,31 @@ O site sozinho não guarda nada até você conectar um projeto Firebase seu —
 5. Ainda no Firestore, aba **Regras**, apague o conteúdo e cole o arquivo
    [`firestore.rules`](firestore.rules) deste repositório. Publique.
 6. **Build → Authentication → Vamos começar → Método de login → E-mail/senha**
-   → ative.
-7. Ainda em Authentication, aba **Users → Add user**: cadastre o e-mail e a
-   senha que você vai usar para editar o site. Esse é o único login que existe
-   — não tem cadastro público.
-8. Salve o `index.html` com o `FIREBASE_CONFIG` preenchido e envie
+   → ative. Não precisa cadastrar ninguém à mão: cada pessoa cria a própria
+   conta pela tela do app.
+7. Salve o `index.html` com o `FIREBASE_CONFIG` preenchido e envie
    (`git add`, `git commit`, `git push`) — o GitHub Pages publica sozinho em
    cerca de 1 minuto.
 
-Pronto: qualquer um que abrir o link já vê os dados; só quem logar com o
-e-mail cadastrado no passo 7 edita.
+Pronto: abra o link, crie sua conta e depois sua primeira equipe.
+
+## Atualizar o site e as regras
+
+Quando uma mudança mexe tanto no `index.html` quanto no `firestore.rules`,
+a ordem importa:
+
+1. Primeiro envie o `index.html` (`git push`) e espere o GitHub Pages
+   publicar (cerca de 1 minuto).
+2. Só depois cole o `firestore.rules` novo no console e publique.
+
+Se as regras forem publicadas antes, quem ainda estiver com o site antigo
+aberto pode ter ações recusadas até recarregar a página.
 
 ## Rodar localmente (sem publicar)
 
-Basta abrir `index.html` com dois cliques — funciona igual, contanto que o
-`FIREBASE_CONFIG` já esteja preenchido (senão fica só no modo visualização,
-com um aviso na tela).
+Basta abrir `index.html` com dois cliques — funciona igual ao site
+publicado, contanto que o `FIREBASE_CONFIG` já esteja preenchido (senão
+aparece um aviso de Firebase não configurado e não dá pra entrar).
 
 ## Atalhos
 
@@ -91,8 +120,9 @@ três coisas na mesma tarde.
 paralisado. Enquanto parado, o cronograma congela: os dias de parada não contam
 contra as tarefas. O tempo parado fica registrado e somado.
 
-**Tema e idioma são só seus.** Ficam salvos no `localStorage` do seu
-navegador — cada visitante escolhe o dele, isso não é compartilhado.
+**Tema e idioma são só seus.** Ficam salvos na sua conta (valem em todas as
+suas equipes e em qualquer aparelho em que você entrar) — cada pessoa escolhe
+os dela, isso não é compartilhado com a equipe.
 
 **Backup.** O Firestore não tem versionamento automático aqui — exporte JSON
 de vez em quando (Configurações → Dados do app) se quiser um ponto de
