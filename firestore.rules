@@ -146,8 +146,13 @@ service cloud.firestore {
     // Convites: coleção raiz (não subcoleção de /equipes) — assim o link
     // ?convite=CODIGO não precisa carregar o id da equipe também. Só
     // coordenador/GP da equipe alvo criam; quem consome vira membro na hora.
+    // Ler um convite pelo código (get) é livre pra quem está logado — o
+    // código é o segredo. Listar (list) só a própria equipe, e a consulta
+    // precisa filtrar where('equipeId', '==', …); antes qualquer conta
+    // conseguia listar os códigos de todas as equipes.
     match /convites/{codigo} {
-      allow read: if request.auth != null;
+      allow get: if request.auth != null;
+      allow list: if souGPouCoordDe(resource.data.equipeId);
       allow create: if request.auth != null
         && souGPouCoordDe(request.resource.data.equipeId)
         && request.resource.data.usado == false

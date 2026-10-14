@@ -1196,6 +1196,11 @@ const Fmt = (function () {
   return { esc, iso, parse, hoje, addDias, difDias, br, brCurto, fds, bytes };
 })();
 const esc = Fmt.esc, hojeIso = Fmt.hoje, addDias = Fmt.addDias, difDias = Fmt.difDias, br = Fmt.br;
+// Argumento de string pra handler inline: onclick="f(' + jsArg(x) + ')".
+// Só esc() não basta: o navegador decodifica &#39; de volta pra ' antes de
+// rodar o JS do atributo. JSON.stringify gera um literal JS válido e o esc()
+// em volta protege o atributo HTML. Já inclui as aspas — não envolver em '…'.
+function jsArg(v) { return esc(JSON.stringify(String(v == null ? '' : v))); }
 
 // Os cinco estados possíveis de um projeto. 'andamento' e 'atrasado' saem das
 // datas; 'paralisado', 'concluido' e 'cancelado' são marcados à mão.
@@ -2330,13 +2335,14 @@ const Auth = (function () {
   }
   function listarConvites() {
     if (!equipeAtualId_) return Promise.resolve([]);
-    // filtra a equipe no cliente (não no where()) pra não depender de um
-    // índice composto — "usado" sozinho já é indexado automaticamente
-    return firebase.firestore().collection('convites').where('usado', '==', false).get().then(function (qs) {
+    // filtra a equipe no where() — a regra só libera listar convites da
+    // própria equipe — e "usado" no cliente, pra não depender de índice
+    // composto ("equipeId" sozinho já é indexado automaticamente)
+    return firebase.firestore().collection('convites').where('equipeId', '==', equipeAtualId_).get().then(function (qs) {
       const lista = [];
       qs.forEach(function (doc) {
         const d = doc.data();
-        if (d.equipeId === equipeAtualId_) lista.push(Object.assign({ codigo: doc.id }, d));
+        if (!d.usado) lista.push(Object.assign({ codigo: doc.id }, d));
       });
       lista.sort(function (a, b) { return (b.criadoEm || '').localeCompare(a.criadoEm || ''); });
       return lista;
@@ -3248,7 +3254,7 @@ function renderNotificacoes() {
 
   document.getElementById('notif-lista').innerHTML = lista.length ? lista.map(function (n) {
     const cor = n.nivel === 'alerta' ? 'var(--rust)' : 'var(--amber-ink)';
-    return '<button class="notif-item ' + (n.lida ? '' : 'nao-lida') + '" onclick="abrirNotificacao(\'' + esc(n.id) + '\',\'' + n.projetoId + '\',\'' + (n.equipeId || '') + '\')">' +
+    return '<button class="notif-item ' + (n.lida ? '' : 'nao-lida') + '" onclick="abrirNotificacao(' + jsArg(n.id) + ',' + jsArg(n.projetoId) + ',' + jsArg(n.equipeId) + ')">' +
       '<span class="dot ' + (n.nivel === 'alerta' ? 'dot-atrasada' : 'dot-chegando') + '" style="margin-top:4px"></span>' +
       '<span class="corpo"><span class="tit">' + esc(n.titulo) + '</span>' +
       '<span class="meta">' + esc(n.meta) + '</span></span>' +
@@ -3349,7 +3355,7 @@ function renderAtencao(lista) {
   itens.sort(function (a,b) { return (b.grave - a.grave) || a.data.localeCompare(b.data); });
 
   document.getElementById('prazos-proximos').innerHTML = itens.length ? itens.map(function (it) {
-    return '<button class="tl-sidebar-item" onclick="abrirProjeto(\'' + it.p.id + '\')" style="background:' +
+    return '<button class="tl-sidebar-item" onclick="abrirProjeto(' + jsArg(it.p.id) + ')" style="background:' +
       (it.grave ? 'var(--rust-bg)' : 'var(--amber-bg)') + '; border:1px solid ' + (it.grave ? 'var(--rust)' : 'var(--amber)') +
       '; margin-bottom:8px;">' +
       '<div style="display:flex; justify-content:space-between; gap:8px; font-family:var(--mono); font-size:11px; font-weight:700; color:' +
@@ -3517,7 +3523,7 @@ function renderProjetos() {
 
   document.getElementById('projetos-tbody').innerHTML = lista.length ? lista.map(function (p) {
     const st = Dominio.status(p), pr = Dominio.progresso(p);
-    return '<tr onclick="abrirProjeto(\'' + p.id + '\')" tabindex="0" onkeydown="if(event.key===\'Enter\')abrirProjeto(\'' + p.id + '\')">' +
+    return '<tr onclick="abrirProjeto(' + jsArg(p.id) + ')" tabindex="0" onkeydown="if(event.key===\'Enter\')abrirProjeto(' + jsArg(p.id) + ')">' +
       '<td style="font-family:var(--mono); color:var(--terracotta); font-weight:600; white-space:nowrap;">' + esc(p.commessa) + '</td>' +
       '<td>' + esc(p.cliente) + '</td><td>' + esc(p.descricao) + '</td><td>' + esc(p.gp) + '</td>' +
       '<td style="white-space:nowrap;">' + celulaPcp(p) + '</td>' +
@@ -4058,7 +4064,7 @@ function apagarObs() {
 function renderLinha() {
   const ordenados = projetos.slice().sort(function (a,b) { return a.entrega.localeCompare(b.entrega); });
   document.getElementById('tl-sidebar-list').innerHTML = ordenados.length ? ordenados.map(function (p) {
-    return '<button class="tl-sidebar-item" onclick="focarNaLinha(\'' + p.id + '\')">' +
+    return '<button class="tl-sidebar-item" onclick="focarNaLinha(' + jsArg(p.id) + ')">' +
       '<span class="cm">' + esc(p.commessa) + '</span>' + esc(p.descricao) + '</button>';
   }).join('') : '<div class="empty-state">Nenhum projeto ainda.</div>';
 
@@ -4076,7 +4082,7 @@ function renderLinha() {
     const p = e.p, st = Dominio.status(p), sitPcp = Dominio.situacaoPcp(p);
     const cls = st === 'atrasado' ? 'urgent' : (Dominio.aberto(p) ? '' : 'muted');
     const esquerda = lado++ % 2 === 0;
-    const card = '<button class="tl-card ' + cls + '" id="tl-item-' + p.id + '" onclick="abrirProjeto(\'' + p.id + '\')">' +
+    const card = '<button class="tl-card ' + cls + '" id="tl-item-' + esc(p.id) + '" onclick="abrirProjeto(' + jsArg(p.id) + ')">' +
       '<div class="tl-date" style="color:' + corStatus(st) + '">' + br(p.entrega) + ' · ' + STATUS_LABEL(st) + '</div>' +
       '<div style="font-family:var(--mono); font-size:11px; color:var(--terracotta); margin-top:2px;">' + esc(p.commessa) + '</div>' +
       '<div style="font-size:12.5px; font-weight:600; margin-top:2px;">' + esc(p.descricao) + '</div>' +
@@ -4531,9 +4537,9 @@ function renderEquipe() {
       let acoes = '';
       if (souCoord && !ehCoordenador) {
         const outroPapel = m.papel === 'gp' ? 'planejador' : 'gp';
-        acoes += '<button class="btn btn-outline" onclick="alterarPapelUI(\'' + m.uid + '\',\'' + outroPapel + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.papel.tornar.' + outroPapel) + '</button> ' +
-          '<button class="btn btn-outline" onclick="transferirCoordenacaoPara(\'' + m.uid + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.equipeTransferir') + '</button> ' +
-          '<button class="btn btn-danger" onclick="removerDaEquipe(\'' + m.uid + '\',\'' + esc(m.nome || '').replace(/'/g,"\\'") + '\')">' + T('cfg.equipeRemover') + '</button>';
+        acoes += '<button class="btn btn-outline" onclick="alterarPapelUI(' + jsArg(m.uid) + ',' + jsArg(outroPapel) + ',' + jsArg(m.nome) + ')">' + T('cfg.papel.tornar.' + outroPapel) + '</button> ' +
+          '<button class="btn btn-outline" onclick="transferirCoordenacaoPara(' + jsArg(m.uid) + ',' + jsArg(m.nome) + ')">' + T('cfg.equipeTransferir') + '</button> ' +
+          '<button class="btn btn-danger" onclick="removerDaEquipe(' + jsArg(m.uid) + ',' + jsArg(m.nome) + ')">' + T('cfg.equipeRemover') + '</button>';
       }
       return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); flex-wrap:wrap;">' +
         '<div style="min-width:0;">' +
@@ -4557,8 +4563,8 @@ function renderEquipe() {
       return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap;">' +
         '<div class="hint-txt" style="font-size:11px; word-break:break-all;">' + esc(link) + '</div>' +
         '<div style="display:flex; gap:6px; flex-shrink:0;">' +
-          '<button class="btn btn-outline" onclick="copiarConvite(\'' + esc(link) + '\')">' + T('cfg.equipeCopiarLink') + '</button>' +
-          '<button class="btn btn-danger" onclick="revogarConviteUI(\'' + c.codigo + '\')">' + T('cfg.equipeRevogarConvite') + '</button>' +
+          '<button class="btn btn-outline" onclick="copiarConvite(' + jsArg(link) + ')">' + T('cfg.equipeCopiarLink') + '</button>' +
+          '<button class="btn btn-danger" onclick="revogarConviteUI(' + jsArg(c.codigo) + ')">' + T('cfg.equipeRevogarConvite') + '</button>' +
         '</div>' +
       '</div>';
     }).join('') || '<div class="hint-txt">' + T('cfg.equipeSemConvites') + '</div>';
@@ -4792,7 +4798,7 @@ function renderEquipeMenu() {
   const atualId = Auth.equipeAtualId();
   lista.innerHTML = minhas.map(function (e) {
     const ativa = e.id === atualId;
-    return '<button class="profile-menu-item" style="' + (ativa ? 'color:var(--violet, #7c3aed); font-weight:700;' : '') + '" onclick="trocarEquipeUI(\'' + e.id + '\')">' +
+    return '<button class="profile-menu-item" style="' + (ativa ? 'color:var(--violet, #7c3aed); font-weight:700;' : '') + '" onclick="trocarEquipeUI(' + jsArg(e.id) + ')">' +
       (ativa ? '● ' : '○ ') + esc(e.nomeEquipe || '—') +
       '<span class="hint-txt" style="font-weight:400;"> · ' + T('cfg.papel.' + (e.papel || 'planejador')) + '</span></button>';
   }).join('');
