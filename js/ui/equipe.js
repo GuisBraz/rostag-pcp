@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------------
    Equipe (Configurações → Equipe): membros, papéis, convites e senha.
 --------------------------------------------------------------------------- */
-import { esc } from '../nucleo/fmt.js';
+import { esc, br, dataDoInstante } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
@@ -91,7 +91,8 @@ function desenharConvites() {
   convites.innerHTML = convitesCache.map(function (c) {
     const link = linkConvite(c.codigo);
     return '<div class="convite-linha"><div class="hint-txt convite-link">' + esc(link) +
-      ' <span class="pill-mini">' + esc(T('cfg.papel.' + (c.papel === 'gp' ? 'gp' : 'planejador'))) + '</span></div>' +
+      ' <span class="pill-mini">' + esc(T('cfg.papel.' + (c.papel === 'gp' ? 'gp' : 'planejador'))) + '</span>' +
+      ' <span class="hint-txt">' + esc(T('cfg.equipeConviteValeAte', br(dataDoInstante(c.venceEm)))) + '</span></div>' +
       '<div class="membro-acoes">' +
         '<button type="button" class="btn btn-outline" data-acao="copiarConvite" data-arg="' + esc(link) + '">' + esc(T('cfg.equipeCopiarLink')) + '</button>' +
         '<button type="button" class="btn btn-danger" data-acao="revogarConvite" data-arg="' + esc(c.codigo) + '">' + esc(T('cfg.equipeRevogarConvite')) + '</button>' +

@@ -209,19 +209,25 @@ service cloud.firestore {
     // código é o segredo. Listar (list) só a própria equipe, e a consulta
     // precisa filtrar where('equipeId', '==', …); antes qualquer conta
     // conseguia listar os códigos de todas as equipes.
+    // Validade: o convite vale 7 dias a partir de emitidoEm, que é a hora do
+    // servidor (serverTimestamp — o cliente não escolhe a data). Convite sem
+    // emitidoEm (criado antes da validade existir) já não pode ser usado.
     match /convites/{codigo} {
       allow get: if request.auth != null;
       allow list: if souGPouCoordDe(resource.data.equipeId);
       allow create: if request.auth != null
         && souGPouCoordDe(request.resource.data.equipeId)
         && request.resource.data.usado == false
-        && request.resource.data.papel in ['gp', 'planejador'];
+        && request.resource.data.papel in ['gp', 'planejador']
+        && request.resource.data.emitidoEm == request.time;
+      // Consumir: só marca como usado por mim — equipe, papel e emitidoEm
+      // não mudam, e só dentro da validade.
       allow update: if request.auth != null
         && resource.data.usado == false
+        && request.time < resource.data.emitidoEm + duration.value(7, 'd')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usado', 'usadoPor', 'usadoEm'])
         && request.resource.data.usado == true
-        && request.resource.data.usadoPor == request.auth.uid
-        && request.resource.data.equipeId == resource.data.equipeId
-        && request.resource.data.papel == resource.data.papel;
+        && request.resource.data.usadoPor == request.auth.uid;
       allow delete: if request.auth != null && souGPouCoordDe(resource.data.equipeId);
     }
 

@@ -109,6 +109,7 @@ vendor/               Chart.js (servido junto, sem CDN)
 sw.js                 service worker: abre o app instalado sem internet
 firestore.rules       regras de segurança do banco
 tests/                testes automáticos das regras de negócio
+tests/regras/         testes do firestore.rules no emulador (npm run test:regras)
 ```
 
 Alguns princípios que o código segue:
@@ -142,7 +143,26 @@ npm run check
 
 confere que todo módulo compila, que todo botão tem uma ação registrada, que
 não sobrou script inline e que o service worker lista todos os arquivos.
-Rode os dois antes de cada `git push`. Ao adicionar um arquivo em `js/`,
+Rode os dois antes de cada `git push`.
+
+### Testes das regras do Firestore
+
+Testam o `firestore.rules` de verdade, num emulador local do Firestore (nada
+vai para o banco real): o planejador só vê e só mexe no checklist do que é
+dele, GP/coordenador podem tudo na equipe, convite é de uso único e vence em
+7 dias, nome + senha sempre entra como planejador, só o coordenador muda
+papel ou remove alguém, notificações, perfil pessoal e o limite de 3 equipes.
+Precisam de Java 21 (uma vez: `winget install Microsoft.OpenJDK.21`) e das
+dependências de desenvolvimento (uma vez: `npm install`):
+
+```bash
+npm run test:regras
+```
+
+Rode sempre que mudar o `firestore.rules`, antes de publicar as regras.
+Se o emulador parar com "Unable to establish loopback connection", aponte o
+Java para outra pasta temporária antes de rodar, por exemplo no PowerShell:
+`$env:JAVA_TOOL_OPTIONS = "-Djdk.net.unixdomain.tmpdir=C:/temp"`. Ao adicionar um arquivo em `js/`,
 inclua o caminho na lista `ARQUIVOS` do `sw.js` e troque a versão em `CACHE`.
 
 ## Atalhos

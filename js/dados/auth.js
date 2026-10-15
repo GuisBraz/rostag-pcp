@@ -10,7 +10,7 @@
    é confiável para decidir permissão, e fica desatualizado quando o
    coordenador muda meu papel.
 --------------------------------------------------------------------------- */
-import { FIREBASE_PRONTO, db, auth, apagarCampo } from './firebase.js';
+import { FIREBASE_PRONTO, db, auth, apagarCampo, horaDoServidor } from './firebase.js';
 
 let usuario = null;        // usuário do Firebase Authentication
 let perfil = null;         // /usuarios/{uid}: nome e preferências
@@ -370,6 +370,7 @@ export function entrarComConvite(codigo) {
   return db().runTransaction(function (tx) {
     return tx.get(refConvite).then(function (snap) {
       if (!snap.exists || snap.data().usado) throw new Error('convite-invalido');
+      if (conviteVencido(snap.data())) throw new Error('convite-expirado');
       dados = snap.data();
       tx.update(refConvite, { usado: true, usadoPor: usuario.uid, usadoEm: agoraIso() });
     });
@@ -465,20 +466,41 @@ export function redefinirSenhaEquipe(senhaNova) {
 }
 
 /* --------------------------------------------------------------- convites */
+// O link vale VALIDADE_CONVITE_DIAS a partir de emitidoEm (hora do servidor);
+// a regra do Firestore confere o mesmo prazo ao consumir.
+export const VALIDADE_CONVITE_DIAS = 7;
+// Instante (ms) em que o convite vence; sem emitidoEm (convite antigo) já venceu.
+function venceEm(d) {
+  const t = d.emitidoEm;
+  return t && typeof t.toMillis === 'function' ? t.toMillis() + VALIDADE_CONVITE_DIAS * 86400000 : 0;
+}
+function conviteVencido(d) { return venceEm(d) <= Date.now(); }
+
 export function criarConvite(papelConvite) {
   if (!equipeAtualId_) return Promise.reject(new Error('sem-equipe'));
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   const codigo = hexDe(bytes);
   return db().collection('convites').doc(codigo).set({
-    criadoPor: usuario.uid, equipeId: equipeAtualId_, usado: false, papel: papelConvite, criadoEm: agoraIso()
+    criadoPor: usuario.uid, equipeId: equipeAtualId_, usado: false, papel: papelConvite, criadoEm: agoraIso(),
+    emitidoEm: horaDoServidor()
   }).then(function () { return codigo; });
 }
 // Filtra a equipe no where() (a regra só libera listar a própria equipe) e
-// "usado" no cliente, para não precisar de índice composto.
+// "usado" no cliente, para não precisar de índice composto. Convite vencido
+// não aparece e é apagado aqui mesmo (quem escuta é GP/coordenador, que pode).
 function convitesAbertosDe(qs) {
   const lista = [];
-  qs.forEach(function (doc) { const d = doc.data(); if (!d.usado) lista.push(Object.assign({ codigo: doc.id }, d)); });
-  lista.sort(function (a, b) { return (b.criadoEm || '').localeCompare(a.criadoEm || ''); });
+  qs.forEach(function (doc) {
+    // recém-criado ainda sem a hora do servidor: usa a estimativa local
+    const d = doc.data({ serverTimestamps: 'estimate' });
+    if (d.usado) return;
+    if (conviteVencido(d)) {
+      if (!doc.metadata.hasPendingWrites) doc.ref.delete().catch(function (e) { console.warn('convite vencido não apagado:', e && e.code); });
+      return;
+    }
+    lista.push(Object.assign({ codigo: doc.id, venceEm: venceEm(d) }, d));
+  });
+  lista.sort(function (a, b) { return b.venceEm - a.venceEm; });
   return lista;
 }
 export function escutarConvites(callback, aoFalhar) {

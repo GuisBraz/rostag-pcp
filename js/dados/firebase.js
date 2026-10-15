@@ -30,3 +30,4 @@ export function iniciarFirebase() {
 export function db() { return window.firebase.firestore(); }
 export function auth() { return window.firebase.auth(); }
 export function apagarCampo() { return window.firebase.firestore.FieldValue.delete(); }
+export function horaDoServidor() { return window.firebase.firestore.FieldValue.serverTimestamp(); }

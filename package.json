@@ -7,6 +7,12 @@
   "scripts": {
     "test": "node --test \"tests/*.test.js\"",
     "check": "node scripts/verificar.mjs",
+    "test:regras": "firebase emulators:exec --only firestore --project demo-rostag \"node --test tests/regras/*.test.js\"",
     "serve": "npx --yes http-server -c-1 -p 5173 ."
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
+    "firebase": "13.0.0",
+    "firebase-tools": "15.34.0"
   }
 }
