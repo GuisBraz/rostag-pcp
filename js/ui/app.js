@@ -82,8 +82,13 @@ export function redesenhar() {
 export function atualizarInfoArmazenamento() {
   const el = $('storage-info');
   if (!el) return;
-  const qtd = plural(estado.projetos.length, 'lista.projeto', 'lista.projetos');
-  el.textContent = T('cfg.dadosInfoNuvem', qtd, bytes(Store.tamanhoAproximado(estado.projetos)));
+  const n = estado.projetos.length, tam = bytes(Store.tamanhoAproximado(estado.projetos));
+  // o planejador só recebe os projetos designados a ele
+  if (!Auth.souGPouCoordenador()) {
+    el.textContent = T(n === 1 ? 'cfg.dadosInfoNuvemPlan1' : 'cfg.dadosInfoNuvemPlan', plural(n, 'lista.projeto', 'lista.projetos'), tam);
+    return;
+  }
+  el.textContent = T('cfg.dadosInfoNuvem', plural(n, 'lista.projetoSalvo', 'lista.projetosSalvos'), tam);
 }
 
 /* ------------------------------------------------------------- popups */

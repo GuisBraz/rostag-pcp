@@ -246,12 +246,25 @@ export function sair() {
   return FIREBASE_PRONTO ? auth().signOut() : Promise.resolve();
 }
 
+// Conta criada por versão antiga (ou cadastro interrompido) pode não ter
+// /usuarios/{uid}; sem ele a regra recusa qualquer update e criar equipe.
+// Cria o perfil mínimo na primeira gravação que precisar dele.
+function garantirPerfil() {
+  const ref = docPerfil(usuario.uid);
+  if (perfil && perfil.criadoEm) return Promise.resolve();   // já veio do servidor
+  return ref.get().then(function (snap) {
+    if (snap.exists) return;
+    const novo = { nome: nomeExibicao(), email: usuario.email || '', criadoEm: agoraIso(), equipesCriadas: 0 };
+    return ref.set(novo).then(function () { perfil = Object.assign({}, novo, perfil); });
+  }, function (e) { console.info('perfil não conferido (offline?):', e && e.code); });
+}
+
 // Preferências pessoais (valem em todas as equipes). Trocar o nome também
 // atualiza a minha ficha em cada equipe, que é o que os colegas veem.
 export function salvarPerfil(campos) {
   if (!usuario) return Promise.reject(new Error('sem-sessao'));
   const nomeMudou = campos.nome != null && (!perfil || campos.nome !== perfil.nome);
-  return docPerfil(usuario.uid).update(campos).then(function () {
+  return garantirPerfil().then(function () { return docPerfil(usuario.uid).update(campos); }).then(function () {
     perfil = Object.assign({}, perfil, campos);
     if (!nomeMudou) return;
     return Promise.all(minhasEquipes.map(function (e) {
@@ -273,7 +286,7 @@ export function criarEquipe(nome, senha) {
   if (!nomeNorm) return Promise.reject(new Error('nome-vazio'));
   if (!senha) return Promise.reject(new Error('senha-vazia'));
   const sal = novoSal();
-  return docNomeEquipe(nomeNorm).then(function (refNome) {
+  return garantirPerfil().then(function () { return docNomeEquipe(nomeNorm); }).then(function (refNome) {
     return refNome.get().then(function (snapNome) {
       if (snapNome.exists) throw new Error('nome-indisponivel');
       return hashSenhaEquipe(senha, sal);
@@ -388,14 +401,20 @@ export function trocarEquipe(equipeId, forcar) {
   return selecionarEquipe(equipeId).then(avisar);
 }
 
+function membrosDe(qs) {
+  const lista = [];
+  qs.forEach(function (doc) { lista.push(Object.assign({ uid: doc.id }, doc.data())); });
+  lista.sort(function (a, b) { return (a.nome || '').localeCompare(b.nome || '', 'pt-BR'); });
+  return lista;
+}
 export function listarEquipe() {
   if (!equipeAtualId_) return Promise.resolve([]);
-  return colMembros(equipeAtualId_).get().then(function (qs) {
-    const lista = [];
-    qs.forEach(function (doc) { lista.push(Object.assign({ uid: doc.id }, doc.data())); });
-    lista.sort(function (a, b) { return (a.nome || '').localeCompare(b.nome || '', 'pt-BR'); });
-    return lista;
-  });
+  return colMembros(equipeAtualId_).get().then(membrosDe);
+}
+// Ao vivo, para a tela de Equipe: quem entra, sai ou muda de papel aparece na hora.
+export function escutarMembros(callback, aoFalhar) {
+  if (!equipeAtualId_) return function () {};
+  return colMembros(equipeAtualId_).onSnapshot(function (qs) { callback(membrosDe(qs)); }, aoFalhar);
 }
 export function removerMembro(alvoUid) {
   if (!equipeAtualId_) return Promise.reject(new Error('sem-equipe'));
@@ -456,14 +475,16 @@ export function criarConvite(papelConvite) {
 }
 // Filtra a equipe no where() (a regra só libera listar a própria equipe) e
 // "usado" no cliente, para não precisar de índice composto.
-export function listarConvites() {
-  if (!equipeAtualId_) return Promise.resolve([]);
-  return db().collection('convites').where('equipeId', '==', equipeAtualId_).get().then(function (qs) {
-    const lista = [];
-    qs.forEach(function (doc) { const d = doc.data(); if (!d.usado) lista.push(Object.assign({ codigo: doc.id }, d)); });
-    lista.sort(function (a, b) { return (b.criadoEm || '').localeCompare(a.criadoEm || ''); });
-    return lista;
-  });
+function convitesAbertosDe(qs) {
+  const lista = [];
+  qs.forEach(function (doc) { const d = doc.data(); if (!d.usado) lista.push(Object.assign({ codigo: doc.id }, d)); });
+  lista.sort(function (a, b) { return (b.criadoEm || '').localeCompare(a.criadoEm || ''); });
+  return lista;
+}
+export function escutarConvites(callback, aoFalhar) {
+  if (!equipeAtualId_) return function () {};
+  return db().collection('convites').where('equipeId', '==', equipeAtualId_)
+    .onSnapshot(function (qs) { callback(convitesAbertosDe(qs)); }, aoFalhar);
 }
 export function revogarConvite(codigo) { return db().collection('convites').doc(codigo).delete(); }
 

@@ -26,8 +26,13 @@ function preencherOpcoesMembros(gpSelecionado, gpNomeAtual, responsavelSeleciona
   selGp.innerHTML = '<option value="">' + esc(T('fm.semGp')) + '</option>';
   selResp.innerHTML = '<option value="">' + esc(T('fm.semResponsavel')) + '</option>';
   return Auth.listarEquipe().then(function (membros) {
+    // dois membros com o mesmo nome: o e-mail desempata na lista
+    const vezes = {};
+    membros.forEach(function (m) { const n = (m.nome || '').trim().toLowerCase(); vezes[n] = (vezes[n] || 0) + 1; });
     const opcoes = membros.map(function (m) {
-      return '<option value="' + esc(m.uid) + '">' + esc(m.nome || m.email || m.uid) + '</option>';
+      const nome = m.nome || m.email || m.uid;
+      const repetido = m.nome && m.email && vezes[m.nome.trim().toLowerCase()] > 1;
+      return '<option value="' + esc(m.uid) + '" data-nome="' + esc(nome) + '">' + esc(repetido ? nome + ' (' + m.email + ')' : nome) + '</option>';
     }).join('');
     // GP que já saiu da equipe continua aparecendo no projeto antigo
     const gpAntigo = gpSelecionado && !membros.some(function (m) { return m.uid === gpSelecionado; })
@@ -88,7 +93,8 @@ function salvarProjeto() {
   d.responsavelUid = $('f-responsavel').value || null;
   const selGp = $('f-gp');
   d.gpUid = selGp.value || null;
-  d.gp = selGp.selectedIndex > 0 ? selGp.options[selGp.selectedIndex].textContent : '';
+  const opGp = selGp.selectedIndex > 0 ? selGp.options[selGp.selectedIndex] : null;
+  d.gp = opGp ? (opGp.dataset.nome || opGp.textContent) : '';
 
   const v = Projeto.validar(d, estado.projetos, editandoId);
   if (!v.ok) {
