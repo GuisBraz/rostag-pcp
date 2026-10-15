@@ -46,6 +46,9 @@ const sw = ler('sw.js');
 const lista = sw.match(/const ARQUIVOS = \[([\s\S]*?)\];/)[1].match(/'([^']+)'/g).map((s) => s.slice(1, -1));
 for (const f of lista) if (f !== './' && !fs.existsSync(path.join(raiz, f))) falha('service worker lista arquivo inexistente: ' + f);
 for (const m of modulos) if (!lista.includes(m.split(path.sep).join('/'))) falha('módulo fora do cache offline (sw.js): ' + m);
+const sdkSw = sw.match(/const SDK = \[([\s\S]*?)\];/)[1].match(/'([^']+)'/g).map((s) => s.slice(1, -1)).sort();
+const sdkHtml = [...html.matchAll(/<script src="(https:\/\/www\.gstatic\.com\/firebasejs\/[^"]+)"/g)].map((m) => m[1]).sort();
+if (sdkSw.join() !== sdkHtml.join()) falha('SDK do Firebase no sw.js difere do index.html');
 
 console.log(erros ? `\n${erros} problema(s).` : `✔ ${modulos.length} módulos, ${usadas.size} ações, service worker ok.`);
 process.exit(erros ? 1 : 0);

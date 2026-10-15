@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { esc, addDias, difDias, dataValida, br, csvCampo, iniciais, fds } from '../js/nucleo/fmt.js';
+import { esc, addDias, difDias, dataValida, br, csvCampo, iniciais, fds, dataDoInstante, horaDoInstante } from '../js/nucleo/fmt.js';
 import { prefs } from '../js/nucleo/prefs.js';
 
 test('esc escapa os cinco caracteres perigosos', () => {
@@ -45,4 +45,11 @@ test('iniciais e fim de semana', () => {
   assert.equal(iniciais(''), '?');
   assert.ok(fds('2026-10-17'));   // sábado
   assert.ok(!fds('2026-10-14'));  // quarta
+});
+
+test('instante UTC vira data e hora locais', () => {
+  const local = new Date(2026, 9, 14, 22, 13);   // 14/10 22:13 no fuso da máquina
+  assert.equal(dataDoInstante(local.toISOString()), '2026-10-14');
+  assert.equal(horaDoInstante(local.toISOString()), '22:13');
+  assert.equal(dataDoInstante('lixo'), '');
 });

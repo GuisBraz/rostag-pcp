@@ -78,7 +78,7 @@ function escutarEquipe() {
 /* ------------------------------------------------------------ sessão */
 function aplicarRestricoesPapel() {
   const gestor = Auth.souGPouCoordenador();
-  document.body.classList.toggle('papel-planejador', !gestor);
+  document.body.classList.toggle('visao-planejador', !gestor);
   $('btn-novo-projeto').style.display = gestor ? '' : 'none';
   $('dados-acoes-escrita').style.display = gestor ? 'contents' : 'none';
 }
@@ -95,9 +95,10 @@ function aplicarUsuario() {
   escutarNotificacoes();
 }
 
+// Deixa a equipe (ou a conta). As notificações são da pessoa, não da equipe:
+// continuam escutadas no hub, e só param quando a conta sai (ver atualizarSessao).
 function sairDoApp() {
   Store.pararEscuta();
-  pararNotificacoes();
   pararInscricaoChat();
   fecharTodos();
   equipeCarregada = null;
@@ -112,7 +113,7 @@ function atualizarSessao() {
   const u = Auth.usuarioAtual();
 
   if (!u) {
-    if (uidCarregado) { uidCarregado = null; sairDoApp(); resetarPrefs(); prefs.tema = temaInicial(); aplicarTema(); aplicarIdioma(); }
+    if (uidCarregado) { uidCarregado = null; sairDoApp(); pararNotificacoes(); resetarPrefs(); prefs.tema = temaInicial(); aplicarTema(); aplicarIdioma(); }
     $('app-shell').style.display = 'none';
     mostrarTelaAcesso(true);
     mostrarViewAcesso(convitePendente ? 'cadastro' : 'entrar');

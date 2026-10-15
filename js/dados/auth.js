@@ -127,6 +127,17 @@ function selecionarEquipe(equipeId) {
   });
 }
 
+// Quem é removido continua com a equipe no próprio índice (o coordenador não
+// pode apagar o índice de outra pessoa). Acesso negado de verdade — não falta
+// de rede — limpa essa entrada velha.
+function acessoPerdido(e) {
+  return e && (e.code === 'permission-denied' || e.message === 'sem-acesso' || e.message === 'equipe-nao-encontrada');
+}
+function esquecerEquipe(equipeId) {
+  minhasEquipes = minhasEquipes.filter(function (e) { return e.id !== equipeId; });
+  colMinhasEquipes(usuario.uid).doc(equipeId).delete().catch(function (e) { console.warn('índice da equipe não apagado:', e && e.code); });
+}
+
 // Tenta a equipe lembrada; se não der, as outras na ordem; sem nenhuma, vai pro hub.
 function escolherEquipeInicial() {
   const salva = lerEquipeLocal();
@@ -134,7 +145,10 @@ function escolherEquipeInicial() {
   if (salva && ordem.indexOf(salva) > 0) { ordem.splice(ordem.indexOf(salva), 1); ordem.unshift(salva); }
   function tentar(i) {
     if (i >= ordem.length) { equipeAtualId_ = null; equipeAtual = null; return Promise.resolve(); }
-    return selecionarEquipe(ordem[i]).catch(function () { return tentar(i + 1); });
+    return selecionarEquipe(ordem[i]).catch(function (e) {
+      if (acessoPerdido(e)) esquecerEquipe(ordem[i]);
+      return tentar(i + 1);
+    });
   }
   return tentar(0);
 }
@@ -300,9 +314,11 @@ export function entrarPorNomeSenha(nome, senha) {
     return refNome.get().then(function (snapNome) {
       if (!snapNome.exists) throw new Error('equipe-nao-encontrada');
       const equipeId = snapNome.data().equipeId;
-      if (minhasEquipes.some(function (e) { return e.id === equipeId; })) throw new Error('ja-e-membro');
       const refEntrada = docSegredoEquipe(equipeId).collection('entradas').doc(usuario.uid);
-      return hashSenhaEquipe(senha, snapNome.data().sal).then(function (senhaHash) {
+      return jaSouMembro(equipeId).then(function (sou) {
+        if (sou) throw new Error('ja-e-membro');
+        return hashSenhaEquipe(senha, snapNome.data().sal);
+      }).then(function (senhaHash) {
         const lote = db().batch();
         lote.set(refEntrada, { senhaHash: senhaHash });
         lote.set(colMembros(equipeId).doc(usuario.uid), { nome: nomeExibicao(), email: usuario.email || '', papel: 'planejador', entrouEm: agoraIso() });
@@ -315,6 +331,19 @@ export function entrarPorNomeSenha(nome, senha) {
         return gravarIndicePessoal(equipeId, 'planejador');
       }).then(function () { return entrouNaEquipe(equipeId); });
     });
+  });
+}
+
+// O índice pessoal pode estar velho (fui removido); quem decide é o /membros.
+// Sem ser membro, a regra nem deixa ler: permission-denied também é "não".
+function jaSouMembro(equipeId) {
+  if (!minhasEquipes.some(function (e) { return e.id === equipeId; })) return Promise.resolve(false);
+  return colMembros(equipeId).doc(usuario.uid).get().then(function (snap) {
+    if (!snap.exists) esquecerEquipe(equipeId);
+    return snap.exists;
+  }, function (e) {
+    if (e && e.code === 'permission-denied') { esquecerEquipe(equipeId); return false; }
+    throw e;
   });
 }
 

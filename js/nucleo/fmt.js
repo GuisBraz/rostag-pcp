@@ -35,6 +35,13 @@ export function brCurto(s) {
   const m = s.slice(5, 7), d = s.slice(8, 10);
   return prefs.idioma === 'en' ? (m + '/' + d) : (d + '/' + m);
 }
+// Instantes gravados com toISOString() (notificações, chat) estão em UTC:
+// à noite no Brasil já caem no dia seguinte. Estes convertem para o local.
+export function dataDoInstante(ts) { const d = new Date(ts); return isNaN(d) ? '' : iso(d); }
+export function horaDoInstante(ts) {
+  const d = new Date(ts);
+  return isNaN(d) ? '' : String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
 export function fds(s) { const d = parse(s).getDay(); return d === 0 || d === 6; }
 export function bytes(n) {
   const sep = prefs.idioma === 'en' ? '.' : ',';

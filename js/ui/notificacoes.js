@@ -4,7 +4,7 @@
 --------------------------------------------------------------------------- */
 import { estado } from '../estado.js';
 import { prefs, salvarPrefsLocais } from '../nucleo/prefs.js';
-import { esc, brCurto, hoje } from '../nucleo/fmt.js';
+import { esc, brCurto, hoje, dataDoInstante } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Alertas from '../dominio/alertas.js';
 import * as Auth from '../dados/auth.js';
@@ -28,7 +28,7 @@ function mapReal(n) {
   return {
     id: 'real:' + n.id, projetoId: n.projetoId || '', equipeId: n.equipeId || '',
     nivel: 'aviso', titulo: T(n.tipo === 'designacao' ? 'notif.tituloDesignacao' : 'notif.tituloObservacao'),
-    meta: n.mensagem, quando: String(n.criadoEm || hoje()).slice(0, 10), lida: !!n.lida
+    meta: n.mensagem, quando: (n.criadoEm && dataDoInstante(n.criadoEm)) || hoje(), lida: !!n.lida
   };
 }
 

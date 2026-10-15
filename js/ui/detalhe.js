@@ -4,7 +4,7 @@
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto, projetoAtual } from '../estado.js';
 import { prefs } from '../nucleo/prefs.js';
-import { esc, br, hoje, difDias } from '../nucleo/fmt.js';
+import { esc, br, hoje, difDias, dataDoInstante, horaDoInstante } from '../nucleo/fmt.js';
 import { T, plural, STATUS_LABEL, SIT_LABEL } from '../i18n/index.js';
 import { DIAS_MAX_TAREFA } from '../dominio/constantes.js';
 import * as Projeto from '../dominio/projeto.js';
@@ -360,7 +360,7 @@ function renderChat(msgs) {
   const noFim = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
   el.innerHTML = msgs.length ? msgs.map(function (m) {
     const meu = m.autorUid === meuUid;
-    const quando = m.criadoEm ? br(String(m.criadoEm).slice(0, 10)) + ' ' + String(m.criadoEm).slice(11, 16) : '';
+    const quando = m.criadoEm && dataDoInstante(m.criadoEm) ? br(dataDoInstante(m.criadoEm)) + ' ' + horaDoInstante(m.criadoEm) : '';
     return '<div class="chat-msg' + (meu ? ' meu' : '') + '">' +
       '<div class="chat-autor">' + esc(m.autorNome || '—') + (quando ? ' <span class="chat-quando">' + esc(quando) + '</span>' : '') + '</div>' +
       '<div class="chat-texto">' + esc(m.texto) + '</div></div>';
