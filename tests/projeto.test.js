@@ -22,11 +22,52 @@ test('validar: obrigatórios, ordem das datas e commessa repetida', () => {
   assert.equal(sem.ok, false);
   assert.deepEqual(sem.campos, ['descricao']);
   assert.equal(Projeto.validar(com({ pcpFim: '2026-01-01' }), [], null).ok, false);
-  assert.equal(Projeto.validar(com({ entrega: '2026-01-10' }), [], null).ok, false);
   assert.equal(Projeto.validar(com({ pcpInicio: '2026-02-31' }), [], null).ok, false);
   const existentes = [{ id: 'a', commessa: ' 2026-001 ' }];
   assert.equal(Projeto.validar(base, existentes, null).ok, false);
   assert.ok(Projeto.validar(base, existentes, 'a').ok, 'editando o próprio projeto não acusa duplicado');
+});
+
+test('cronograma macro: datas opcionais na criação, PCP em par, produção depois do PCP', () => {
+  const semDatas = { commessa: '2026-002', descricao: 'Novo', entrega: '2026-03-01' };
+  assert.ok(Projeto.validar(semDatas, [], null).ok, 'gerente cria sem cronograma');
+  assert.equal(Projeto.validar(Object.assign({}, semDatas, { pcpInicio: '2026-01-05' }), [], null).ok, false);
+  assert.equal(Projeto.validar(com({ prodFim: '2026-01-20' }), [], null).ok, false, 'produção antes do fim do PCP');
+  assert.ok(Projeto.validar(com({ prodFim: '2026-02-20' }), [], null).ok);
+});
+
+test('cronograma macro: passar da entrega só avisa', () => {
+  const r = Projeto.validar(com({ prodFim: '2026-03-10' }), [], null);
+  assert.ok(r.ok);
+  assert.equal(r.avisos.length, 1);
+  const r2 = Projeto.validar(com({ entrega: '2026-01-10' }), [], null);
+  assert.ok(r2.ok);
+  assert.equal(r2.avisos.length, 1);
+});
+
+test('aguardando cronograma e situação do PCP', () => {
+  const novo = Projeto.migrarProjeto({ id: 'n', cronogramaDefinido: false, entrega: '2026-12-01', checklist: [] });
+  assert.equal(novo.pcpInicio, null);
+  assert.ok(Projeto.aguardandoCronograma(novo));
+  assert.equal(Projeto.situacaoPcp(novo), 'aguardando');
+  const antigo = Projeto.migrarProjeto({ id: 'a', pcpInicio: '2026-01-05', pcpFim: '2026-01-30', entrega: '2026-02-27' });
+  assert.equal(Projeto.aguardandoCronograma(antigo), false, 'projeto de antes continua liberado');
+});
+
+test('reprogramação fica no histórico com quem mudou', () => {
+  const p = Projeto.migrarProjeto({ id: 'r', pcpInicio: '2026-01-05', pcpFim: '2026-01-30', prodFim: '2026-02-20', entrega: '2026-02-27' });
+  const mudou = Projeto.registrarReprogramacao(p, { pcpFim: '2026-02-03', prodFim: '2026-02-20' }, 'Ana');
+  assert.deepEqual(mudou, ['pcpFim']);
+  assert.equal(p.reagendamentos.length, 1);
+  assert.equal(p.reagendamentos[0].por, 'Ana');
+  assert.equal(p.reagendamentos[0].de, '2026-01-30');
+});
+
+test('distribui os dias úteis do PCP entre tarefas ainda zeradas', () => {
+  const p = { pcpInicio: '2026-01-05', pcpFim: '2026-01-16', checklist: [{ dias: 0 }, { dias: 0 }, { dias: 0 }] };
+  assert.ok(Projeto.distribuirTarefas(p));
+  assert.equal(p.checklist.reduce((s, i) => s + i.dias, 0), 10);   // 2 semanas úteis
+  assert.equal(Projeto.distribuirTarefas({ pcpInicio: '2026-01-05', pcpFim: '2026-01-16', checklist: [{ dias: 3 }] }), false);
 });
 
 test('validar: limite de tamanho dos textos', () => {

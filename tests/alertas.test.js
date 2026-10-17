@@ -36,6 +36,31 @@ test('lidas são marcadas e podadas', () => {
   assert.deepEqual(Object.keys(prefs.lidas), ['entrega-atrasada:a']);
 });
 
+test('cada cargo recebe só os alertas combinados', () => {
+  const h = hoje();
+  const p = proj({ id: 'a', gpUid: 'g', responsavelUid: 't', entrega: addDias(h, -1), pcpFim: addDias(h, -1) });
+  const tipos = (ctx) => Alertas.gerar([p], ctx).map((n) => n.tipo);
+  assert.ok(tipos({ papel: 'gerente_pcp', uid: 'm' }).includes('entrega-atrasada'));
+  assert.ok(tipos({ papel: 'gp', uid: 'g' }).includes('entrega-atrasada'));
+  assert.ok(!tipos({ papel: 'tecnico', uid: 't' }).includes('entrega-atrasada'), 'entrega atrasada não vai para o técnico');
+  assert.ok(tipos({ papel: 'gp', uid: 'g' }).includes('pcp-estourado'));
+  assert.equal(tipos({ papel: 'gp', uid: 'outro' }).length, 0, 'GP de outro projeto não recebe');
+  assert.equal(tipos({ papel: 'cq', uid: 'q' }).length, 0);
+});
+
+test('produção atrasada e aguardando cronograma', () => {
+  const h = hoje();
+  const p = proj({ id: 'b', gpUid: 'g', pcpInicio: addDias(h, -20), pcpFim: addDias(h, -10), prodFim: addDias(h, -2), entrega: addDias(h, 30),
+    checklist: [{ t: 'x', dias: 1, done: true, doneAt: addDias(h, -15) }] });
+  const ops = [{ projetoId: 'b', area: 'usinagem', status: 'aberta' }];
+  const tipos = Alertas.gerar([p], { papel: 'gerente_pcp', uid: 'm', ops }).map((n) => n.tipo);
+  assert.ok(tipos.includes('prod-atrasada'));
+  assert.ok(tipos.includes('pcp-concluido'));
+  const novo = { id: 'c', commessa: 'C-2', status: 'ativo', cronogramaDefinido: false, entrega: addDias(h, 30), paralisacoes: [], checklist: [] };
+  const t2 = Alertas.gerar([novo], { papel: 'gerente_pcp', uid: 'm' }).map((n) => n.tipo);
+  assert.deepEqual(t2, ['aguardando']);
+});
+
 test('pontualidade separa no prazo e atrasado por mês', () => {
   const lista = [
     { concluidoEm: '2026-03-10', entrega: '2026-03-15' },

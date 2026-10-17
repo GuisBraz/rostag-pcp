@@ -13,18 +13,28 @@ equipe, e o app pode ser instalado no PC e no celular (funciona offline).
 - **Equipes.** Cada equipe tem seus próprios projetos; uma conta pode estar
   em várias equipes e trocar entre elas pelo menu lateral. Cada pessoa pode
   **criar até 3 equipes**.
-- **Papéis dentro da equipe:**
-  - **Coordenador** — quem criou a equipe (o cargo pode ser transferido).
-    Faz tudo o que o GP faz e ainda muda o cargo das pessoas, remove membros
-    e troca a senha da equipe.
-  - **GP** — cria, edita e apaga qualquer projeto da equipe e gera convites.
-  - **Planejador** — só vê os projetos designados a ele e só marca o
-    checklist das tarefas.
+- **Cargos dentro da equipe** (detalhes em [`docs/ESPECIFICACAO.md`](docs/ESPECIFICACAO.md)):
+  - **Gerente de PCP** — cria projetos, designa GP e técnico, vê tudo e
+    administra a equipe (convites, cargos, remover). O **coordenador** (quem
+    criou a equipe; a coordenação pode ser passada) é sempre Gerente de PCP
+    e é o único que troca a senha da equipe.
+  - **GP (gerente de projetos)** — vê só os projetos dele, cria projetos (vira
+    o GP deles), designa o técnico e define o **cronograma macro** (PCP e
+    produção).
+  - **Técnico de processo** — recebe o projeto quando o cronograma é
+    definido, marca o checklist do PCP e sobe a **planilha de OPs**.
+  - **Programador de usinagem / de caldeiraria** — consulta as OPs da área
+    dele na aba Fábrica.
+  - **Controle de qualidade (CQ)** — finaliza cada OP: *Aprovada* ou *Com
+    RNC* (com observação). Não desfaz.
 - **Como alguém entra numa equipe:**
-  - pelo **link de convite** (Configurações → Equipe), já com o cargo do
-    convite (GP ou planejador); ou
+  - pelo **link de convite** (Configurações → Equipe), já com o cargo
+    escolhido pelo Gerente de PCP; ou
   - pela aba **Entrar em equipe**, digitando o **nome + senha da equipe** —
-    quem entra assim vira planejador.
+    quem entra assim vira técnico de processo.
+- Equipes criadas antes dos cargos novos são convertidas sozinhas quando o
+  Gerente de PCP abre o app: coordenador → Gerente de PCP, planejador →
+  técnico de processo, GP continua GP.
 
 A trava de verdade fica nas regras do Firestore
 ([`firestore.rules`](firestore.rules)), não na tela: mesmo que alguém mexa no
@@ -94,6 +104,19 @@ python -m http.server 5173
 e abra `http://localhost:5173`. Atenção: a versão local usa o **mesmo banco**
 do site publicado — o que você mexer ali vale de verdade.
 
+### Modo de teste (banco de mentira)
+
+Para testar sem tocar no banco real, suba os emuladores do Firebase num
+terminal (precisa de Java, como nos testes das regras):
+
+```bash
+npx firebase emulators:start --only firestore,auth --project demo-rostag
+```
+
+e abra `http://localhost:5173/?emulador=1`. Contas, equipes e projetos criados
+assim ficam só no emulador e somem quando ele é desligado. O modo de teste só
+liga em `localhost` com `?emulador` na URL.
+
 ## Estrutura do código
 
 ```
@@ -103,9 +126,10 @@ js/main.js            ponto de entrada: liga login, equipe e telas
 js/nucleo/            preferências e formatação (datas, escape de HTML)
 js/i18n/              textos em português (pt.js) e inglês (en.js)
 js/dominio/           regras de negócio puras: cronograma, status, alertas
-js/dados/             Firebase: conta e equipes (auth.js), projetos (store.js)
-js/ui/                uma tela ou componente por arquivo
-vendor/               Chart.js (servido junto, sem CDN)
+js/dados/             Firebase: conta e equipes (auth.js), projetos (store.js), OPs (ops.js)
+js/ui/                uma tela ou componente por arquivo (fabrica.js: Fábrica, CQ e RNC)
+vendor/               Chart.js e SheetJS (leitura de planilhas), servidos junto, sem CDN
+docs/                 especificação do sistema integrado
 sw.js                 service worker: abre o app instalado sem internet
 firestore.rules       regras de segurança do banco
 tests/                testes automáticos das regras de negócio
@@ -148,10 +172,10 @@ Rode os dois antes de cada `git push`.
 ### Testes das regras do Firestore
 
 Testam o `firestore.rules` de verdade, num emulador local do Firestore (nada
-vai para o banco real): o planejador só vê e só mexe no checklist do que é
-dele, GP/coordenador podem tudo na equipe, convite é de uso único e vence em
-7 dias, nome + senha sempre entra como planejador, só o coordenador muda
-papel ou remove alguém, notificações, perfil pessoal e o limite de 3 equipes.
+vai para o banco real): o que cada um dos 6 cargos vê e pode mudar nos
+projetos e nas OPs, o CQ finalizando uma vez só, convite de uso único que
+vence em 7 dias, nome + senha sempre entrando como técnico, só o gerente
+mudando cargos, notificações, perfil pessoal e o limite de 3 equipes.
 Precisam de Java 21 (uma vez: `winget install Microsoft.OpenJDK.21`) e das
 dependências de desenvolvimento (uma vez: `npm install`):
 
@@ -171,6 +195,7 @@ inclua o caminho na lista `ARQUIVOS` do `sw.js` e troque a versão em `CACHE`.
 |---|---|
 | `Esc` | volta / fecha o que estiver aberto |
 | `Alt+1` `Alt+2` `Alt+3` | Painel, Projetos, Linha do Tempo |
+| `Alt+4` `Alt+5` | Fábrica, RNC |
 | `Alt+,` | Configurações |
 | `N` | novo projeto |
 | `F` | filtro da tela |

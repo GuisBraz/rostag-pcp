@@ -8,12 +8,46 @@ import { hoje, br, difDias } from '../nucleo/fmt.js';
 import { T, plural } from '../i18n/index.js';
 import * as Cronograma from './cronograma.js';
 import * as Projeto from './projeto.js';
+import * as Producao from './producao.js';
 
-export function gerar(projetos) {
-  const h = hoje(), lista = [];
+// Quem recebe cada alerta automático (docs/ESPECIFICACAO.md, seção 5).
+const DESTINO = {
+  'aguardando': ['gerente_pcp', 'gp'],
+  'paralisado': ['gerente_pcp', 'gp', 'tecnico'],
+  'tarefa-atrasada': ['gp', 'tecnico'],
+  'tarefa-chegando': ['gp', 'tecnico'],
+  'pcp-estourado': ['gerente_pcp', 'gp'],
+  'pcp-projecao': ['gp', 'tecnico'],
+  'pcp-concluido': ['gerente_pcp', 'gp'],
+  'prod-atrasada': ['gerente_pcp', 'gp'],
+  'prod-concluida': ['gerente_pcp', 'gp', 'tecnico'],
+  'entrega-chegando': ['gp', 'tecnico'],
+  'entrega-atrasada': ['gerente_pcp', 'gp']
+};
+
+// O alerta vale para quem lê? Sem contexto (testes, telas antigas), vale para todos.
+function paraMim(tipo, p, ctx) {
+  if (!ctx || !ctx.papel) return true;
+  if ((DESTINO[tipo] || []).indexOf(ctx.papel) < 0) return false;
+  if (ctx.papel === 'gerente_pcp') return true;
+  return (ctx.papel === 'gp' && p.gpUid === ctx.uid) || (ctx.papel === 'tecnico' && p.responsavelUid === ctx.uid);
+}
+
+// ctx: { papel, uid, ops } — filtra pelo cargo e usa as OPs para a produção.
+export function gerar(projetos, ctx) {
+  const h = hoje(), todos = [];
   const alertaEntrega = Number(prefs.alerta) || 10;
+  const opsPorProjeto = {};
+  ((ctx && ctx.ops) || []).forEach(function (o) { (opsPorProjeto[o.projetoId] = opsPorProjeto[o.projetoId] || []).push(o); });
 
   projetos.filter(Projeto.aberto).forEach(function (p) {
+    const lista = [];
+    if (Projeto.aguardandoCronograma(p)) {
+      lista.push({ id: 'aguardando:' + p.id, tipo: 'aguardando', nivel: 'aviso', projetoId: p.id, ordem: 2.8,
+        titulo: T('n.aguardando', p.commessa), meta: T('n.aguardandoM'), quando: p.dataSolicitacao || h });
+      lista.forEach(function (n) { if (paraMim(n.tipo, p, ctx)) todos.push(n); });
+      return;
+    }
     const c = Cronograma.calcular(p);
 
     // projeto parado não gera alarme de tarefa: o cronograma está congelado
@@ -66,6 +100,23 @@ export function gerar(projetos) {
       });
     }
 
+    // produção: só depois do PCP; avanço pelas OPs aprovadas
+    const stOps = Producao.estatisticas(opsPorProjeto[p.id]);
+    const sitProd = Producao.situacao(p, stOps, h);
+    if (c.concluido && sitProd !== 'concluida') {
+      const fimReal = c.itens.length ? c.itens[c.itens.length - 1].fim : h;
+      lista.push({ id: 'pcp-concluido:' + p.id, nivel: 'aviso', projetoId: p.id, ordem: 6,
+        titulo: T('n.pcpConcluido', p.commessa), meta: T('n.pcpConcluidoM', br(fimReal)), quando: fimReal || h });
+    }
+    if (sitProd === 'atrasada' && !pausa) {
+      lista.push({ id: 'prod-atrasada:' + p.id, nivel: 'alerta', projetoId: p.id, ordem: 1.5,
+        titulo: T('n.prodAtrasada', p.commessa),
+        meta: T('n.prodAtrasadaM', br(p.prodFim), plural(Producao.diasAtraso(p, h), 'x.dia', 'x.dias'), stOps.pct), quando: p.prodFim });
+    } else if (sitProd === 'concluida') {
+      lista.push({ id: 'prod-concluida:' + p.id, nivel: 'aviso', projetoId: p.id, ordem: 6.5,
+        titulo: T('n.prodConcluida', p.commessa), meta: T('n.prodConcluidaM', stOps.total), quando: h });
+    }
+
     if (p.entrega < h) {
       lista.push({
         id: 'entrega-atrasada:' + p.id, nivel: 'alerta', projetoId: p.id, ordem: 0,
@@ -82,11 +133,15 @@ export function gerar(projetos) {
         quando: p.entrega
       });
     }
+    lista.forEach(function (n) {
+      n.tipo = n.tipo || n.id.split(':')[0];
+      if (paraMim(n.tipo, p, ctx)) todos.push(n);
+    });
   });
 
-  lista.sort(function (a, b) { return a.ordem - b.ordem || a.quando.localeCompare(b.quando); });
-  lista.forEach(function (n) { n.lida = !!prefs.lidas[n.id]; });
-  return lista;
+  todos.sort(function (a, b) { return a.ordem - b.ordem || String(a.quando).localeCompare(String(b.quando)); });
+  todos.forEach(function (n) { n.lida = !!prefs.lidas[n.id]; n.origem = 'sistema'; });
+  return todos;
 }
 
 // Não deixa o registro de lidas crescer para sempre: só guarda o que ainda existe.

@@ -53,6 +53,15 @@ function situacao(item, fim, inicio, h, alerta, parado) {
 // Devolve o cronograma calculado do projeto, sem alterar os dados gravados.
 export function recalcular(p) {
   const h = hoje();
+  // ainda sem janela do PCP (aguardando cronograma): nada a encadear nem alarmar
+  if (!p.pcpInicio) {
+    const itens = (p.checklist || []).map(function (item, idx) {
+      return { idx: idx, t: item.t, dias: Math.max(0, Number(item.dias) || 0), done: !!item.done, doneAt: item.doneAt || null,
+        inicio: null, fim: null, situacao: item.done ? 'concluida' : 'planejada', atrasoDias: 0 };
+    });
+    return { itens: itens, fimPrevisto: null, concluido: itens.length > 0 && itens.every(function (i) { return i.done; }),
+      estouro: 0, duracaoTotal: 0, pausas: p.paralisacoes || [], proxima: itens.find(function (i) { return !i.done; }) || null };
+  }
   const alerta = Number(prefs.alertaTarefa) || 2;
   // enquanto o projeto está parado o cronograma congela — o tempo de
   // paralisação não é contado contra as tarefas

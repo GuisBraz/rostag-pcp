@@ -6,7 +6,8 @@ import { T, mesesCurto } from '../i18n/index.js';
 
 // O projeto estava aberto naquele dia? Usado para a foto semana a semana.
 export function abertoEm(p, dia) {
-  if (p.pcpInicio > dia) return false;                       // ainda não tinha começado
+  const inicio = p.pcpInicio || p.dataSolicitacao;
+  if (inicio && inicio > dia) return false;                  // ainda não tinha começado
   if (p.concluidoEm && p.concluidoEm <= dia) return false;   // já entregue
   if (p.canceladoEm && p.canceladoEm <= dia) return false;   // já cancelado
   return true;

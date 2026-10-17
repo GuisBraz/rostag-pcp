@@ -1,73 +1,84 @@
 /* ---------------------------------------------------------------------------
    Formulário de novo projeto / editar projeto.
+   Gerente de PCP cria e designa GP e técnico; GP cria (e vira o GP do
+   projeto) e designa o técnico. O cronograma macro (PCP + fim da produção)
+   pode ficar em branco: o projeto fica "aguardando cronograma".
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, projetoAtual } from '../estado.js';
-import { hoje, addDias, esc } from '../nucleo/fmt.js';
+import { estado, buscarProjeto, projetoAtual, opsDoProjeto } from '../estado.js';
+import { hoje, esc, br } from '../nucleo/fmt.js';
 import { T, STATUS_LABEL } from '../i18n/index.js';
 import { CHECKLIST_PADRAO } from '../dominio/constantes.js';
 import * as Projeto from '../dominio/projeto.js';
+import { papelEfetivo } from '../dominio/papeis.js';
 import * as Auth from '../dados/auth.js';
+import * as Ops from '../dados/ops.js';
 import { $, registrarAcoes } from './dom.js';
 import { abrirModal, fecharModal } from './modal.js';
 import { toast } from './toast.js';
 import { persistir, redesenhar } from './app.js';
 
-const CAMPOS_FORM = ['commessa', 'cliente', 'descricao', 'tipoServico', 'om', 'dataSolicitacao', 'pcpInicio', 'pcpFim', 'entrega'];
+const CAMPOS_FORM = ['commessa', 'cliente', 'descricao', 'tipoServico', 'om', 'dataSolicitacao', 'pcpInicio', 'pcpFim', 'prodFim', 'entrega'];
 let editandoId = null;
 
 function limparForm() {
   CAMPOS_FORM.forEach(function (c) { const el = $('f-' + c); el.value = ''; el.classList.remove('invalid'); el.removeAttribute('aria-invalid'); });
+  $('f-prodInicio').value = '';
   $('f-erro').textContent = '';
 }
 
-// GP e Responsável vêm da lista de membros da equipe (busca assíncrona).
-function preencherOpcoesMembros(gpSelecionado, gpNomeAtual, responsavelSelecionado) {
+function opcaoMembro(m, vezes) {
+  const nome = m.nome || m.email || m.uid;
+  const repetido = m.nome && m.email && vezes[m.nome.trim().toLowerCase()] > 1;
+  return '<option value="' + esc(m.uid) + '" data-nome="' + esc(nome) + '">' + esc(repetido ? nome + ' (' + m.email + ')' : nome) + '</option>';
+}
+
+// GP vem dos membros com cargo GP (ou Gerente de PCP); técnico, dos técnicos.
+// Quem já saiu da equipe continua aparecendo no projeto antigo.
+function preencherOpcoesMembros(gpSelecionado, gpNomeAtual, tecSelecionado, tecNomeAtual) {
   const selGp = $('f-gp'), selResp = $('f-responsavel');
   selGp.innerHTML = '<option value="">' + esc(T('fm.semGp')) + '</option>';
   selResp.innerHTML = '<option value="">' + esc(T('fm.semResponsavel')) + '</option>';
+  // GP que cria/edita não escolhe outro GP; só o gerente designa
+  selGp.disabled = !Auth.souGerente();
   return Auth.listarEquipe().then(function (membros) {
-    // dois membros com o mesmo nome: o e-mail desempata na lista
+    const coord = Auth.coordenadorUidAtual();
     const vezes = {};
     membros.forEach(function (m) { const n = (m.nome || '').trim().toLowerCase(); vezes[n] = (vezes[n] || 0) + 1; });
-    const opcoes = membros.map(function (m) {
-      const nome = m.nome || m.email || m.uid;
-      const repetido = m.nome && m.email && vezes[m.nome.trim().toLowerCase()] > 1;
-      return '<option value="' + esc(m.uid) + '" data-nome="' + esc(nome) + '">' + esc(repetido ? nome + ' (' + m.email + ')' : nome) + '</option>';
-    }).join('');
-    // GP que já saiu da equipe continua aparecendo no projeto antigo
-    const gpAntigo = gpSelecionado && !membros.some(function (m) { return m.uid === gpSelecionado; })
-      ? '<option value="' + esc(gpSelecionado) + '">' + esc(gpNomeAtual || '—') + '</option>' : '';
-    selGp.innerHTML += opcoes + gpAntigo;
+    const papel = function (m) { return papelEfetivo(m.papel, m.uid === coord); };
+    const gps = membros.filter(function (m) { return papel(m) === 'gp' || papel(m) === 'gerente_pcp'; });
+    const tecs = membros.filter(function (m) { return papel(m) === 'tecnico'; });
+    const antigo = function (uid, nome, lista) {
+      return uid && !lista.some(function (m) { return m.uid === uid; }) ? '<option value="' + esc(uid) + '" data-nome="' + esc(nome || '—') + '">' + esc(nome || '—') + '</option>' : '';
+    };
+    selGp.innerHTML += gps.map(function (m) { return opcaoMembro(m, vezes); }).join('') + antigo(gpSelecionado, gpNomeAtual, gps);
     selGp.value = gpSelecionado || '';
-    selResp.innerHTML += opcoes;
-    selResp.value = responsavelSelecionado || '';
+    selResp.innerHTML += tecs.map(function (m) { return opcaoMembro(m, vezes); }).join('') + antigo(tecSelecionado, tecNomeAtual, tecs);
+    selResp.value = tecSelecionado || '';
   }).catch(function (e) { console.warn(e); });
 }
 
-function previewStatus() {
-  const ini = $('f-pcpInicio').value, ent = $('f-entrega').value;
-  $('f-status-preview').value = (ini && ent) ? STATUS_LABEL(Projeto.status({ status: 'ativo', pcpInicio: ini, entrega: ent })) : '—';
+function atualizarPreviews() {
+  const ent = $('f-entrega').value;
+  $('f-status-preview').value = ent ? STATUS_LABEL(Projeto.status({ status: 'ativo', entrega: ent })) : '—';
+  $('f-prodInicio').value = $('f-pcpFim').value || '';
 }
 
 export function abrirNovoProjeto() {
   if (!Auth.souGPouCoordenador()) return;
   editandoId = null;
   limparForm();
-  const h = hoje();
-  $('f-dataSolicitacao').value = h;
-  $('f-pcpInicio').value = h;
-  // sugestão só para não abrir vazio; as tarefas nascem com 0 dias
-  $('f-pcpFim').value = addDias(h, 30);
-  $('f-entrega').value = addDias(h, 60);
+  $('f-dataSolicitacao').value = hoje();
   $('modal-projeto-title').textContent = T('fm.novo');
   $('f-submit').textContent = T('fm.incluir');
   $('fm-checklist-nota').textContent = T('fm.checklistZero', CHECKLIST_PADRAO.length);
-  previewStatus();
-  preencherOpcoesMembros(Auth.uid(), Auth.nomeExibicao(), null);
+  atualizarPreviews();
+  // o gerente escolhe o GP; o GP que cria vira o GP do projeto
+  const souGp = !Auth.souGerente();
+  preencherOpcoesMembros(souGp ? Auth.uid() : null, souGp ? Auth.nomeExibicao() : null, null, null);
   abrirModal('modal-projeto', { foco: 'f-commessa', aoFechar: function () { editandoId = null; } });
 }
 
-export function abrirEditarProjeto() {
+export function abrirEditarProjeto(campoFoco) {
   if (!Auth.souGPouCoordenador()) return;
   const p = projetoAtual();
   if (!p) return;
@@ -77,9 +88,14 @@ export function abrirEditarProjeto() {
   $('modal-projeto-title').textContent = T('fm.editar');
   $('f-submit').textContent = T('fm.salvarAlt');
   $('fm-checklist-nota').textContent = '';
-  previewStatus();
-  preencherOpcoesMembros(p.gpUid, p.gp, p.responsavelUid);
-  abrirModal('modal-projeto', { foco: 'f-commessa', aoFechar: function () { editandoId = null; } });
+  atualizarPreviews();
+  preencherOpcoesMembros(p.gpUid, p.gp, p.responsavelUid, p.tecnico);
+  abrirModal('modal-projeto', { foco: typeof campoFoco === 'string' && $(campoFoco) ? campoFoco : 'f-commessa', aoFechar: function () { editandoId = null; } });
+}
+
+function nomeSelecionado(sel) {
+  const op = sel.selectedIndex > 0 ? sel.options[sel.selectedIndex] : null;
+  return op ? (op.dataset.nome || op.textContent) : '';
 }
 
 function salvarProjeto() {
@@ -89,12 +105,12 @@ function salvarProjeto() {
     el.classList.remove('invalid'); el.removeAttribute('aria-invalid');
     d[c] = el.value.trim();
   });
-  d.dataSolicitacao = d.dataSolicitacao || null;
+  ['dataSolicitacao', 'pcpInicio', 'pcpFim', 'prodFim'].forEach(function (c) { d[c] = d[c] || null; });
   d.responsavelUid = $('f-responsavel').value || null;
-  const selGp = $('f-gp');
-  d.gpUid = selGp.value || null;
-  const opGp = selGp.selectedIndex > 0 ? selGp.options[selGp.selectedIndex] : null;
-  d.gp = opGp ? (opGp.dataset.nome || opGp.textContent) : '';
+  d.tecnico = nomeSelecionado($('f-responsavel')) || '';
+  d.gpUid = $('f-gp').value || null;
+  d.gp = nomeSelecionado($('f-gp'));
+  if (!Auth.souGerente()) { d.gpUid = Auth.uid(); d.gp = Auth.nomeExibicao(); }   // regra: o GP fica com o projeto
 
   const v = Projeto.validar(d, estado.projetos, editandoId);
   if (!v.ok) {
@@ -109,41 +125,67 @@ function salvarProjeto() {
   }
   d.cliente = d.cliente || '—';
   d.gp = d.gp || '—';
+  d.cronogramaDefinido = !!(d.pcpInicio && d.pcpFim);
 
-  let p, responsavelAnterior = null;
   const eraEdicao = !!editandoId;
+  let p, antes = null;
   if (eraEdicao) {
     p = buscarProjeto(editandoId);
     if (!p) { fecharModal('modal-projeto'); toast(T('t.projetoSumiu'), { tipo: 'erro' }); return; }
-    responsavelAnterior = p.responsavelUid || null;
-    ['pcpFim', 'entrega'].forEach(function (campo) {
-      if (p[campo] !== d[campo]) p.reagendamentos.push({ campo: campo, de: p[campo], para: d[campo], em: hoje(), motivo: 'edição' });
-    });
+    antes = { gpUid: p.gpUid || null, responsavelUid: p.responsavelUid || null, definido: !Projeto.aguardandoCronograma(p),
+      datas: Projeto.CAMPOS_DATA.map(function (c) { return p[c] || null; }).join('|') };
+    Projeto.registrarReprogramacao(p, d, Auth.nomeExibicao(), 'edição');
     Object.assign(p, d);
   } else {
     p = Object.assign({ id: Projeto.novoId(), status: 'ativo', concluidoEm: null, canceladoEm: null,
-      reagendamentos: [], paralisacoes: [], checklist: Projeto.checklistNovo() }, d);
+      reagendamentos: [], paralisacoes: [], checklist: Projeto.checklistNovo(), criadoPor: Auth.nomeExibicao() }, d);
     estado.projetos.push(p);
   }
+  const definiuAgora = d.cronogramaDefinido && (!antes || !antes.definido);
+  if (definiuAgora) Projeto.distribuirTarefas(p);
+
   fecharModal('modal-projeto');
   redesenhar();
   toast(eraEdicao ? T('t.atualizado', p.commessa) : T('t.incluido', p.commessa, CHECKLIST_PADRAO.length));
+  (v.avisos || []).forEach(function (a) { toast(a, { tipo: 'erro' }); });
   persistir().then(function () {
-    // designação nova (ou trocada) avisa quem recebeu o projeto — só depois de gravado
-    if (d.responsavelUid && d.responsavelUid !== responsavelAnterior) {
-      Auth.criarNotificacao(d.responsavelUid, 'designacao', T('notif.designado', p.commessa), p.id);
+    avisarEnvolvidos(p, antes, definiuAgora);
+    if (antes && (antes.gpUid !== (p.gpUid || null) || antes.responsavelUid !== (p.responsavelUid || null))) {
+      Ops.sincronizarDesignacao(p, opsDoProjeto(p.id)).catch(function (e) { console.warn('OPs não acompanharam a designação:', e); });
     }
   }).catch(function () { /* persistir já avisou e desfez */ });
 }
 
+// Notificações 1 a 4 — só depois de gravado.
+function avisarEnvolvidos(p, antes, definiuAgora) {
+  const com = p.commessa;
+  const gpNovo = p.gpUid || null, tecNovo = p.responsavelUid || null;
+  if (!antes) {
+    if (gpNovo) Auth.criarNotificacao(gpNovo, 'projetoCriado', T('notif.projetoCriado', com, p.descricao), p.id);
+  } else if (antes.gpUid !== gpNovo) {
+    if (gpNovo) Auth.criarNotificacao(gpNovo, 'designacao', T('notif.virouGp', com), p.id);
+    if (antes.gpUid) Auth.criarNotificacao(antes.gpUid, 'designacaoTrocada', T('notif.saiuGp', com), p.id);
+  }
+  const tecTrocado = antes && antes.responsavelUid !== tecNovo;
+  if (antes && tecTrocado && antes.responsavelUid) {
+    Auth.criarNotificacao(antes.responsavelUid, 'designacaoTrocada', T('notif.saiuTecnico', com), p.id);
+  }
+  if (!tecNovo || Projeto.aguardandoCronograma(p)) return;   // técnico só fica sabendo com o cronograma pronto
+  if (definiuAgora || !antes || tecTrocado) {
+    Auth.criarNotificacao(tecNovo, 'cronograma', T('notif.cronograma', com, br(p.pcpInicio), br(p.pcpFim)), p.id);
+  } else if (antes.datas !== Projeto.CAMPOS_DATA.map(function (c) { return p[c] || null; }).join('|')) {
+    Auth.criarNotificacao(tecNovo, 'datas', T('notif.datas', com), p.id);
+  }
+}
+
 ['input', 'change'].forEach(function (evt) {
   document.addEventListener(evt, function (e) {
-    if (e.target && (e.target.id === 'f-pcpInicio' || e.target.id === 'f-entrega')) previewStatus();
+    if (e.target && (e.target.id === 'f-pcpFim' || e.target.id === 'f-entrega')) atualizarPreviews();
   });
 });
 
 registrarAcoes({
   abrirNovoProjeto: abrirNovoProjeto,
-  abrirEditarProjeto: abrirEditarProjeto,
+  abrirEditarProjeto: function (campo) { abrirEditarProjeto(campo); },
   salvarProjeto: salvarProjeto
 });

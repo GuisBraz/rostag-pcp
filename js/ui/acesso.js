@@ -5,6 +5,7 @@
 --------------------------------------------------------------------------- */
 import { T } from '../i18n/index.js';
 import { esc } from '../nucleo/fmt.js';
+import * as Papeis from '../dominio/papeis.js';
 import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
 import { abrirModal, fecharModal, confirmar } from './modal.js';
@@ -187,7 +188,7 @@ function renderEquipeMenu() {
     const ativa = e.id === atualId;
     return '<button type="button" class="profile-menu-item' + (ativa ? ' ativa' : '') + '" data-acao="trocarEquipe" data-arg="' + esc(e.id) + '"' +
       (ativa ? ' aria-current="true"' : '') + '>' + (ativa ? '● ' : '○ ') + esc(e.nomeEquipe || '—') +
-      '<span class="hint-txt"> · ' + esc(T('cfg.papel.' + (e.papel === 'gp' ? 'gp' : 'planejador'))) + '</span></button>';
+      '<span class="hint-txt"> · ' + esc(T('papel.' + Papeis.papelEfetivo(e.papel, false))) + '</span></button>';
   }).join('');
 }
 

@@ -10,8 +10,20 @@ import { renderProjetos } from './projetos.js';
 import { renderLinha } from './linha.js';
 import { renderDetalhe, fecharReagendar, atualizarInscricaoChat } from './detalhe.js';
 import { abaConfig } from './preferencias.js';
+import { renderFabrica, renderRnc } from './fabrica.js';
+import * as Auth from '../dados/auth.js';
+import * as Papeis from '../dominio/papeis.js';
 
-const PAGINAS = { painel: 1, projetos: 1, linha: 1, config: 1 };
+const PAGINAS = { painel: 1, projetos: 1, linha: 1, fabrica: 1, rnc: 1, config: 1 };
+
+// Telas que cada cargo usa. Programadores e CQ trabalham só na Fábrica.
+export function abaPermitida(aba) {
+  const papel = Auth.papel();
+  if (aba === 'config' || aba === 'fabrica') return true;
+  if (aba === 'rnc') return Papeis.veRnc(papel);
+  return Papeis.veProjetos(papel);
+}
+export function abaInicial() { return Papeis.veProjetos(Auth.papel()) ? 'painel' : 'fabrica'; }
 
 export function irPara(aba, arg) {
   const nova = '#/' + aba + (arg ? '/' + encodeURIComponent(arg) : '');
@@ -25,8 +37,8 @@ export function abaAtual() {
 
 export function aplicarRota() {
   const partes = (location.hash || '#/painel').replace(/^#\/?/, '').split('/');
-  let aba = partes[0] || 'painel';
-  if (!PAGINAS[aba]) aba = 'painel';
+  let aba = partes[0] || abaInicial();
+  if (!PAGINAS[aba] || !abaPermitida(aba)) aba = abaInicial();
   let arg = null;
   try { arg = partes[1] ? decodeURIComponent(partes[1]) : null; } catch (e) { arg = null; }
 
@@ -45,6 +57,8 @@ export function aplicarRota() {
 
   if (aba === 'painel') renderPainel();
   if (aba === 'linha') renderLinha();
+  if (aba === 'fabrica') renderFabrica();
+  if (aba === 'rnc') renderRnc();
   if (aba === 'config') abaConfig(arg && $('stab-' + arg) ? arg : 'geral');
   if (aba === 'projetos') {
     const existe = !!(arg && buscarProjeto(arg));

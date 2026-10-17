@@ -15,10 +15,23 @@ const FIREBASE_CONFIG = {
 // O SDK (compat) vem por <script> do gstatic e expõe o global `firebase`.
 export const FIREBASE_PRONTO = typeof window !== 'undefined' && typeof window.firebase !== 'undefined';
 
+// Modo de teste: só em localhost com ?emulador na URL. Usa os emuladores
+// locais (npx firebase emulators:start --only firestore,auth) e um projeto de
+// mentira — nada toca o Firebase de verdade.
+export const EMULADOR = typeof location !== 'undefined'
+  && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]emulador\b/.test(location.search);
+
 let iniciado = false;
 export function iniciarFirebase() {
   if (!FIREBASE_PRONTO || iniciado) return;
   iniciado = true;
+  if (EMULADOR) {
+    window.firebase.initializeApp({ apiKey: 'demo', authDomain: 'localhost', projectId: 'demo-rostag', appId: 'demo' });
+    window.firebase.auth().useEmulator('http://localhost:9099');
+    window.firebase.firestore().useEmulator('localhost', 8080);
+    console.info('ROSTAG PCP em modo de teste (emuladores locais).');
+    return;
+  }
   window.firebase.initializeApp(FIREBASE_CONFIG);
   // Cache local do Firestore: o app instalado abre e mostra os dados mesmo
   // sem internet, e as gravações feitas offline sobem quando a rede volta.

@@ -37,7 +37,7 @@ function celulaPcp(p) {
     return '<span class="sit-chip"><span class="dot dot-concluida"></span>' + esc(T('lista.pcpConcluido')) + '</span>';
   }
   const s = Projeto.situacaoPcp(p);
-  const texto = c.proxima ? brCurto(c.proxima.fim) + ' · ' + SIT_LABEL(s) : SIT_LABEL(s);
+  const texto = c.proxima && c.proxima.fim ? brCurto(c.proxima.fim) + ' · ' + SIT_LABEL(s) : SIT_LABEL(s);
   return '<span class="sit-chip" title="' + esc(T('lista.proxima', c.proxima ? c.proxima.t : '—')) + '">' +
     '<span class="dot dot-' + s + '"></span>' + esc(texto) + '</span>';
 }

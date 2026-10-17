@@ -17,6 +17,7 @@ import { refreshOpcoes } from './filtros.js';
 import { renderLinha } from './linha.js';
 import { renderDetalhe } from './detalhe.js';
 import { renderNotificacoes } from './notificacoes.js';
+import { renderFabrica, renderRnc, atualizarContadorRnc } from './fabrica.js';
 
 /* ---------------------------------------------------------- salvamento */
 let estadoChip = 'ok';   // ok · salvando · erro · offline
@@ -68,7 +69,10 @@ export function renderTudo() {
   const a = abaAtual();
   if (a === 'projetos') renderProjetos();
   if (a === 'linha') renderLinha();
+  if (a === 'fabrica') renderFabrica();
+  if (a === 'rnc') renderRnc();
   if (a === 'painel') renderPainel(); else renderNotificacoes();
+  atualizarContadorRnc();
   atualizarInfoArmazenamento();
 }
 

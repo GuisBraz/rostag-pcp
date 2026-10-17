@@ -2,7 +2,9 @@
    Detalhe do projeto — janelas de prazo, informações, ações de status,
    histórico, cronograma, observações por tarefa e conversa.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, projetoAtual } from '../estado.js';
+import { estado, buscarProjeto, projetoAtual, opsDoProjeto } from '../estado.js';
+import * as Producao from '../dominio/producao.js';
+import { abrirEditarProjeto } from './formulario.js';
 import { prefs } from '../nucleo/prefs.js';
 import { esc, br, hoje, difDias, dataDoInstante, horaDoInstante } from '../nucleo/fmt.js';
 import { T, plural, STATUS_LABEL, SIT_LABEL } from '../i18n/index.js';
@@ -34,7 +36,7 @@ export function renderDetalhe() {
 
   $('detail-commessa').textContent = p.commessa;
   $('detail-titulo').textContent = p.descricao;
-  $('detail-sub').textContent = p.cliente + ' · ' + T('f.gp') + ' ' + p.gp;
+  $('detail-sub').textContent = p.cliente + ' · ' + T('f.gp') + ' ' + p.gp + ' · ' + T('d.tecnico') + ' ' + (p.tecnico || '—');
   const pill = $('detail-status-pill');
   pill.textContent = STATUS_LABEL(st);
   pill.className = 'pill pill-' + st;
@@ -42,14 +44,37 @@ export function renderDetalhe() {
 
   // --- janela do PCP ---
   const sitPcp = Projeto.situacaoPcp(p);
-  let obsPcp, corPcp;
-  if (parado) { obsPcp = T('d.pcpParado', plural(Projeto.diasParadoAtual(p), 'x.dia', 'x.dias')); corPcp = 'var(--amber-ink)'; }
-  else if (c.concluido) { obsPcp = T('d.pcpConcluido', br(c.fimPrevisto)); corPcp = 'var(--green)'; }
-  else if (c.estouro > 0) { obsPcp = T('d.pcpEstouro', br(c.fimPrevisto), plural(c.estouro, 'x.dia', 'x.dias')); corPcp = 'var(--rust)'; }
-  else { obsPcp = T('d.pcpProjecao', br(c.fimPrevisto), plural(c.duracaoTotal, 'x.dia', 'x.dias')); corPcp = 'var(--ink-dim)'; }
-  $('janela-pcp').innerHTML = janela(
-    esc(T('d.janelaPcp')) + ' <span class="dot dot-' + sitPcp + '" style="margin-left:4px" title="' + esc(SIT_LABEL(sitPcp)) + '"></span>',
-    br(p.pcpInicio) + ' → ' + br(p.pcpFim), obsPcp, corPcp);
+  if (Projeto.aguardandoCronograma(p)) {
+    $('janela-pcp').innerHTML = janela(esc(T('d.janelaPcp')) + ' <span class="dot dot-aguardando" style="margin-left:4px"></span>',
+      esc(T('sit.aguardando')), T(podeGerir ? 'd.aguardandoGestor' : 'd.aguardandoNota'), 'var(--amber-ink)') +
+      (podeGerir ? '<button type="button" class="btn btn-primary btn-mini" style="margin-top:8px" data-acao="abrirEditarProjeto" data-arg="f-pcpInicio">' +
+        esc(T('d.definirCronograma')) + '</button>' : '');
+  } else {
+    let obsPcp, corPcp;
+    if (parado) { obsPcp = T('d.pcpParado', plural(Projeto.diasParadoAtual(p), 'x.dia', 'x.dias')); corPcp = 'var(--amber-ink)'; }
+    else if (c.concluido) { obsPcp = T('d.pcpConcluido', br(c.fimPrevisto)); corPcp = 'var(--green)'; }
+    else if (Projeto.pcpAtrasado(p)) { obsPcp = T('d.pcpAtrasado', plural(difDias(p.pcpFim, h), 'x.dia', 'x.dias')); corPcp = 'var(--rust)'; }
+    else if (c.estouro > 0) { obsPcp = T('d.pcpEstouro', br(c.fimPrevisto), plural(c.estouro, 'x.dia', 'x.dias')); corPcp = 'var(--rust)'; }
+    else { obsPcp = T('d.pcpProjecao', br(c.fimPrevisto), plural(c.duracaoTotal, 'x.dia', 'x.dias')); corPcp = 'var(--ink-dim)'; }
+    $('janela-pcp').innerHTML = janela(
+      esc(T('d.janelaPcp')) + ' <span class="dot dot-' + sitPcp + '" style="margin-left:4px" title="' + esc(SIT_LABEL(sitPcp)) + '"></span>',
+      br(p.pcpInicio) + ' → ' + br(p.pcpFim), obsPcp, corPcp);
+  }
+
+  // --- janela da produção (começa no fim do PCP; avanço pelas OPs aprovadas) ---
+  const stOps = Producao.estatisticas(opsDoProjeto(p.id));
+  const sitProd = Producao.situacao(p, stOps, h);
+  const corProd = { atrasada: 'var(--rust)', concluida: 'var(--green)', andamento: 'var(--violet)' }[sitProd] || 'var(--ink-dim)';
+  let obsProd = T('prod.' + sitProd);
+  if (sitProd === 'atrasada') obsProd += ' — ' + plural(Producao.diasAtraso(p, h), 'x.dia', 'x.dias');
+  if (p.prodFim && p.entrega && p.prodFim > p.entrega) obsProd += ' · ' + T('d.prodDepoisEntrega', plural(difDias(p.entrega, p.prodFim), 'x.dia', 'x.dias'));
+  const avanco = stOps.total
+    ? '<div class="prod-avanco">' + [['fab.geral', stOps], ['area.caldeiraria', stOps.caldeiraria], ['area.usinagem', stOps.usinagem]].map(function (x) {
+      return '<span><b>' + x[1].pct + '%</b> ' + esc(T(x[0])) + ' <span class="hint-inline">(' + x[1].aprovadas + '/' + x[1].total + ')</span></span>';
+    }).join('') + (stOps.rnc ? '<span class="prod-rnc">' + esc(T('fab.comRnc', stOps.rnc)) + '</span>' : '') + '</div>'
+    : '<div class="hint-inline">' + esc(T('d.semOps')) + '</div>';
+  $('janela-producao').innerHTML = janela(esc(T('d.janelaProd')) + ' <span class="pill-prod prod-' + sitProd + '">' + esc(T('prod.' + sitProd)) + '</span>',
+    p.pcpFim ? br(p.pcpFim) + ' → ' + br(p.prodFim) : '—', obsProd, corProd) + avanco;
 
   // --- entrega ---
   const dEnt = difDias(h, p.entrega);
@@ -102,11 +127,12 @@ export function renderDetalhe() {
   // --- histórico ---
   const evs = [];
   if (p.dataSolicitacao) evs.push({ d: p.dataSolicitacao, t: T('h.solicitado') });
-  evs.push({ d: p.pcpInicio, t: T('h.inicioPcp') });
+  if (p.pcpInicio) evs.push({ d: p.pcpInicio, t: T('h.inicioPcp') });
+  const nomeCampo = { pcpInicio: T('d.inicioPcp'), pcpFim: T('d.fimPcp'), prodFim: T('d.fimProd'), entrega: T('d.entregaCampo') };
   p.reagendamentos.forEach(function (r) {
     if (!r.em) return;
-    evs.push({ d: r.em, t: T('h.movido', r.campo === 'pcpFim' ? T('d.fimPcp') : T('d.entregaCampo'), br(r.de), br(r.para)) +
-      (r.motivo === 'edição' ? T('h.movidoEdicao') : '') });
+    evs.push({ d: r.em, t: T('h.movido', nomeCampo[r.campo] || r.campo, br(r.de), br(r.para)) +
+      (r.motivo === 'edição' ? T('h.movidoEdicao') : '') + (r.por ? ' — ' + r.por : '') });
   });
   (p.paralisacoes || []).forEach(function (x) {
     evs.push({ d: x.inicio, t: T('h.paralisado', x.motivo ? ' — ' + x.motivo : '') });
@@ -239,8 +265,11 @@ function excluirProjeto() {
 }
 
 /* --------------------------------------------------------- reagendar */
+/* Reprogramar: quem decide é o GP (ou o gerente). O fim do PCP puxa junto o
+   início da produção; o fim da produção só muda se for escolhido aqui. */
 function abrirReagendar() {
   const p = projetoAtual();
+  if (Projeto.aguardandoCronograma(p)) { abrirEditarProjeto('f-pcpInicio'); return; }
   $('reagendar-box').style.display = 'flex';
   $('reagendar-campo').value = Projeto.status(p) === 'atrasado' ? 'entrega' : 'pcpFim';
   atualizarDataReagendar();
@@ -248,26 +277,30 @@ function abrirReagendar() {
 }
 function atualizarDataReagendar() {
   const p = projetoAtual();
-  if (p) $('reagendar-data').value = p[$('reagendar-campo').value];
+  if (p) $('reagendar-data').value = p[$('reagendar-campo').value] || '';
 }
 export function fecharReagendar() { const box = $('reagendar-box'); if (box) box.style.display = 'none'; }
 export function reagendarAberto() { return $('reagendar-box').style.display === 'flex'; }
 function confirmarReagendar() {
   const p = projetoAtual();
-  const campo = $('reagendar-campo').value === 'entrega' ? 'entrega' : 'pcpFim';
+  const campo = Projeto.CAMPOS_DATA.indexOf($('reagendar-campo').value) >= 0 ? $('reagendar-campo').value : 'pcpFim';
   const nova = $('reagendar-data').value;
-  const nome = campo === 'pcpFim' ? T('d.fimPcp') : T('d.entregaCampo');
+  const nomes = { pcpInicio: T('d.inicioPcp'), pcpFim: T('d.fimPcp'), prodFim: T('d.fimProd'), entrega: T('d.entregaCampo') };
   if (!nova) { toast(T('t.escolhaData'), { tipo: 'erro' }); return; }
-  if (campo === 'pcpFim') {
-    if (nova < p.pcpInicio) { toast(T('t.pcpAntesInicio', br(p.pcpInicio)), { tipo: 'erro' }); return; }
-    if (nova > p.entrega) { toast(T('t.pcpDepoisEntrega', br(p.entrega)), { tipo: 'erro' }); return; }
-  } else if (nova < p.pcpFim) { toast(T('t.entregaAntesPcp', br(p.pcpFim)), { tipo: 'erro' }); return; }
+  const novas = { pcpInicio: p.pcpInicio, pcpFim: p.pcpFim, prodFim: p.prodFim, entrega: p.entrega };
+  novas[campo] = nova;
+  const v = Projeto.validarCronograma(novas);
+  if (!v.ok) { toast(v.msg, { tipo: 'erro' }); return; }
   const antigo = p[campo];
   if (antigo === nova) { fecharReagendar(); return; }
-  p.reagendamentos.push({ campo: campo, de: antigo, para: nova, em: hoje(), motivo: 'reagendamento' });
+  Projeto.registrarReprogramacao(p, { [campo]: nova }, Auth.nomeExibicao(), 'reagendamento');
   p[campo] = nova;
   fecharReagendar();
-  aplicar(T('t.novaData', nome, br(nova), br(antigo)));
+  Projeto.avisosCronograma(p).forEach(function (a) { toast(a, { tipo: 'erro' }); });
+  aplicar(T('t.novaData', nomes[campo], br(nova), br(antigo))).then(function () {
+    // notificação 3: o técnico fica sabendo que as datas mudaram
+    if (p.responsavelUid) Auth.criarNotificacao(p.responsavelUid, 'datas', T('notif.datasCampo', p.commessa, nomes[campo], br(nova)), p.id);
+  });
 }
 
 /* ---------------------------------------------------------- checklist */
@@ -372,7 +405,11 @@ function enviarChat() {
   const txt = input.value.trim().slice(0, 2000);
   if (!txt || !estado.idDetalhe) return;
   input.value = '';
-  Auth.enviarMensagemChat(estado.idDetalhe, txt).catch(function (e) {
+  const p = projetoAtual();
+  Auth.enviarMensagemChat(estado.idDetalhe, txt).then(function () {
+    // notificação 13: GP e técnico do projeto (menos quem escreveu)
+    if (p) Auth.notificarVarios([p.gpUid, p.responsavelUid], 'chat', T('notif.chat', p.commessa, Auth.nomeExibicao(), txt.slice(0, 200)), p.id);
+  }).catch(function (e) {
     input.value = txt;
     toast(T('chat.erro'), { tipo: 'erro' });
     console.warn(e);

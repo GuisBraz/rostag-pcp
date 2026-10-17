@@ -9,15 +9,22 @@ export const estado = {
   ordem: { campo: 'entrega', dir: 1 },
   ordemVisivel: [],          // ids na ordem da lista — usado pelo ↑/↓ no detalhe
   idDetalhe: null,
-  notifReais: []             // designações/observações (Firestore), separadas dos alertas calculados
+  notifReais: [],            // avisos entre pessoas (Firestore), separados dos alertas calculados
+  ops: [],                   // ordens de produção que este cargo enxerga
+  opsCarregadas: false,
+  filtroFab: { area: '', projeto: '', status: '', busca: '' }
 };
 
 export function buscarProjeto(id) {
   return estado.projetos.find(function (p) { return p.id === id; }) || null;
+}
+export function opsDoProjeto(id) {
+  return estado.ops.filter(function (o) { return o.projetoId === id; });
 }
 export function projetoAtual() { return estado.idDetalhe ? buscarProjeto(estado.idDetalhe) : null; }
 
 export function limparFiltros() {
   Object.keys(estado.filtroDash).forEach(function (k) { estado.filtroDash[k] = ''; });
   Object.keys(estado.filtroProj).forEach(function (k) { estado.filtroProj[k] = ''; });
+  Object.keys(estado.filtroFab).forEach(function (k) { estado.filtroFab[k] = ''; });
 }

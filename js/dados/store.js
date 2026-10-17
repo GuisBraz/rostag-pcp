@@ -22,12 +22,13 @@ function colProjetos() {
   return db().collection('equipes').doc(Auth.equipeAtualId()).collection('projetos');
 }
 
-// O planejador só pode ler os projetos dele: a consulta precisa ter o mesmo
+// Cada cargo só pode ler os seus projetos: a consulta precisa ter o mesmo
 // filtro da regra, senão o Firestore nega a consulta inteira.
+//  gerente → todos · GP → onde é o GP · técnico → onde é o responsável
 function consulta() {
-  return Auth.souGPouCoordenador()
-    ? colProjetos()
-    : colProjetos().where('responsavelUid', '==', Auth.uid());
+  if (Auth.souGerente()) return colProjetos();
+  if (Auth.papel() === 'gp') return colProjetos().where('gpUid', '==', Auth.uid());
+  return colProjetos().where('responsavelUid', '==', Auth.uid());
 }
 
 export function escutar(aoReceber, aoFalhar) {

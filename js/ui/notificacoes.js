@@ -24,16 +24,24 @@ export function pararNotificacoes() {
   estado.notifReais = [];
 }
 
+const TIPOS_REAIS = ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas', 'designacaoTrocada', 'planilhaOps', 'rnc', 'chat'];
+
 function mapReal(n) {
+  const tipo = TIPOS_REAIS.indexOf(n.tipo) >= 0 ? n.tipo : 'observacao';
   return {
     id: 'real:' + n.id, projetoId: n.projetoId || '', equipeId: n.equipeId || '',
-    nivel: 'aviso', titulo: T(n.tipo === 'designacao' ? 'notif.tituloDesignacao' : 'notif.tituloObservacao'),
-    meta: n.mensagem, quando: (n.criadoEm && dataDoInstante(n.criadoEm)) || hoje(), lida: !!n.lida
+    nivel: tipo === 'rnc' ? 'alerta' : 'aviso', titulo: T('notif.titulo.' + tipo),
+    meta: n.mensagem, quando: (n.criadoEm && dataDoInstante(n.criadoEm)) || hoje(), lida: !!n.lida,
+    origem: n.deNome || '—'
   };
 }
 
+function alertasCalculados() {
+  return Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops });
+}
+
 function listaAtual() {
-  const calculadas = Alertas.gerar(estado.projetos);
+  const calculadas = alertasCalculados();
   if (estado.carregado) Alertas.podarLidas(calculadas);
   return estado.notifReais.map(mapReal).concat(calculadas);
 }
@@ -54,7 +62,8 @@ export function renderNotificacoes() {
     const cor = n.nivel === 'alerta' ? 'var(--rust)' : 'var(--amber-ink)';
     return '<button type="button" class="notif-item ' + (n.lida ? '' : 'nao-lida') + '" data-acao="abrirNotificacao" data-arg="' + esc(n.id) + '">' +
       '<span class="dot ' + (n.nivel === 'alerta' ? 'dot-atrasada' : 'dot-chegando') + '" style="margin-top:4px"></span>' +
-      '<span class="corpo"><span class="tit">' + esc(n.titulo) + '</span><span class="meta">' + esc(n.meta) + '</span></span>' +
+      '<span class="corpo"><span class="tit">' + esc(n.titulo) + '</span><span class="meta">' + esc(n.meta) + '</span>' +
+        '<span class="origem">' + esc(n.origem === 'sistema' ? T('n.origemSistema') : T('n.origemDe', n.origem)) + '</span></span>' +
       '<span class="quando" style="color:' + cor + '">' + brCurto(n.quando) + '</span></button>';
   }).join('') : '<div class="empty-state" style="padding:28px 20px;">' + esc(T('n.vazio')) + '</div>';
   return lista;
@@ -85,7 +94,7 @@ function abrirNotificacao(id) {
 }
 
 function marcarTodasLidas() {
-  Alertas.gerar(estado.projetos).forEach(function (n) { prefs.lidas[n.id] = true; });
+  alertasCalculados().forEach(function (n) { prefs.lidas[n.id] = true; });
   salvarPrefsLocais();
   estado.notifReais.forEach(function (n) {
     if (!n.lida) { n.lida = true; Auth.marcarNotificacaoLida(n.id).catch(function (e) { console.warn(e); }); }

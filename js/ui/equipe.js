@@ -4,6 +4,7 @@
 import { esc, br, dataDoInstante } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Auth from '../dados/auth.js';
+import { PAPEIS, papelEfetivo } from '../dominio/papeis.js';
 import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
 import { confirmar, pedirTexto } from './modal.js';
 import { toast } from './toast.js';
@@ -25,7 +26,7 @@ function pararEscutas() {
 // Liga as escutas da equipe atual (ou religa, se a equipe ou o papel mudou).
 // Fora do painel, a primeira notícia que chegar já desliga tudo.
 function garantirEscutas() {
-  const equipeId = Auth.equipeAtualId(), gestor = Auth.souGPouCoordenador();
+  const equipeId = Auth.equipeAtualId(), gestor = Auth.souGerente();
   if (escuta && escuta.equipeId === equipeId && escuta.gestor === gestor) return;
   pararEscutas();
   const atual = escuta = { equipeId: equipeId, gestor: gestor, parar: [] };
@@ -48,14 +49,22 @@ function garantirEscutas() {
   }
 }
 
+function opcoesPapel(selecionado) {
+  return PAPEIS.map(function (p) {
+    return '<option value="' + p + '"' + (p === selecionado ? ' selected' : '') + '>' + esc(T('papel.' + p)) + '</option>';
+  }).join('');
+}
+
 export function renderEquipe() {
   if (!Auth.podeEntrar()) { pararEscutas(); return; }
-  const souCoord = Auth.souCoordenador(), souGpOuCoord = Auth.souGPouCoordenador();
-  $('btn-convidar').style.display = souGpOuCoord ? 'flex' : 'none';
+  const souCoord = Auth.souCoordenador(), gerente = Auth.souGerente();
+  $('btn-convidar').style.display = gerente ? 'flex' : 'none';
+  const sel = $('convite-papel');
+  if (sel && !sel.options.length) sel.innerHTML = opcoesPapel('tecnico');
   $('equipe-senha-bloco').style.display = souCoord ? 'block' : 'none';
   $('equipe-senha-aviso').style.display = (souCoord && Auth.senhaFormatoAntigo()) ? 'block' : 'none';
   $('equipe-sair-bloco').style.display = souCoord ? 'none' : 'block';
-  $('equipe-convites-bloco').style.display = souGpOuCoord ? 'block' : 'none';
+  $('equipe-convites-bloco').style.display = gerente ? 'block' : 'none';
   garantirEscutas();
   desenharMembros();
   desenharConvites();
@@ -64,17 +73,19 @@ export function renderEquipe() {
 function desenharMembros() {
   const lista = $('equipe-lista');
   if (!membrosCache) { lista.innerHTML = '<div class="hint-txt">' + esc(T('cfg.equipeCarregando')) + '</div>'; return; }
-  const souCoord = Auth.souCoordenador(), meuUid = Auth.uid(), coordUid = Auth.coordenadorUidAtual();
+  const souCoord = Auth.souCoordenador(), gerente = Auth.souGerente(), meuUid = Auth.uid(), coordUid = Auth.coordenadorUidAtual();
   lista.innerHTML = membrosCache.map(function (m) {
     const voce = m.uid === meuUid, ehCoord = m.uid === coordUid;
-    const papelTxt = ehCoord ? T('cfg.equipeCoordenador') : T('cfg.papel.' + (m.papel === 'gp' ? 'gp' : 'planejador'));
-    const classePapel = ehCoord ? 'papel-coord' : (m.papel === 'gp' ? 'papel-gp' : 'papel-planejador');
+    const efetivo = papelEfetivo(m.papel, ehCoord);
+    const papelTxt = T('papel.' + efetivo) + (ehCoord ? ' · ' + T('cfg.equipeCoordenador') : '');
+    const classePapel = ehCoord ? 'papel-coord' : (efetivo === 'gerente_pcp' || efetivo === 'gp' ? 'papel-gp' : 'papel-planejador');
     let acoes = '';
-    if (souCoord && !ehCoord) {
-      const outro = m.papel === 'gp' ? 'planejador' : 'gp';
+    // o Gerente de PCP muda o cargo e remove; o coordenador fica de fora (só ele passa a coordenação)
+    if (gerente && !ehCoord && !voce) {
       const dados = ' data-arg="' + esc(m.uid) + '" data-arg2="' + esc(m.nome || m.email || '') + '"';
-      acoes = '<button type="button" class="btn btn-outline" data-acao="' + (outro === 'gp' ? 'promoverGp' : 'rebaixarPlanejador') + '"' + dados + '>' + esc(T('cfg.papel.tornar.' + outro)) + '</button>' +
-        '<button type="button" class="btn btn-outline" data-acao="transferirCoordenacao"' + dados + '>' + esc(T('cfg.equipeTransferir')) + '</button>' +
+      acoes = '<select class="papel-select" data-change="mudarPapelMembro"' + dados + ' aria-label="' + esc(T('cfg.papelDe', m.nome || m.email || '')) + '">' +
+          opcoesPapel(efetivo) + '</select>' +
+        (souCoord ? '<button type="button" class="btn btn-outline" data-acao="transferirCoordenacao"' + dados + '>' + esc(T('cfg.equipeTransferir')) + '</button>' : '') +
         '<button type="button" class="btn btn-danger" data-acao="removerDaEquipe"' + dados + '>' + esc(T('cfg.equipeRemover')) + '</button>';
     }
     return '<div class="membro-linha"><div class="membro-info">' +
@@ -86,12 +97,12 @@ function desenharMembros() {
 
 function desenharConvites() {
   const convites = $('equipe-convites');
-  if (!Auth.souGPouCoordenador()) return;
+  if (!Auth.souGerente()) return;
   if (!convitesCache) { convites.innerHTML = '<div class="hint-txt">' + esc(T('cfg.equipeCarregando')) + '</div>'; return; }
   convites.innerHTML = convitesCache.map(function (c) {
     const link = linkConvite(c.codigo);
     return '<div class="convite-linha"><div class="hint-txt convite-link">' + esc(link) +
-      ' <span class="pill-mini">' + esc(T('cfg.papel.' + (c.papel === 'gp' ? 'gp' : 'planejador'))) + '</span>' +
+      ' <span class="pill-mini">' + esc(T('papel.' + papelEfetivo(c.papel, false))) + '</span>' +
       ' <span class="hint-txt">' + esc(T('cfg.equipeConviteValeAte', br(dataDoInstante(c.venceEm)))) + '</span></div>' +
       '<div class="membro-acoes">' +
         '<button type="button" class="btn btn-outline" data-acao="copiarConvite" data-arg="' + esc(link) + '">' + esc(T('cfg.equipeCopiarLink')) + '</button>' +
@@ -112,8 +123,8 @@ function mostrarLink(link) {
 }
 
 function alterarPapel(uid, nome, papelNovo) {
-  confirmar(T('cfg.papel.confirmarTrocar', nome, T('cfg.papel.' + papelNovo)), { titulo: T('cfg.equipe') }).then(function (ok) {
-    if (!ok) return;
+  confirmar(T('cfg.papel.confirmarTrocar', nome, T('papel.' + papelNovo)), { titulo: T('cfg.equipe') }).then(function (ok) {
+    if (!ok) { desenharMembros(); return; }   // volta o seletor para o cargo atual
     Auth.alterarPapel(uid, papelNovo).then(function () { toast(T('cfg.papel.trocado', nome)); renderEquipe(); })
       .catch(function (e) { avisoErro(e); });
   });
@@ -135,14 +146,14 @@ function redefinirSenhaEquipe(_a, _b, btn) {
 }
 
 registrarAcoes({
-  convidarMembro: function (papelConvite, _b, btn) {
-    comBotaoOcupado(btn, Auth.criarConvite(papelConvite === 'gp' ? 'gp' : 'planejador').then(function (codigo) {
+  convidarMembro: function (_a, _b, btn) {
+    const papelConvite = $('convite-papel').value || 'tecnico';
+    comBotaoOcupado(btn, Auth.criarConvite(papelConvite).then(function (codigo) {
       copiarConvite(linkConvite(codigo));
       renderEquipe();
     }).catch(function (e) { avisoErro(e); }));
   },
-  promoverGp: function (uid, nome) { alterarPapel(uid, nome, 'gp'); },
-  rebaixarPlanejador: function (uid, nome) { alterarPapel(uid, nome, 'planejador'); },
+  mudarPapelMembro: function (papelNovo, _b, el) { alterarPapel(el.dataset.arg, el.dataset.arg2, papelNovo); },
   copiarConvite: copiarConvite,
   revogarConvite: function (codigo) {
     Auth.revogarConvite(codigo).then(function () { toast(T('cfg.equipeConviteRevogado')); renderEquipe(); })

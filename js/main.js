@@ -13,14 +13,17 @@ import { prefs, carregarPrefsDoUsuario, aplicarPerfil, resetarPrefs, temaInicial
 import { FIREBASE_PRONTO, iniciarFirebase } from './dados/firebase.js';
 import * as Auth from './dados/auth.js';
 import * as Store from './dados/store.js';
+import * as Ops from './dados/ops.js';
 import * as Cronograma from './dominio/cronograma.js';
+import * as Projeto from './dominio/projeto.js';
+import * as Papeis from './dominio/papeis.js';
 import { T } from './i18n/index.js';
 import { estado, buscarProjeto, limparFiltros } from './estado.js';
 import { $, iniciarDespachante } from './ui/dom.js';
 import { iniciarModais, fecharTodos } from './ui/modal.js';
 import { toast } from './ui/toast.js';
 import { redesenhar, atualizarChip, renderTudo } from './ui/app.js';
-import { aplicarRota, irPara } from './ui/rota.js';
+import { aplicarRota, irPara, abaInicial } from './ui/rota.js';
 import { aplicarTema, aplicarIdioma, aplicarPrefs } from './ui/preferencias.js';
 import { renderAtalhos, iniciarAtalhos } from './ui/atalhos.js';
 import { escutarNotificacoes, pararNotificacoes } from './ui/notificacoes.js';
@@ -34,12 +37,13 @@ import './ui/dados.js';
 
 let uidCarregado = null;       // de quem são as preferências aplicadas
 let equipeCarregada = null;    // de qual equipe são os projetos escutados
-let gestorCarregado = null;    // a consulta muda entre GP/coordenador e planejador
+let papelCarregado = null;     // a consulta muda conforme o cargo
 
 /* ------------------------------------------------------------ dados */
 function aoReceberProjetos(lista) {
   const primeira = !estado.carregado;
-  estado.projetos = lista;
+  // o técnico só recebe o projeto depois que o GP define o cronograma
+  estado.projetos = Auth.papel() === 'tecnico' ? lista.filter(function (p) { return !Projeto.aguardandoCronograma(p); }) : lista;
   estado.carregado = true;
   Cronograma.invalidar();
   if (primeira) {
@@ -59,11 +63,19 @@ function aoFalharProjetos(e) {
   toast(T('t.erroCarregar'), { tipo: 'erro' });
 }
 
+function aoReceberOps(lista) {
+  estado.ops = lista;
+  estado.opsCarregadas = true;
+  redesenhar();
+}
+
 function escutarEquipe() {
   equipeCarregada = Auth.equipeAtualId();
-  gestorCarregado = Auth.souGPouCoordenador();
+  papelCarregado = Auth.papel();
   estado.projetos = [];
   estado.carregado = false;
+  estado.ops = [];
+  estado.opsCarregadas = false;
   estado.idDetalhe = null;
   limparFiltros();
   atualizarBadge('dash', estado.filtroDash);
@@ -72,15 +84,34 @@ function escutarEquipe() {
   atualizarChip(navigator.onLine === false ? 'offline' : undefined);
   redesenhar();
   aplicarRota();
-  Store.escutar(aoReceberProjetos, aoFalharProjetos);
+  // Programadores e CQ não trabalham com projetos: nem escutam a coleção.
+  if (Papeis.veProjetos(papelCarregado)) {
+    Store.escutar(aoReceberProjetos, aoFalharProjetos);
+  } else {
+    Store.pararEscuta();
+    estado.carregado = true;
+    aplicarRota();
+  }
+  Ops.escutar(aoReceberOps, function () { estado.opsCarregadas = true; redesenhar(); });
+  // equipe de antes dos cargos novos: o gerente converte os papéis uma vez
+  Auth.migrarPapeisEquipe().then(function (n) { if (n) toast(T('cfg.papeisMigrados', n)); });
 }
 
 /* ------------------------------------------------------------ sessão */
 function aplicarRestricoesPapel() {
-  const gestor = Auth.souGPouCoordenador();
+  const papel = Auth.papel();
+  const gestor = Papeis.gereProjetos(papel);
+  const veProjetos = Papeis.veProjetos(papel);
   document.body.classList.toggle('visao-planejador', !gestor);
+  document.body.classList.toggle('visao-fabrica', !veProjetos);
   $('btn-novo-projeto').style.display = gestor ? '' : 'none';
   $('dados-acoes-escrita').style.display = gestor ? 'contents' : 'none';
+  ['painel', 'projetos', 'linha'].forEach(function (aba) {
+    const b = document.querySelector('.side-item[data-tab="' + aba + '"]');
+    if (b) b.style.display = veProjetos ? '' : 'none';
+  });
+  const bRnc = document.querySelector('.side-item[data-tab="rnc"]');
+  if (bRnc) bRnc.style.display = Papeis.veRnc(papel) ? '' : 'none';
 }
 
 function aplicarUsuario() {
@@ -99,12 +130,15 @@ function aplicarUsuario() {
 // continuam escutadas no hub, e só param quando a conta sai (ver atualizarSessao).
 function sairDoApp() {
   Store.pararEscuta();
+  Ops.pararEscuta();
   pararInscricaoChat();
   fecharTodos();
   equipeCarregada = null;
-  gestorCarregado = null;
+  papelCarregado = null;
   estado.projetos = [];
   estado.carregado = false;
+  estado.ops = [];
+  estado.opsCarregadas = false;
   estado.idDetalhe = null;
 }
 
@@ -136,10 +170,10 @@ function atualizarSessao() {
   $('app-shell').style.display = '';
   aplicarRestricoesPapel();
   atualizarSeletorEquipe();
-  if (Auth.equipeAtualId() !== equipeCarregada || Auth.souGPouCoordenador() !== gestorCarregado) {
+  if (Auth.equipeAtualId() !== equipeCarregada || Auth.papel() !== papelCarregado) {
     const trocouEquipe = equipeCarregada && Auth.equipeAtualId() !== equipeCarregada;
     escutarEquipe();
-    if (trocouEquipe) { irPara('painel'); toast(T('hub.equipeCarregada', Auth.equipeAtualNome())); }
+    if (trocouEquipe) { irPara(abaInicial()); toast(T('hub.equipeCarregada', Auth.equipeAtualNome())); }
   } else if (estado.idDetalhe) {
     redesenhar();
   }

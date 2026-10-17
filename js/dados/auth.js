@@ -11,6 +11,7 @@
    coordenador muda meu papel.
 --------------------------------------------------------------------------- */
 import { FIREBASE_PRONTO, db, auth, apagarCampo, horaDoServidor } from './firebase.js';
+import * as Papeis from '../dominio/papeis.js';
 
 let usuario = null;        // usuário do Firebase Authentication
 let perfil = null;         // /usuarios/{uid}: nome e preferências
@@ -178,7 +179,7 @@ export function uid() { return usuario ? usuario.uid : null; }
 export function perfilAtual() { return perfil; }
 export function minhasEquipesLista() {
   return minhasEquipes.map(function (e) {
-    return e.id === equipeAtualId_ && meuMembro ? Object.assign({}, e, { papel: meuMembro.papel }) : e;
+    return e.id === equipeAtualId_ && meuMembro ? Object.assign({}, e, { papel: papel() }) : e;
   });
 }
 export function equipeAtualId() { return equipeAtualId_; }
@@ -187,10 +188,16 @@ export function membro() { return !!(equipeAtualId_ && equipeAtual && meuMembro)
 export function podeEntrar() { return logado() && membro(); }
 export function souCoordenador() { return !!(equipeAtual && usuario && equipeAtual.coordenadorUid === usuario.uid); }
 export function coordenadorUidAtual() { return equipeAtual ? equipeAtual.coordenadorUid : null; }
-export function papel() { return meuMembro ? meuMembro.papel : null; }
-// GP e coordenador têm o mesmo poder de edição; planejador só mexe no
-// checklist do que foi designado a ele.
-export function souGPouCoordenador() { return membro() && (souCoordenador() || papel() === 'gp'); }
+// Papel gravado em /membros (pode ser o legado "planejador").
+export function papelGravado() { return meuMembro ? meuMembro.papel : null; }
+// Papel efetivo: coordenador = Gerente de PCP; "planejador" = Técnico.
+export function papel() { return membro() ? Papeis.papelEfetivo(meuMembro.papel, souCoordenador()) : null; }
+export function souGerente() { return Papeis.ehGerente(papel()); }
+// Gerente de PCP e GP criam e editam projetos (o GP só os dele).
+export function souGPouCoordenador() { return Papeis.gereProjetos(papel()); }
+export function veProjetos() { return Papeis.veProjetos(papel()); }
+export function souCQ() { return Papeis.ehCQ(papel()); }
+export function areaProgramador() { return Papeis.areaDoProgramador(papel()); }
 export function nomeExibicao() {
   return (perfil && perfil.nome) || (usuario && (usuario.displayName || (usuario.email || '').split('@')[0])) || '';
 }
@@ -303,9 +310,9 @@ export function criarEquipe(nome, senha) {
           tx.update(refPerfil, { equipesCriadas: atual + 1 });
         });
       }).then(function () {
-        return colMembros(novoId).doc(usuario.uid).set({ nome: nomeExibicao(), email: usuario.email || '', papel: 'gp', entrouEm: agoraIso() });
+        return colMembros(novoId).doc(usuario.uid).set({ nome: nomeExibicao(), email: usuario.email || '', papel: 'gerente_pcp', entrouEm: agoraIso() });
       }).then(function () {
-        return colMinhasEquipes(usuario.uid).doc(novoId).set({ papel: 'gp', nomeEquipe: nomeLimpo, entrouEm: agoraIso() });
+        return colMinhasEquipes(usuario.uid).doc(novoId).set({ papel: 'gerente_pcp', nomeEquipe: nomeLimpo, entrouEm: agoraIso() });
       }).then(function () {
         // reserva o nome por último — numa corrida rara com alguém criando o
         // mesmo nome, a equipe existe mas só não fica achável pelo nome
@@ -315,7 +322,7 @@ export function criarEquipe(nome, senha) {
   });
 }
 
-// Nome + senha da equipe: entra como planejador. O hash digitado vai em
+// Nome + senha da equipe: entra como Técnico de processo. O hash digitado vai em
 // /equipeSegredos/{id}/entradas/{uid} no mesmo lote que o /membros — a regra
 // compara os dois ali — e é apagado em seguida.
 export function entrarPorNomeSenha(nome, senha) {
@@ -334,14 +341,14 @@ export function entrarPorNomeSenha(nome, senha) {
       }).then(function (senhaHash) {
         const lote = db().batch();
         lote.set(refEntrada, { senhaHash: senhaHash });
-        lote.set(colMembros(equipeId).doc(usuario.uid), { nome: nomeExibicao(), email: usuario.email || '', papel: 'planejador', entrouEm: agoraIso() });
+        lote.set(colMembros(equipeId).doc(usuario.uid), { nome: nomeExibicao(), email: usuario.email || '', papel: 'tecnico', entrouEm: agoraIso() });
         return lote.commit().catch(function (e) {
           if (e && e.code === 'permission-denied') throw new Error('senha-incorreta');
           throw e;
         });
       }).then(function () {
         refEntrada.delete().catch(function (e) { console.warn('tentativa de senha não apagada:', e); });
-        return gravarIndicePessoal(equipeId, 'planejador');
+        return gravarIndicePessoal(equipeId, 'tecnico');
       }).then(function () { return entrouNaEquipe(equipeId); });
     });
   });
@@ -423,7 +430,26 @@ export function removerMembro(alvoUid) {
 }
 export function alterarPapel(alvoUid, papelNovo) {
   if (!equipeAtualId_) return Promise.reject(new Error('sem-equipe'));
+  if (Papeis.PAPEIS.indexOf(papelNovo) < 0) return Promise.reject(new Error('papel-invalido'));
   return colMembros(equipeAtualId_).doc(alvoUid).update({ papel: papelNovo });
+}
+
+// Equipes de antes dos cargos novos: planejador → técnico e o coordenador
+// (gravado como "gp") → Gerente de PCP. Roda uma vez, quando um gerente abre a
+// equipe; a regra só deixa o gerente mudar papéis.
+export function migrarPapeisEquipe() {
+  if (!equipeAtualId_ || !souGerente()) return Promise.resolve(0);
+  const coordUid = coordenadorUidAtual();
+  return colMembros(equipeAtualId_).get().then(function (qs) {
+    const lote = db().batch();
+    let n = 0;
+    qs.forEach(function (doc) {
+      const atual = doc.data().papel;
+      const novo = doc.id === coordUid ? 'gerente_pcp' : (atual === 'planejador' ? 'tecnico' : null);
+      if (novo && novo !== atual) { lote.update(doc.ref, { papel: novo }); n++; }
+    });
+    return n ? lote.commit().then(function () { return n; }) : 0;
+  }).catch(function (e) { console.warn('cargos não migrados:', e && e.code); return 0; });
 }
 export function transferirCoordenacao(novoUid) {
   if (!equipeAtualId_) return Promise.reject(new Error('sem-equipe'));
@@ -478,6 +504,7 @@ function conviteVencido(d) { return venceEm(d) <= Date.now(); }
 
 export function criarConvite(papelConvite) {
   if (!equipeAtualId_) return Promise.reject(new Error('sem-equipe'));
+  if (Papeis.PAPEIS.indexOf(papelConvite) < 0) return Promise.reject(new Error('papel-invalido'));
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   const codigo = hexDe(bytes);
   return db().collection('convites').doc(codigo).set({
@@ -511,14 +538,29 @@ export function escutarConvites(callback, aoFalhar) {
 export function revogarConvite(codigo) { return db().collection('convites').doc(codigo).delete(); }
 
 /* ----------------------------------------------------------- notificações */
-// Designação de projeto ou observação numa tarefa. Só GP/coordenador geram
-// (regra); o destinatário lê as próprias e marca como lidas.
+// Avisos entre pessoas (designação, cronograma, planilha, RNC, chat...).
+// Qualquer membro gera, só para outro membro da mesma equipe (regra); o
+// destinatário lê as próprias e marca como lidas.
 export function criarNotificacao(paraUid, tipo, mensagem, projetoId) {
   if (!usuario || !paraUid || paraUid === usuario.uid) return Promise.resolve();
   return db().collection('notificacoes').add({
-    paraUid: paraUid, tipo: tipo, mensagem: mensagem, projetoId: projetoId || null, equipeId: equipeAtualId_,
+    paraUid: paraUid, tipo: tipo, mensagem: String(mensagem || '').slice(0, 500), projetoId: projetoId || null, equipeId: equipeAtualId_,
     deUid: usuario.uid, deNome: nomeExibicao(), lida: false, criadoEm: agoraIso()
   }).catch(function (e) { console.warn('notificação não enviada:', e); });
+}
+// Mesma mensagem para várias pessoas (sem repetir nem mandar para mim).
+export function notificarVarios(uids, tipo, mensagem, projetoId) {
+  const unicos = Array.from(new Set((uids || []).filter(Boolean)));
+  return Promise.all(unicos.map(function (u) { return criarNotificacao(u, tipo, mensagem, projetoId); }));
+}
+// Uids dos Gerentes de PCP da equipe (o coordenador sempre conta).
+export function uidsGerentes() {
+  const coord = coordenadorUidAtual();
+  return listarEquipe().then(function (membros) {
+    const lista = membros.filter(function (m) { return m.papel === 'gerente_pcp' || m.uid === coord; }).map(function (m) { return m.uid; });
+    if (coord && lista.indexOf(coord) < 0) lista.push(coord);
+    return lista;
+  }).catch(function () { return coord ? [coord] : []; });
 }
 export function escutarNotificacoes(callback) {
   if (!usuario) return function () {};
@@ -530,7 +572,7 @@ export function escutarNotificacoes(callback) {
   }, function (e) { console.warn('notificações indisponíveis:', e && e.code); callback([]); });
 }
 export function marcarNotificacaoLida(id) {
-  return db().collection('notificacoes').doc(id).update({ lida: true });
+  return db().collection('notificacoes').doc(id).update({ lida: true, lidaEm: agoraIso() });
 }
 
 /* -------------------------------------------------------------------- chat */

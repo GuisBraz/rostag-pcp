@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- Política de segurança: só scripts deste site e do Firebase. Nenhum
      script inline é permitido — isso barra XSS mesmo que algum texto escape. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; frame-src https://rostag-pcp.firebaseapp.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' http://localhost:8080 http://localhost:9099 ws://localhost:8080 https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; frame-src https://rostag-pcp.firebaseapp.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="description" content="ROSTAG PCP — Planejamento e Controle de Produção: projetos, cronograma do PCP e entregas da equipe.">
 <meta name="color-scheme" content="light dark">
@@ -44,6 +44,8 @@
       <button type="button" class="side-item active" data-tab="painel" data-acao="irPara" data-arg="painel" title="Alt+1"><span class="icon" aria-hidden="true">▦</span><span class="label" data-i18n="nav.painel">Painel Geral</span></button>
       <button type="button" class="side-item" data-tab="projetos" data-acao="irPara" data-arg="projetos" title="Alt+2"><span class="icon" aria-hidden="true">▤</span><span class="label" data-i18n="nav.projetos">Projetos</span></button>
       <button type="button" class="side-item" data-tab="linha" data-acao="irPara" data-arg="linha" title="Alt+3"><span class="icon" aria-hidden="true">⏱</span><span class="label" data-i18n="nav.linha">Linha do Tempo</span></button>
+      <button type="button" class="side-item" data-tab="fabrica" data-acao="irPara" data-arg="fabrica" title="Alt+4"><span class="icon" aria-hidden="true">⚙</span><span class="label" data-i18n="nav.fabrica">Fábrica</span></button>
+      <button type="button" class="side-item" data-tab="rnc" data-acao="irPara" data-arg="rnc" title="Alt+5"><span class="icon" aria-hidden="true">⚠</span><span class="label" data-i18n="nav.rnc">RNC</span><span class="side-badge" id="rnc-contador" style="display:none">0</span></button>
     </nav>
 
     <div class="sidebar-bottom">
@@ -125,7 +127,7 @@
           <div class="field"><label data-i18n="f.pcp">SITUAÇÃO DO PCP</label>
             <select id="df-pcp">
               <option value="" data-i18n="btn.todas">Todas</option><option value="atrasada" data-i18n="f.pcpAtrasada">Com tarefa atrasada</option>
-              <option value="chegando" data-i18n="f.pcpChegando">Com tarefa vencendo</option><option value="concluida" data-i18n="f.pcpConcluida">PCP concluído</option>
+              <option value="chegando" data-i18n="f.pcpChegando">Com tarefa vencendo</option><option value="concluida" data-i18n="f.pcpConcluida">PCP concluído</option><option value="aguardando" data-i18n="f.pcpAguardando">Aguardando cronograma</option>
             </select>
           </div>
         </div>
@@ -202,7 +204,7 @@
             <div class="field"><label data-i18n="f.pcp">SITUAÇÃO DO PCP</label>
               <select id="pf-pcp">
                 <option value="" data-i18n="btn.todas">Todas</option><option value="atrasada" data-i18n="f.pcpAtrasada">Com tarefa atrasada</option>
-                <option value="chegando" data-i18n="f.pcpChegando">Com tarefa vencendo</option><option value="concluida" data-i18n="f.pcpConcluida">PCP concluído</option>
+                <option value="chegando" data-i18n="f.pcpChegando">Com tarefa vencendo</option><option value="concluida" data-i18n="f.pcpConcluida">PCP concluído</option><option value="aguardando" data-i18n="f.pcpAguardando">Aguardando cronograma</option>
               </select>
             </div>
           </div>
@@ -243,8 +245,9 @@
       </div>
     </div>
 
-    <div class="janelas">
+    <div class="janelas janelas-3">
       <div class="janela" id="janela-pcp"></div>
+      <div class="janela" id="janela-producao"></div>
       <div class="janela" id="janela-entrega"></div>
     </div>
 
@@ -254,8 +257,10 @@
         <div id="detail-info"></div>
         <div class="action-row detail-actions-print-hide" id="detail-actions"></div>
         <div class="reagendar-box" id="reagendar-box" style="display:none;">
-          <select id="reagendar-campo" style="max-width:160px;">
+          <select id="reagendar-campo" style="max-width:180px;">
+            <option value="pcpInicio" data-i18n="d.inicioPcp">Início do PCP</option>
             <option value="pcpFim" data-i18n="d.fimPcp">Fim do PCP</option>
+            <option value="prodFim" data-i18n="d.fimProd">Fim da produção</option>
             <option value="entrega" data-i18n="d.entregaCampo">Entrega do projeto</option>
           </select>
           <input type="date" id="reagendar-data" style="max-width:170px;">
@@ -318,6 +323,48 @@
       <div id="timeline-track"></div>
     </div>
   </div>
+</div>
+
+<!-- ==================== FÁBRICA (OPs) ==================== -->
+<div class="tabpanel" id="tab-fabrica">
+  <div class="actionbar">
+    <div class="hint" id="fab-count">—</div>
+    <div class="btns">
+      <button type="button" class="btn btn-primary" id="btn-subir-planilha" data-acao="abrirPlanilha" data-i18n="fab.subir">⭱ Subir planilha de OPs</button>
+    </div>
+  </div>
+  <div class="fab-filtros card panel-pad">
+    <div class="field"><label data-i18n="fab.fArea">ÁREA</label>
+      <select id="fab-area" data-change="filtrarFabrica">
+        <option value="" data-i18n="btn.todas">Todas</option>
+        <option value="caldeiraria" data-i18n="area.caldeiraria">Caldeiraria</option>
+        <option value="usinagem" data-i18n="area.usinagem">Usinagem</option>
+      </select></div>
+    <div class="field"><label data-i18n="fab.fProjeto">PROJETO</label><select id="fab-projeto" data-change="filtrarFabrica"><option value="" data-i18n="btn.todos">Todos</option></select></div>
+    <div class="field"><label data-i18n="fab.fSituacao">SITUAÇÃO</label>
+      <select id="fab-status" data-change="filtrarFabrica">
+        <option value="" data-i18n="btn.todas">Todas</option>
+        <option value="aberta" data-i18n="op.aberta">Aberta</option>
+        <option value="aprovada" data-i18n="op.aprovada">Aprovada</option>
+        <option value="rnc" data-i18n="op.rnc">Com RNC</option>
+      </select></div>
+    <div class="field fab-busca"><label data-i18n="fab.fBusca">BUSCAR (OP, DESENHO, DESCRIÇÃO)</label><input id="fab-busca" data-i18n-ph="f.buscarPh" placeholder="buscar..."></div>
+  </div>
+  <div id="fab-avanco" class="fab-avanco"></div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr id="fab-thead"></tr></thead>
+        <tbody id="fab-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== RNC ==================== -->
+<div class="tabpanel" id="tab-rnc">
+  <div class="actionbar"><div class="hint" id="rnc-count">—</div></div>
+  <div id="rnc-lista" class="rnc-lista"></div>
 </div>
 
 <!-- ==================== CONFIGURAÇÕES ==================== -->
@@ -392,12 +439,12 @@
     <div class="card panel-pad" style="max-width:680px;">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
         <div class="panel-title" style="margin-bottom:0;" data-i18n="cfg.equipe">Equipe</div>
-        <div id="btn-convidar" style="display:none; gap:8px;">
-          <button type="button" class="btn btn-outline" data-acao="convidarMembro" data-arg="planejador" data-i18n="cfg.equipeConvidarPlanejador">+ Convidar planejador</button>
-          <button type="button" class="btn btn-primary" data-acao="convidarMembro" data-arg="gp" data-i18n="cfg.equipeConvidarGp">+ Convidar GP</button>
+        <div id="btn-convidar" style="display:none; gap:8px; align-items:center;">
+          <select id="convite-papel" style="max-width:220px;" data-i18n-title="cfg.convitePapel" title="Cargo de quem vai entrar" aria-label="Cargo de quem vai entrar"></select>
+          <button type="button" class="btn btn-primary" data-acao="convidarMembro" data-i18n="cfg.equipeConvidar">+ Gerar convite</button>
         </div>
       </div>
-      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Só entra quem tiver um link de convite do coordenador ou GP — sem pendência, quem entra já é membro pleno com o cargo do convite. O coordenador também pode mudar o cargo de alguém, remover ou passar o título adiante.</div>
+      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Quem entra pelo link de convite já recebe o cargo escolhido. O Gerente de PCP muda cargos e remove pessoas; só o coordenador troca a senha e passa a coordenação adiante.</div>
       <div id="equipe-lista"></div>
       <div id="equipe-convites-bloco" style="display:none; margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
         <div style="font-weight:700; font-size:13px; margin-bottom:8px;" data-i18n="cfg.equipeConvitesAbertos">Convites em aberto</div>
@@ -481,18 +528,20 @@
         <div class="field"><label data-i18n="fm.cliente">CLIENTE</label><input id="f-cliente" list="dl-cliente" placeholder="ex: Stellantis"><datalist id="dl-cliente"></datalist></div>
         <div class="field span2"><label data-i18n="fm.descricao">DESCRIÇÃO *</label><input id="f-descricao" placeholder="ex: Estrutura gôndola linha 3"></div>
         <div class="field"><label data-i18n="fm.tipo">TIPO DE SERVIÇO</label><input id="f-tipoServico" list="dl-tipo" placeholder="ex: Fabricação"><datalist id="dl-tipo"></datalist></div>
-        <div class="field"><label data-i18n="fm.gp">GP</label><select id="f-gp"><option value="" data-i18n="fm.semGp">— selecione —</option></select></div>
-        <div class="field"><label data-i18n="fm.responsavel">RESPONSÁVEL (PLANEJADOR)</label><select id="f-responsavel"><option value="" data-i18n="fm.semResponsavel">— ninguém designado —</option></select></div>
+        <div class="field"><label data-i18n="fm.gp">GP (GERENTE DE PROJETOS)</label><select id="f-gp"><option value="" data-i18n="fm.semGp">— selecione —</option></select></div>
+        <div class="field"><label data-i18n="fm.responsavel">TÉCNICO DE PROCESSO</label><select id="f-responsavel"><option value="" data-i18n="fm.semResponsavel">— ninguém designado —</option></select></div>
         <div class="field"><label><span data-i18n="fm.om">ORDEM DE MANUTENÇÃO</span> <span style="font-weight:400; color:var(--ink-faint);" data-i18n="fm.opcional">(opcional)</span></label><input id="f-om" placeholder="ex: OM-4482"></div>
         <div class="field"><label data-i18n="fm.dataSolic">DATA DE SOLICITAÇÃO</label><input id="f-dataSolicitacao" type="date"></div>
       </div>
 
       <div style="border-top:1px solid var(--line); margin:16px 0 14px; padding-top:14px;">
-        <div style="font-weight:700; font-size:12.5px; margin-bottom:2px;" data-i18n="fm.janelaPcp">Janela do PCP</div>
-        <div class="hint-txt" style="margin-bottom:10px;" data-i18n="fm.janelaPcpNota">O período do seu trabalho de planejamento.</div>
+        <div style="font-weight:700; font-size:12.5px; margin-bottom:2px;" data-i18n="fm.janelaPcp">Cronograma macro</div>
+        <div class="hint-txt" style="margin-bottom:10px;" data-i18n="fm.janelaPcpNota">Pode ficar em branco: o projeto fica "aguardando cronograma" até o GP definir. O técnico só recebe o projeto depois disso.</div>
         <div class="form-grid">
-          <div class="field"><label data-i18n="fm.pcpInicio">INÍCIO DO PCP *</label><input id="f-pcpInicio" type="date"></div>
-          <div class="field"><label data-i18n="fm.pcpFim">FIM DO PCP *</label><input id="f-pcpFim" type="date"></div>
+          <div class="field"><label data-i18n="fm.pcpInicio">INÍCIO DO PCP</label><input id="f-pcpInicio" type="date"></div>
+          <div class="field"><label data-i18n="fm.pcpFim">FIM DO PCP</label><input id="f-pcpFim" type="date"></div>
+          <div class="field"><label data-i18n="fm.prodInicio">INÍCIO DA PRODUÇÃO</label><input id="f-prodInicio" type="date" disabled data-i18n-title="fm.prodInicioT" title="É o fim do PCP"></div>
+          <div class="field"><label data-i18n="fm.prodFim">FIM DA PRODUÇÃO</label><input id="f-prodFim" type="date"></div>
         </div>
       </div>
 
@@ -512,6 +561,50 @@
     <div class="modal-footer">
       <button type="button" class="btn btn-outline" data-acao="fecharModal" data-i18n="btn.cancelar">Cancelar</button>
       <button type="button" class="btn btn-primary" id="f-submit" data-acao="salvarProjeto">+ Incluir projeto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PLANILHA DE OPs ==================== -->
+<div class="modal-overlay" id="modal-planilha" role="dialog" aria-modal="true" aria-labelledby="modal-planilha-title">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-planilha-title" data-i18n="fab.subirTit">Subir planilha de OPs</h2>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="fab.subirNota">Use a planilha de controle de avanço (.xls, .xlsx ou .csv). Cada linha com "N° OP CALD" vira uma OP de caldeiraria e cada linha com "N° OP USINAGEM", uma de usinagem. Enviar de novo atualiza as OPs sem perder o que o CQ já finalizou.</div>
+      <div class="field"><label data-i18n="fab.projeto">PROJETO</label><select id="planilha-projeto"></select></div>
+      <div class="field"><label data-i18n="fab.arquivo">ARQUIVO</label><input type="file" id="planilha-arquivo" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" data-change="lerPlanilha"></div>
+      <div id="planilha-resumo" class="planilha-resumo"></div>
+      <div class="form-error" id="planilha-erro"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="planilha-enviar" data-acao="enviarPlanilha" disabled data-i18n="fab.enviar">Gravar OPs</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== RNC (CQ) ==================== -->
+<div class="modal-overlay" id="modal-rnc" role="dialog" aria-modal="true" aria-labelledby="modal-rnc-title">
+  <div class="modal-box estreita">
+    <div class="modal-header">
+      <div style="min-width:0;">
+        <h2 id="modal-rnc-title" data-i18n="cq.rncTit">Registrar não conformidade</h2>
+        <div class="detail-sub" id="rnc-op" style="margin-top:2px;">—</div>
+      </div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label data-i18n="cq.rncObs">NÃO CONFORMIDADE ENCONTRADA *</label>
+        <textarea id="rnc-texto" rows="6" maxlength="1000" data-i18n-ph="cq.rncPh" placeholder="Descreva o que foi encontrado na peça..."></textarea></div>
+      <div class="hint-txt" data-i18n="cq.rncNota">Depois de gravada, a RNC não pode ser desfeita: a OP aguarda a disposição do responsável.</div>
+      <div class="form-error" id="rnc-erro"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-danger" data-acao="confirmarRnc" data-i18n="cq.rncGravar">Gravar RNC</button>
     </div>
   </div>
 </div>

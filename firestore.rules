@@ -3,6 +3,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ------------------------------------------------------------- helpers
+    // Cargos: gerente_pcp, gp, tecnico, prog_usinagem, prog_caldeiraria, cq.
+    // "planejador" é o nome antigo de tecnico e continua valendo. O
+    // coordenador da equipe (equipes/{id}.coordenadorUid) é sempre Gerente
+    // de PCP, seja qual for o papel gravado no /membros dele.
+    function papeis() {
+      return ['gerente_pcp', 'gp', 'tecnico', 'prog_usinagem', 'prog_caldeiraria', 'cq'];
+    }
     function membroDe(equipeId) {
       return request.auth != null
         && exists(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.auth.uid));
@@ -15,10 +22,27 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/equipes/$(equipeId))
         && get(/databases/$(database)/documents/equipes/$(equipeId)).data.coordenadorUid == request.auth.uid;
     }
-    // Coordenador e GP têm o mesmo poder de edição dentro da equipe; planejador
-    // só mexe no que for designado a ele (ver regra de /projetos abaixo).
-    function souGPouCoordDe(equipeId) {
-      return membroDe(equipeId) && (souCoordDe(equipeId) || papelEm(equipeId) == 'gp');
+    function coordenadorDe(equipeId) {
+      return get(/databases/$(database)/documents/equipes/$(equipeId)).data.coordenadorUid;
+    }
+    // Gerente de PCP: administra a equipe e vê/edita todos os projetos.
+    function souGerenteDe(equipeId) {
+      return membroDe(equipeId) && (souCoordDe(equipeId) || papelEm(equipeId) == 'gerente_pcp');
+    }
+    function souPapel(equipeId, papel) {
+      return membroDe(equipeId) && papelEm(equipeId) == papel;
+    }
+    function souTecnicoDe(equipeId) {
+      return membroDe(equipeId) && papelEm(equipeId) in ['tecnico', 'planejador'];
+    }
+    function projeto(equipeId, projetoId) {
+      return get(/databases/$(database)/documents/equipes/$(equipeId)/projetos/$(projetoId)).data;
+    }
+    // Quem enxerga um projeto: o gerente (todos), o GP do projeto e o técnico do projeto.
+    function vejoProjeto(equipeId, p) {
+      return souGerenteDe(equipeId)
+        || (souPapel(equipeId, 'gp') && p.get('gpUid', null) == request.auth.uid)
+        || (souTecnicoDe(equipeId) && p.get('responsavelUid', null) == request.auth.uid);
     }
     // Convite válido, já consumido por mim, pra essa equipe e com esse papel —
     // usado tanto pra criar meu /membros/{uid} quanto meu índice pessoal.
@@ -30,17 +54,17 @@ service cloud.firestore {
         && papelAlvo == get(/databases/$(database)/documents/convites/$(request.resource.data.viaConvite)).data.papel;
     }
     // Segunda forma de entrar numa equipe (além do link de convite): nome +
-    // senha da equipe. Quem entra assim sempre vira planejador (papel mais
-    // restrito) — o coordenador promove depois se quiser. O cliente grava o
-    // hash digitado em /equipeSegredos/{id}/entradas/{meu uid} no MESMO lote
-    // que o /membros, e aqui ele é comparado (getAfter) com o hash guardado
-    // em /equipeSegredos/{id}. Nenhum dos dois é legível por cliente algum.
+    // senha da equipe. Quem entra assim sempre vira técnico de processo — o
+    // gerente muda o cargo depois se quiser. O cliente grava o hash digitado
+    // em /equipeSegredos/{id}/entradas/{meu uid} no MESMO lote que o
+    // /membros, e aqui ele é comparado (getAfter) com o hash guardado em
+    // /equipeSegredos/{id}. Nenhum dos dois é legível por cliente algum.
     // Equipe antiga, sem /equipeSegredos ainda: compara com o SHA-256 puro
     // que ficava no próprio /equipes/{id} até o coordenador redefinir.
     function senhaConfere(equipeId, papelAlvo) {
       let entrada = /databases/$(database)/documents/equipeSegredos/$(equipeId)/entradas/$(request.auth.uid);
       let segredo = /databases/$(database)/documents/equipeSegredos/$(equipeId);
-      return papelAlvo == 'planejador'
+      return papelAlvo in ['tecnico', 'planejador']
         && existsAfter(entrada)
         && getAfter(entrada).data.senhaHash is string
         && ((exists(segredo) && getAfter(entrada).data.senhaHash == get(segredo).data.senhaHash)
@@ -49,16 +73,16 @@ service cloud.firestore {
     }
     // Índice pessoal criado depois do /membros/{uid} (nessa ordem, de
     // propósito) — em vez de mandar a senha de novo, só confirma que meu
-    // próprio /membros/{uid} já existe como planejador (e o /membros só
-    // nasce por um dos caminhos validados acima).
+    // próprio /membros/{uid} já existe como técnico (e o /membros só nasce
+    // por um dos caminhos validados acima).
     function jaEntreiPorSenha(equipeId) {
-      return membroDe(equipeId) && papelEm(equipeId) == 'planejador';
+      return souTecnicoDe(equipeId);
     }
 
     // ------------------------------------------------------- perfil pessoal
-    // Nome, preferências (tema/idioma/alertas) — não guarda mais papel, isso
-    // agora é por equipe. equipesCriadas é o contador do limite de 3 equipes
-    // criadas por pessoa; só muda em +1 de cada vez (via criação de equipe).
+    // Nome, preferências (tema/idioma/alertas) — não guarda papel, isso é
+    // por equipe. equipesCriadas é o contador do limite de 3 equipes criadas
+    // por pessoa; só muda em +1 de cada vez (via criação de equipe).
     match /usuarios/{uid} {
       // Só o próprio dono lê (o app nunca lista nem lê o perfil de outra
       // pessoa — nome/e-mail dos colegas vêm de /equipes/{id}/membros).
@@ -77,9 +101,9 @@ service cloud.firestore {
       match /minhasEquipes/{equipeId} {
         allow read: if request.auth != null && request.auth.uid == uid;
         allow create: if request.auth != null && request.auth.uid == uid && (
-          (souCoordDe(equipeId) && request.resource.data.papel == 'gp')
+          (souCoordDe(equipeId) && request.resource.data.papel in ['gerente_pcp', 'gp'])
           || convitePraMim(equipeId, request.resource.data.papel)
-          || (request.resource.data.papel == 'planejador' && jaEntreiPorSenha(equipeId))
+          || (request.resource.data.papel in ['tecnico', 'planejador'] && jaEntreiPorSenha(equipeId))
         );
         allow update: if request.auth != null && request.auth.uid == uid;
         allow delete: if request.auth != null && request.auth.uid == uid;
@@ -145,7 +169,7 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('equipesCriadas', 0)
              == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('equipesCriadas', 0) + 1;
       // Transferir coordenação, ou apagar o hash antigo (sem sal) que ficava
-      // aqui — feito ao redefinir a senha da equipe.
+      // aqui — feito ao redefinir a senha da equipe. Só o coordenador.
       allow update: if souCoordDe(equipeId) && (
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coordenadorUid'])
           && exists(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.resource.data.coordenadorUid)))
@@ -157,42 +181,47 @@ service cloud.firestore {
       match /membros/{uid} {
         allow read: if membroDe(equipeId);
         allow create: if request.auth != null && request.auth.uid == uid && (
-          (souCoordDe(equipeId) && request.resource.data.papel == 'gp')
+          (souCoordDe(equipeId) && request.resource.data.papel in ['gerente_pcp', 'gp'])
           || convitePraMim(equipeId, request.resource.data.papel)
           || senhaConfere(equipeId, request.resource.data.papel)
         );
-        // Coordenador muda o papel (só para gp/planejador); cada um pode
+        // O Gerente de PCP muda o cargo de qualquer um, menos o do
+        // coordenador (só o próprio coordenador mexe no dele); cada um pode
         // atualizar o próprio nome de exibição.
-        allow update: if (souCoordDe(equipeId)
+        allow update: if (souGerenteDe(equipeId)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['papel'])
-            && request.resource.data.papel in ['gp', 'planejador'])
+            && request.resource.data.papel in papeis()
+            && (uid != coordenadorDe(equipeId) || request.auth.uid == uid))
           || (request.auth != null && request.auth.uid == uid
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome'])
             && request.resource.data.nome is string && request.resource.data.nome.size() <= 60);
-        allow delete: if souCoordDe(equipeId) || (request.auth != null && request.auth.uid == uid);
+        allow delete: if (souGerenteDe(equipeId) && uid != coordenadorDe(equipeId))
+          || (request.auth != null && request.auth.uid == uid);
       }
 
-      // Projetos: um documento por projeto — permite restringir o planejador
-      // a só ver o que é dele.
-      //  - GP/coordenador leem e escrevem qualquer projeto da equipe
-      //  - planejador só lê o projeto onde é responsavelUid, e só pode mudar
-      //    o campo "checklist" — nunca datas, responsável ou dados do projeto
+      // Projetos: um documento por projeto.
+      //  - Gerente de PCP lê e escreve todos
+      //  - GP lê e escreve os projetos em que é o GP (gpUid); ao criar, vira
+      //    o GP do projeto; não passa o projeto para outro GP
+      //  - técnico lê o projeto onde é o responsável (responsavelUid) e só
+      //    muda o campo "checklist" — nunca datas, designação ou dados
       match /projetos/{projetoId} {
-        allow read: if souGPouCoordDe(equipeId)
-          || (membroDe(equipeId) && resource.data.responsavelUid == request.auth.uid);
-        allow create, delete: if souGPouCoordDe(equipeId);
-        allow update: if souGPouCoordDe(equipeId) || (
-          membroDe(equipeId) && resource.data.responsavelUid == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checklist'])
-        );
+        allow read: if vejoProjeto(equipeId, resource.data);
+        allow create: if souGerenteDe(equipeId)
+          || (souPapel(equipeId, 'gp') && request.resource.data.gpUid == request.auth.uid);
+        allow update: if souGerenteDe(equipeId)
+          || (souPapel(equipeId, 'gp') && resource.data.get('gpUid', null) == request.auth.uid
+            && request.resource.data.get('gpUid', null) == request.auth.uid)
+          || (souTecnicoDe(equipeId) && resource.data.get('responsavelUid', null) == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checklist']));
+        allow delete: if souGerenteDe(equipeId)
+          || (souPapel(equipeId, 'gp') && resource.data.get('gpUid', null) == request.auth.uid);
 
         // Chat do projeto: quem pode ver o projeto pode ver e mandar mensagem;
         // mensagem não edita nem apaga, pra manter histórico simples e real.
         match /chat/{msgId} {
-          allow read: if souGPouCoordDe(equipeId)
-            || (membroDe(equipeId) && get(/databases/$(database)/documents/equipes/$(equipeId)/projetos/$(projetoId)).data.responsavelUid == request.auth.uid);
-          allow create: if (souGPouCoordDe(equipeId)
-              || (membroDe(equipeId) && get(/databases/$(database)/documents/equipes/$(equipeId)/projetos/$(projetoId)).data.responsavelUid == request.auth.uid))
+          allow read: if vejoProjeto(equipeId, projeto(equipeId, projetoId));
+          allow create: if vejoProjeto(equipeId, projeto(equipeId, projetoId))
             && request.resource.data.autorUid == request.auth.uid
             && request.resource.data.keys().hasOnly(['autorUid', 'autorNome', 'texto', 'criadoEm'])
             && request.resource.data.texto is string
@@ -200,25 +229,85 @@ service cloud.firestore {
           allow update, delete: if false;
         }
       }
+
+      // Ordens de produção: uma por peça (desenho + posição) e área. Guardam
+      // cópia do GP e do técnico do projeto para decidir quem vê:
+      //  - gerente e CQ: todas · programador: as da área dele
+      //  - GP e técnico: as dos projetos deles
+      // Quem sobe a planilha (técnico do projeto ou gerente) cria e atualiza
+      // os dados da peça, nunca a finalização. O CQ finaliza uma vez só
+      // (Aprovada ou RNC com observação) e não desfaz.
+      match /ops/{opId} {
+        function camposOp() {
+          return ['projetoId', 'commessa', 'cliente', 'descricaoProjeto', 'gpUid', 'tecnicoUid', 'area', 'numero',
+                  'desenho', 'posicao', 'rev', 'descricao', 'qtd', 'pesoUnit', 'pesoTotal', 'status',
+                  'criadoEm', 'criadoPorUid', 'atualizadoEm'];
+        }
+        function camposDados() {
+          return ['numero', 'desenho', 'posicao', 'rev', 'descricao', 'qtd', 'pesoUnit', 'pesoTotal',
+                  'commessa', 'cliente', 'descricaoProjeto', 'gpUid', 'tecnicoUid', 'atualizadoEm'];
+        }
+        function souTecnicoDoProjeto(p) {
+          return souTecnicoDe(equipeId) && p.get('responsavelUid', null) == request.auth.uid;
+        }
+        // GP e técnico copiados do projeto precisam bater com o projeto atual.
+        function designacaoConfere(d, p) {
+          return d.gpUid == p.get('gpUid', null) && d.tecnicoUid == p.get('responsavelUid', null);
+        }
+        allow read: if souGerenteDe(equipeId) || souPapel(equipeId, 'cq')
+          || (souPapel(equipeId, 'prog_usinagem') && resource.data.area == 'usinagem')
+          || (souPapel(equipeId, 'prog_caldeiraria') && resource.data.area == 'caldeiraria')
+          || (souPapel(equipeId, 'gp') && resource.data.gpUid == request.auth.uid)
+          || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid);
+        allow create: if request.resource.data.projetoId is string
+          && (souGerenteDe(equipeId) || souTecnicoDoProjeto(projeto(equipeId, request.resource.data.projetoId)))
+          && designacaoConfere(request.resource.data, projeto(equipeId, request.resource.data.projetoId))
+          && request.resource.data.keys().hasOnly(camposOp())
+          && request.resource.data.area in ['caldeiraria', 'usinagem']
+          && request.resource.data.status == 'aberta'
+          && request.resource.data.numero is string
+          && request.resource.data.numero.size() > 0 && request.resource.data.numero.size() <= 40
+          && request.resource.data.criadoPorUid == request.auth.uid;
+        allow update: if (
+            (souGerenteDe(equipeId) || souTecnicoDoProjeto(projeto(equipeId, resource.data.projetoId))
+              || (souPapel(equipeId, 'gp') && projeto(equipeId, resource.data.projetoId).get('gpUid', null) == request.auth.uid))
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+                 (souPapel(equipeId, 'gp') ? ['gpUid', 'tecnicoUid'] : camposDados()))
+            && designacaoConfere(request.resource.data, projeto(equipeId, resource.data.projetoId))
+            && request.resource.data.numero is string
+            && request.resource.data.numero.size() > 0 && request.resource.data.numero.size() <= 40
+          ) || (
+            souPapel(equipeId, 'cq') && resource.data.status == 'aberta'
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['status', 'rncObs', 'finalizadoPorUid', 'finalizadoPorNome', 'finalizadoEm'])
+            && request.resource.data.status in ['aprovada', 'rnc']
+            && request.resource.data.finalizadoPorUid == request.auth.uid
+            && request.resource.data.finalizadoEm is string
+            && (request.resource.data.status == 'aprovada'
+              || (request.resource.data.rncObs is string
+                && request.resource.data.rncObs.size() > 0 && request.resource.data.rncObs.size() <= 1000))
+          );
+        allow delete: if souGerenteDe(equipeId)
+          || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid && resource.data.status == 'aberta');
+      }
     }
 
     // Convites: coleção raiz (não subcoleção de /equipes) — assim o link
-    // ?convite=CODIGO não precisa carregar o id da equipe também. Só
-    // coordenador/GP da equipe alvo criam; quem consome vira membro na hora.
-    // Ler um convite pelo código (get) é livre pra quem está logado — o
-    // código é o segredo. Listar (list) só a própria equipe, e a consulta
-    // precisa filtrar where('equipeId', '==', …); antes qualquer conta
-    // conseguia listar os códigos de todas as equipes.
+    // ?convite=CODIGO não precisa carregar o id da equipe também. Só o
+    // Gerente de PCP da equipe alvo cria; quem consome vira membro na hora,
+    // já com o cargo do convite. Ler um convite pelo código (get) é livre pra
+    // quem está logado — o código é o segredo. Listar (list) só a própria
+    // equipe, e a consulta precisa filtrar where('equipeId', '==', …).
     // Validade: o convite vale 7 dias a partir de emitidoEm, que é a hora do
     // servidor (serverTimestamp — o cliente não escolhe a data). Convite sem
     // emitidoEm (criado antes da validade existir) já não pode ser usado.
     match /convites/{codigo} {
       allow get: if request.auth != null;
-      allow list: if souGPouCoordDe(resource.data.equipeId);
+      allow list: if souGerenteDe(resource.data.equipeId);
       allow create: if request.auth != null
-        && souGPouCoordDe(request.resource.data.equipeId)
+        && souGerenteDe(request.resource.data.equipeId)
         && request.resource.data.usado == false
-        && request.resource.data.papel in ['gp', 'planejador']
+        && request.resource.data.papel in papeis()
         && request.resource.data.emitidoEm == request.time;
       // Consumir: só marca como usado por mim — equipe, papel e emitidoEm
       // não mudam, e só dentro da validade.
@@ -228,26 +317,28 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usado', 'usadoPor', 'usadoEm'])
         && request.resource.data.usado == true
         && request.resource.data.usadoPor == request.auth.uid;
-      allow delete: if request.auth != null && souGPouCoordDe(resource.data.equipeId);
+      allow delete: if request.auth != null && souGerenteDe(resource.data.equipeId);
     }
 
     // Notificações — cross-equipe (uma pessoa pode estar em mais de uma
-    // equipe e receber avisos de qualquer uma). Só quem gera (GP/coordenador
-    // daquela equipe) cria, e só para quem também é membro dela; o
-    // destinatário só marca como lida.
+    // equipe e receber avisos de qualquer uma). Qualquer membro avisa outro
+    // membro da mesma equipe, em nome próprio; o destinatário só marca como
+    // lida (e quando) ou apaga.
     match /notificacoes/{notifId} {
       allow read: if request.auth != null && resource.data.paraUid == request.auth.uid;
       allow create: if request.auth != null
-        && souGPouCoordDe(request.resource.data.equipeId)
+        && membroDe(request.resource.data.equipeId)
+        && request.resource.data.keys().hasOnly(['paraUid', 'tipo', 'mensagem', 'projetoId', 'equipeId', 'deUid', 'deNome', 'lida', 'criadoEm'])
         && request.resource.data.paraUid is string
         && request.resource.data.deUid == request.auth.uid
-        && request.resource.data.tipo in ['designacao', 'observacao']
+        && request.resource.data.tipo in ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas',
+                                          'designacaoTrocada', 'planilhaOps', 'rnc', 'chat']
         && request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 500
         && (request.resource.data.projetoId == null || request.resource.data.projetoId is string)
         && request.resource.data.lida == false
         && exists(/databases/$(database)/documents/equipes/$(request.resource.data.equipeId)/membros/$(request.resource.data.paraUid));
       allow update: if request.auth != null && resource.data.paraUid == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida', 'lidaEm']);
       allow delete: if request.auth != null && resource.data.paraUid == request.auth.uid;
     }
 
