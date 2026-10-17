@@ -195,7 +195,7 @@ inclua o caminho na lista `ARQUIVOS` do `sw.js` e troque a versão em `CACHE`.
 |---|---|
 | `Esc` | volta / fecha o que estiver aberto |
 | `Alt+1` `Alt+2` `Alt+3` | Painel, Projetos, Linha do Tempo |
-| `Alt+4` `Alt+5` | Fábrica, RNC |
+| `Alt+4` `Alt+5` `Alt+6` | Fábrica, RNC, Notificações |
 | `Alt+,` | Configurações |
 | `N` | novo projeto |
 | `F` | filtro da tela |

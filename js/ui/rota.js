@@ -11,15 +11,16 @@ import { renderLinha } from './linha.js';
 import { renderDetalhe, fecharReagendar, atualizarInscricaoChat } from './detalhe.js';
 import { abaConfig } from './preferencias.js';
 import { renderFabrica, renderRnc } from './fabrica.js';
+import { renderTelaNotificacoes } from './notificacoes.js';
 import * as Auth from '../dados/auth.js';
 import * as Papeis from '../dominio/papeis.js';
 
-const PAGINAS = { painel: 1, projetos: 1, linha: 1, fabrica: 1, rnc: 1, config: 1 };
+const PAGINAS = { painel: 1, projetos: 1, linha: 1, fabrica: 1, rnc: 1, notificacoes: 1, config: 1 };
 
 // Telas que cada cargo usa. Programadores e CQ trabalham só na Fábrica.
 export function abaPermitida(aba) {
   const papel = Auth.papel();
-  if (aba === 'config' || aba === 'fabrica') return true;
+  if (aba === 'config' || aba === 'fabrica' || aba === 'notificacoes') return true;
   if (aba === 'rnc') return Papeis.veRnc(papel);
   return Papeis.veProjetos(papel);
 }
@@ -59,6 +60,7 @@ export function aplicarRota() {
   if (aba === 'linha') renderLinha();
   if (aba === 'fabrica') renderFabrica();
   if (aba === 'rnc') renderRnc();
+  if (aba === 'notificacoes') renderTelaNotificacoes();
   if (aba === 'config') abaConfig(arg && $('stab-' + arg) ? arg : 'geral');
   if (aba === 'projetos') {
     const existe = !!(arg && buscarProjeto(arg));

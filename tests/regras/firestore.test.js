@@ -461,6 +461,22 @@ describe('/usuarios', () => {
     await assertFails(como(C).doc('usuarios/' + C).update({ equipesCriadas: 0 }));
     await assertFails(como(C).doc('usuarios/' + C).update({ equipesCriadas: 3 }));
   });
+  test('estado dos alertas do Sistema: só o dono, e depois de criado só muda o lidaEm', async () => {
+    const ref = (uid) => como(uid).doc('usuarios/' + P + '/alertas/2026-10-19_E1_tarefa-atrasada:doP');
+    const novo = { semana: '2026-10-19', equipeId: 'E1', alertaId: 'tarefa-atrasada:doP', criadoEm: 'x', lidaEm: null };
+    await assertFails(ref(G).set(novo));
+    await assertFails(ref(P).set({ ...novo, extra: 1 }));
+    await assertSucceeds(ref(P).set(novo));
+    await assertSucceeds(ref(P).update({ lidaEm: 'agora' }));
+    await assertSucceeds(ref(P).update({ lidaEm: null }));
+    await assertFails(ref(P).update({ semana: '2026-10-26' }));
+    await assertFails(ref(G).get());
+    await assertSucceeds(ref(P).delete());
+  });
+  test('notificação volta a "não lida" pelo destinatário', async () => {
+    await semear('notificacoes/n2', { paraUid: P, deUid: G, equipeId: 'E1', tipo: 'chat', mensagem: 'oi', projetoId: null, lida: true, lidaEm: 'x' });
+    await assertSucceeds(como(P).doc('notificacoes/n2').update({ lida: false, lidaEm: null }));
+  });
   test('índice pessoal: só o dono lê', async () => {
     await semear('usuarios/' + P + '/minhasEquipes/E1', { papel: 'tecnico' });
     await assertSucceeds(como(P).doc('usuarios/' + P + '/minhasEquipes/E1').get());

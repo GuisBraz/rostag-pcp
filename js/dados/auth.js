@@ -571,8 +571,49 @@ export function escutarNotificacoes(callback) {
     callback(lista);
   }, function (e) { console.warn('notificações indisponíveis:', e && e.code); callback([]); });
 }
-export function marcarNotificacaoLida(id) {
-  return db().collection('notificacoes').doc(id).update({ lida: true, lidaEm: agoraIso() });
+export function marcarNotificacaoLida(id, lida) {
+  const sim = lida !== false;
+  return db().collection('notificacoes').doc(id).update({ lida: sim, lidaEm: sim ? agoraIso() : null });
+}
+// Expiração semanal: o destinatário apaga as próprias notificações velhas.
+export function apagarNotificacoes(ids) {
+  return Promise.all(ids.map(function (id) {
+    return db().collection('notificacoes').doc(id).delete().catch(function (e) { console.warn('notificação velha não apagada:', e && e.code); });
+  }));
+}
+
+/* ----------------------------------------- alertas do Sistema (por semana) */
+// Os alertas automáticos são calculados no navegador; aqui fica só quando
+// cada um apareceu e quando foi lido, por pessoa e por semana — assim o
+// "lido" vale em todos os aparelhos e a data aparece na tela de notificações.
+function colEstadoAlertas() { return docPerfil(usuario.uid).collection('alertas'); }
+export function escutarEstadoAlertas(callback) {
+  if (!usuario) return function () {};
+  return colEstadoAlertas().onSnapshot(function (qs) {
+    const mapa = {};
+    qs.forEach(function (doc) { mapa[doc.id] = doc.data(); });
+    callback(mapa);
+  }, function (e) { console.warn('estado dos alertas indisponível:', e && e.code); callback(null); });
+}
+export function registrarAlertas(itens) {
+  if (!usuario || !itens.length) return Promise.resolve();
+  const lote = db().batch();
+  itens.slice(0, 400).forEach(function (it) {
+    lote.set(colEstadoAlertas().doc(it.chave), { semana: it.semana, equipeId: it.equipeId || null, alertaId: it.alertaId, criadoEm: agoraIso(), lidaEm: null });
+  });
+  return lote.commit().catch(function (e) { console.warn('alertas não registrados:', e && e.code); });
+}
+export function marcarAlertas(chaves, lida) {
+  if (!usuario || !chaves.length) return Promise.resolve();
+  const lote = db().batch();
+  chaves.slice(0, 400).forEach(function (c) { lote.update(colEstadoAlertas().doc(c), { lidaEm: lida === false ? null : agoraIso() }); });
+  return lote.commit().catch(function (e) { console.warn('alertas não marcados:', e && e.code); });
+}
+export function apagarEstadoAlertas(chaves) {
+  if (!usuario || !chaves.length) return Promise.resolve();
+  const lote = db().batch();
+  chaves.slice(0, 400).forEach(function (c) { lote.delete(colEstadoAlertas().doc(c)); });
+  return lote.commit().catch(function (e) { console.warn('alertas velhos não apagados:', e && e.code); });
 }
 
 /* -------------------------------------------------------------------- chat */

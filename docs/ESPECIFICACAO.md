@@ -106,17 +106,25 @@ aprovadas ÷ total. OP com RNC conta como não aprovada.
 
 As de *Sistema* são calculadas pelas datas e aparecem com origem "Sistema".
 
-**(depois)** Tela cheia de notificações (vistas / não vistas, data, origem) e
-expiração semanal: toda segunda a lista vira; as automáticas que continuam
-valendo reaparecem como não lidas. No plano gratuito do Firebase não há
-rotina agendada no servidor: a virada acontece quando cada pessoa abre o app.
+**Tela cheia** (menu Notificações, `Alt+6`): abas Não lidas / Lidas / Todas,
+filtros por assunto, origem (pessoas ou Sistema) e projeto, agrupadas por
+dia. Cada uma mostra de quem veio, quando chegou e quando foi lida, e pode ser
+marcada como lida ou não lida. O "lido" vale em todos os aparelhos.
+
+**Expiração semanal** (semana de segunda a domingo): na segunda, todas as
+notificações da semana anterior somem — lidas ou não. Os alertas do Sistema
+que continuam valendo reaparecem como não lidos. No plano gratuito do
+Firebase não há rotina agendada no servidor: a virada acontece quando cada
+pessoa abre o app (cada um apaga as próprias). O estado dos alertas do
+Sistema (quando apareceu, quando foi lido) fica em
+`usuarios/{uid}/alertas/{semana_equipe_alerta}`.
 
 ## 6. Ordem de construção
 
 1. Cargos, permissões e migração das equipes. ✅
 2. Fluxo do projeto: designação, cronograma macro, notificações dos eventos. ✅
 3. Fábrica: planilha, lista de OPs, finalização pelo CQ, aba RNC. ✅
-4. Tela cheia de notificações com expiração semanal. **(depois)**
+4. Tela cheia de notificações com expiração semanal. ✅
 5. Linha do tempo com as etapas. **(depois)**
 6. Disposição da RNC e relatório de desempenho. **(depois)**
 

@@ -108,6 +108,18 @@ service cloud.firestore {
         allow update: if request.auth != null && request.auth.uid == uid;
         allow delete: if request.auth != null && request.auth.uid == uid;
       }
+
+      // Estado dos alertas do Sistema por semana (quando apareceu, quando
+      // foi lido). Só o dono lê e escreve; depois de criado só muda o lidaEm.
+      match /alertas/{chave} {
+        allow read, delete: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['semana', 'equipeId', 'alertaId', 'criadoEm', 'lidaEm'])
+          && request.resource.data.semana is string
+          && request.resource.data.alertaId is string && request.resource.data.alertaId.size() <= 200;
+        allow update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lidaEm']);
+      }
     }
 
     // Índice nome→id das equipes — permite checar "nome disponível" e achar
