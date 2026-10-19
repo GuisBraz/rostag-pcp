@@ -21,7 +21,7 @@ import { prefs } from '../nucleo/prefs.js';
 const ATALHOS = [
   { grupo: 'a.navegar', itens: [
     { o: 'a.voltar', k: ['Esc'] }, { o: 'a.painel', k: ['Alt', '1'] }, { o: 'a.projetos', k: ['Alt', '2'] },
-    { o: 'a.linha', k: ['Alt', '3'] }, { o: 'a.fabrica', k: ['Alt', '4'] }, { o: 'a.rnc', k: ['Alt', '5'] }, { o: 'a.notificacoes', k: ['Alt', '6'] }, { o: 'a.config', k: ['Alt', ','] }, { o: 'a.prevProx', k: ['↑', '↓'] }
+    { o: 'a.linha', k: ['Alt', '3'] }, { o: 'a.fabrica', k: ['Alt', '4'] }, { o: 'a.rnc', k: ['Alt', '5'] }, { o: 'a.notificacoes', k: ['Alt', '6'] }, { o: 'a.carga', k: ['Alt', '7'] }, { o: 'a.config', k: ['Alt', ','] }, { o: 'a.prevProx', k: ['↑', '↓'] }
   ] },
   { grupo: 'a.acoes', itens: [
     { o: 'a.novo', k: ['N'] }, { o: 'a.filtro', k: ['F'] }, { o: 'a.busca', k: ['/'] },
@@ -87,7 +87,7 @@ export function iniciarAtalhos() {
       return;   // demais combinações com Ctrl ficam com o navegador
     }
     if (e.altKey) {
-      const mapa = { '1': 'painel', '2': 'projetos', '3': 'linha', '4': 'fabrica', '5': 'rnc', '6': 'notificacoes', ',': 'config' };
+      const mapa = { '1': 'painel', '2': 'projetos', '3': 'linha', '4': 'fabrica', '5': 'rnc', '6': 'notificacoes', '7': 'carga', ',': 'config' };
       if (mapa[e.key]) { e.preventDefault(); irPara(mapa[e.key]); }
       return;
     }

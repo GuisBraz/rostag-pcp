@@ -140,11 +140,18 @@ describe('projetos: Gerente de PCP', () => {
 });
 
 describe('projetos: fábrica e quem é de fora', () => {
-  test('programadores e CQ não veem nem criam projetos', async () => {
-    for (const uid of [U, K, Q]) {
-      await assertFails(como(uid).doc('equipes/E1/projetos/doP').get());
-      await assertFails(como(uid).doc('equipes/E1/projetos/novo').set({ nome: 'n', gpUid: uid }));
+  test('programadores leem todos os projetos (linha do tempo e carga), sem editar', async () => {
+    for (const uid of [U, K]) {
+      await assertSucceeds(como(uid).doc('equipes/E1/projetos/doP').get());
+      await assertSucceeds(como(uid).collection('equipes/E1/projetos').get());
+      await assertFails(como(uid).doc('equipes/E1/projetos/doP').update({ nome: 'outro' }));
+      await assertFails(como(uid).doc('equipes/E1/projetos/doP').update({ checklist: [] }));
+      await assertFails(como(uid).doc('equipes/E1/projetos/doP').delete());
     }
+  });
+  test('CQ não vê projetos; ninguém da fábrica cria projeto', async () => {
+    await assertFails(como(Q).doc('equipes/E1/projetos/doP').get());
+    for (const uid of [U, K, Q]) await assertFails(como(uid).doc('equipes/E1/projetos/novo').set({ nome: 'n', gpUid: uid }));
   });
   test('quem é de fora não lê nada da equipe', async () => {
     await assertFails(como(X).doc('equipes/E1/projetos/doP').get());
@@ -159,6 +166,44 @@ describe('projetos: fábrica e quem é de fora', () => {
     await assertSucceeds(como(M).collection('equipes/E1/projetos/doP/chat').get());
     await assertFails(como(T).collection('equipes/E1/projetos/doP/chat').add(msg(T)));
     await assertFails(como(U).collection('equipes/E1/projetos/doP/chat').get());
+  });
+});
+
+/* ------------------------------------------------------------------ carga */
+describe('carga máquina e carga fábrica', () => {
+  const prog = (uid, extra) => ({ maquinaId: 'm1', horasPrevistas: 6, programadoEm: 'x', programadoPorUid: uid, ...extra });
+  test('programador de usinagem programa máquina e horas da OP de usinagem', async () => {
+    await assertSucceeds(como(U).doc('equipes/E1/ops/op1').update(prog(U)));
+    await assertSucceeds(como(U).doc('equipes/E1/ops/op1').update(prog(U, { maquinaId: null, horasPrevistas: null })));
+    await assertSucceeds(como(M).doc('equipes/E1/ops/op1').update(prog(M)));
+  });
+  test('programação não mexe em outros campos, nem em OP de caldeiraria, nem por outro cargo', async () => {
+    await assertFails(como(U).doc('equipes/E1/ops/op1').update({ ...prog(U), status: 'aprovada' }));
+    await assertFails(como(U).doc('equipes/E1/ops/op1').update(prog(U, { horasPrevistas: -1 })));
+    await assertFails(como(U).doc('equipes/E1/ops/op1').update(prog(U, { programadoPorUid: K })));
+    await assertFails(como(K).doc('equipes/E1/ops/op2').update(prog(K)));
+    for (const uid of [K, G, P, Q]) await assertFails(como(uid).doc('equipes/E1/ops/op1').update(prog(uid)));
+  });
+  const maq = { nome: 'Torno CNC 1', horasDia: 8, ativa: true, criadoEm: 'x', atualizadoEm: 'x' };
+  test('máquinas: programador de usinagem e gerente cadastram; a equipe lê', async () => {
+    await assertSucceeds(como(U).doc('equipes/E1/maquinas/m1').set(maq));
+    await assertSucceeds(como(M).doc('equipes/E1/maquinas/m2').set(maq));
+    await assertSucceeds(como(G).collection('equipes/E1/maquinas').get());
+    await assertSucceeds(como(U).doc('equipes/E1/maquinas/m1').delete());
+    for (const uid of [K, G, T, Q]) await assertFails(como(uid).doc('equipes/E1/maquinas/m3').set(maq));
+    await assertFails(como(U).doc('equipes/E1/maquinas/m4').set({ ...maq, horasDia: 30 }));
+    await assertFails(como(U).doc('equipes/E1/maquinas/m4').set({ ...maq, extra: 1 }));
+    await assertFails(como(X).collection('equipes/E1/maquinas').get());
+  });
+  test('capacidade da fábrica: programador de caldeiraria e gerente gravam', async () => {
+    const cfg = (uid, kg) => ({ capacidadeKgSemana: kg, atualizadoEm: 'x', atualizadoPorUid: uid });
+    await assertSucceeds(como(K).doc('equipes/E1/config/fabrica').set(cfg(K, 20000)));
+    await assertSucceeds(como(M).doc('equipes/E1/config/fabrica').set(cfg(M, 25000)));
+    await assertSucceeds(como(U).doc('equipes/E1/config/fabrica').get());
+    for (const uid of [U, G, T, Q]) await assertFails(como(uid).doc('equipes/E1/config/fabrica').set(cfg(uid, 1000)));
+    await assertFails(como(K).doc('equipes/E1/config/fabrica').set(cfg(K, 0)));
+    await assertFails(como(K).doc('equipes/E1/config/outra').set(cfg(K, 1000)));
+    await assertFails(como(K).doc('equipes/E1/config/fabrica').delete());
   });
 });
 

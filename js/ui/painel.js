@@ -15,7 +15,7 @@ import { renderNotificacoes } from './notificacoes.js';
 import { desenhar, opcoesBase, legenda, cor, corStatus, corSituacao, falhaGrafico } from './graficos.js';
 import { irPara } from './rota.js';
 import { limparFiltroProjComStatus } from './projetos.js';
-import { souGerencia, souGP, souTecnico, renderPainelGerencia, renderPainelTecnico } from './gerencia.js';
+import { souGerencia, souGP, souTecnico, souProgramador, renderPainelGerencia, renderPainelTecnico, renderPainelProgramador } from './gerencia.js';
 
 const COR_STATUS = { andamento: 'violet', concluido: 'green', atrasado: 'rust', paralisado: 'amber', cancelado: 'ink-faint' };
 const FUNDO_STATUS = { andamento: 'violet-bg', concluido: 'green-bg', atrasado: 'rust-bg', paralisado: 'amber-bg', cancelado: 'bg-panel-alt' };
@@ -24,11 +24,12 @@ export function renderPainel() {
   const lista = filtrarDash();
   // Gerência, GP e técnico têm o painel novo (gerencia.js); o GP usa o da
   // Gerência com os projetos dele. O "Precisa de atenção" é comum.
-  const gerencia = souGerencia(), gp = souGP(), tecnico = souTecnico();
+  const gerencia = souGerencia(), gp = souGP(), tecnico = souTecnico(), prog = souProgramador();
   document.body.classList.toggle('visao-gerente', gerencia);
-  document.body.classList.toggle('painel-novo', gerencia || gp || tecnico);
-  if (gerencia || gp || tecnico) {
+  document.body.classList.toggle('painel-novo', gerencia || gp || tecnico || prog);
+  if (gerencia || gp || tecnico || prog) {
     escopo(lista.length);
+    if (prog) { renderPainelProgramador(); renderNotificacoes(); return; }
     renderAtencao(lista);
     if (tecnico) renderPainelTecnico(lista); else renderPainelGerencia(lista);
     renderNotificacoes();

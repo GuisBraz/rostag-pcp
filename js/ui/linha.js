@@ -7,6 +7,7 @@ import { T, STATUS_LABEL } from '../i18n/index.js';
 import * as Projeto from '../dominio/projeto.js';
 import { $, registrarAcoes } from './dom.js';
 import { corStatus, cor } from './graficos.js';
+import * as Auth from '../dados/auth.js';
 
 function idElemento(id) { return 'tl-item-' + String(id).replace(/[^\w-]/g, '_'); }
 
@@ -30,11 +31,14 @@ export function renderLinha() {
     const p = e.p, st = Projeto.status(p), sitPcp = Projeto.situacaoPcp(p);
     const cls = st === 'atrasado' ? 'urgent' : (Projeto.aberto(p) ? '' : 'muted');
     const esquerda = lado++ % 2 === 0;
-    const card = '<button type="button" class="tl-card ' + cls + '" id="' + idElemento(p.id) + '" data-acao="abrirProjeto" data-arg="' + esc(p.id) + '">' +
+    // programadores só consultam: o cartão não abre o projeto
+    const abre = Auth.veProjetos();
+    const card = '<' + (abre ? 'button type="button"' : 'div') + ' class="tl-card ' + cls + (abre ? '' : ' tl-so-leitura') + '" id="' + idElemento(p.id) + '"' +
+      (abre ? ' data-acao="abrirProjeto" data-arg="' + esc(p.id) + '"' : '') + '>' +
       '<div class="tl-date" style="color:' + corStatus(st) + '">' + br(p.entrega) + ' · ' + esc(STATUS_LABEL(st)) + '</div>' +
       '<div class="tl-commessa">' + esc(p.commessa) + '</div>' +
       '<div class="tl-desc">' + esc(p.descricao) + '</div>' +
-      '<div class="tl-meta"><span class="dot dot-' + sitPcp + '"></span>PCP ' + Projeto.progresso(p) + '% · ' + esc(p.cliente) + '</div></button>';
+      '<div class="tl-meta"><span class="dot dot-' + sitPcp + '"></span>PCP ' + Projeto.progresso(p) + '% · ' + esc(p.cliente) + '</div></' + (abre ? 'button' : 'div') + '>';
     return '<div class="tl-row"><div class="tl-side ' + (esquerda ? '' : 'empty') + '">' + (esquerda ? card : '') + '</div>' +
       '<div class="tl-center"><div class="tl-dot" style="background:' + corStatus(st) + '"></div></div>' +
       '<div class="tl-side ' + (!esquerda ? '' : 'empty') + '">' + (!esquerda ? card : '') + '</div></div>';

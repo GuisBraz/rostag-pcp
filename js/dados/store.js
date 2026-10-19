@@ -24,9 +24,9 @@ function colProjetos() {
 
 // Cada cargo só pode ler os seus projetos: a consulta precisa ter o mesmo
 // filtro da regra, senão o Firestore nega a consulta inteira.
-//  gerente → todos · GP → onde é o GP · técnico → onde é o responsável
+//  gerente e programadores → todos · GP → onde é o GP · técnico → onde é o responsável
 function consulta() {
-  if (Auth.souGerente()) return colProjetos();
+  if (Auth.souGerente() || Auth.areaProgramador()) return colProjetos();
   if (Auth.papel() === 'gp') return colProjetos().where('gpUid', '==', Auth.uid());
   return colProjetos().where('responsavelUid', '==', Auth.uid());
 }

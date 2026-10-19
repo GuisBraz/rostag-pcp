@@ -217,8 +217,11 @@ service cloud.firestore {
       //    o GP do projeto; não passa o projeto para outro GP
       //  - técnico lê o projeto onde é o responsável (responsavelUid) e só
       //    muda o campo "checklist" — nunca datas, designação ou dados
+      //  - programadores leem todos (linha do tempo e carga), sem editar;
+      //    o chat continua só para quem vê o projeto (vejoProjeto)
       match /projetos/{projetoId} {
-        allow read: if vejoProjeto(equipeId, resource.data);
+        allow read: if vejoProjeto(equipeId, resource.data)
+          || souPapel(equipeId, 'prog_usinagem') || souPapel(equipeId, 'prog_caldeiraria');
         allow create: if souGerenteDe(equipeId)
           || (souPapel(equipeId, 'gp') && request.resource.data.gpUid == request.auth.uid);
         allow update: if souGerenteDe(equipeId)
@@ -289,6 +292,18 @@ service cloud.firestore {
             && request.resource.data.numero is string
             && request.resource.data.numero.size() > 0 && request.resource.data.numero.size() <= 40
           ) || (
+            // carga máquina: o programador de usinagem (ou o gerente) escolhe a
+            // máquina e as horas previstas de uma OP de usinagem
+            (souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId))
+            && resource.data.area == 'usinagem'
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['maquinaId', 'horasPrevistas', 'programadoEm', 'programadoPorUid'])
+            && (request.resource.data.get('maquinaId', null) == null || request.resource.data.maquinaId is string)
+            && (request.resource.data.get('horasPrevistas', null) == null
+              || (request.resource.data.horasPrevistas is number
+                && request.resource.data.horasPrevistas >= 0 && request.resource.data.horasPrevistas <= 10000))
+            && request.resource.data.programadoPorUid == request.auth.uid
+          ) || (
             souPapel(equipeId, 'cq') && resource.data.status == 'aberta'
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['status', 'rncObs', 'finalizadoPorUid', 'finalizadoPorNome', 'finalizadoEm'])
@@ -301,6 +316,33 @@ service cloud.firestore {
           );
         allow delete: if souGerenteDe(equipeId)
           || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid && resource.data.status == 'aberta');
+      }
+
+      // Máquinas da usinagem (carga máquina): toda a equipe lê; o programador
+      // de usinagem e o gerente cadastram, editam e apagam.
+      match /maquinas/{maquinaId} {
+        allow read: if membroDe(equipeId);
+        allow create, update: if (souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId))
+          && request.resource.data.keys().hasOnly(['nome', 'horasDia', 'ativa', 'criadoEm', 'atualizadoEm'])
+          && request.resource.data.nome is string
+          && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 60
+          && request.resource.data.horasDia is number
+          && request.resource.data.horasDia > 0 && request.resource.data.horasDia <= 24
+          && request.resource.data.ativa is bool;
+        allow delete: if souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId);
+      }
+
+      // Configuração da fábrica (carga fábrica): capacidade da caldeiraria em
+      // kg por semana. Toda a equipe lê; programador de caldeiraria e gerente gravam.
+      match /config/{doc} {
+        allow read: if membroDe(equipeId);
+        allow create, update: if doc == 'fabrica'
+          && (souPapel(equipeId, 'prog_caldeiraria') || souGerenteDe(equipeId))
+          && request.resource.data.keys().hasOnly(['capacidadeKgSemana', 'atualizadoEm', 'atualizadoPorUid'])
+          && request.resource.data.capacidadeKgSemana is number
+          && request.resource.data.capacidadeKgSemana > 0 && request.resource.data.capacidadeKgSemana <= 10000000
+          && request.resource.data.atualizadoPorUid == request.auth.uid;
+        allow delete: if false;
       }
     }
 

@@ -17,6 +17,7 @@ import { refreshOpcoes } from './filtros.js';
 import { renderLinha } from './linha.js';
 import { renderDetalhe } from './detalhe.js';
 import { renderNotificacoes } from './notificacoes.js';
+import { renderCarga } from './carga.js';
 import { renderFabrica, renderRnc, atualizarContadorRnc } from './fabrica.js';
 
 /* ---------------------------------------------------------- salvamento */
@@ -70,6 +71,7 @@ export function renderTudo() {
   if (a === 'projetos') renderProjetos();
   if (a === 'linha') renderLinha();
   if (a === 'fabrica') renderFabrica();
+  if (a === 'carga') renderCarga();
   if (a === 'rnc') renderRnc();
   if (a === 'painel') renderPainel(); else renderNotificacoes();
   atualizarContadorRnc();

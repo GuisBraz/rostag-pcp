@@ -13,6 +13,7 @@ import { prefs, carregarPrefsDoUsuario, aplicarPerfil, resetarPrefs, temaInicial
 import { FIREBASE_PRONTO, iniciarFirebase } from './dados/firebase.js';
 import * as Auth from './dados/auth.js';
 import * as Store from './dados/store.js';
+import * as DadosCarga from './dados/carga.js';
 import * as Ops from './dados/ops.js';
 import * as Cronograma from './dominio/cronograma.js';
 import * as Projeto from './dominio/projeto.js';
@@ -84,8 +85,8 @@ function escutarEquipe() {
   atualizarChip(navigator.onLine === false ? 'offline' : undefined);
   redesenhar();
   aplicarRota();
-  // Programadores e CQ não trabalham com projetos: nem escutam a coleção.
-  if (Papeis.veProjetos(papelCarregado)) {
+  // O CQ não trabalha com projetos: nem escuta a coleção. Programadores só leem.
+  if (Papeis.leProjetos(papelCarregado)) {
     Store.escutar(aoReceberProjetos, aoFalharProjetos);
   } else {
     Store.pararEscuta();
@@ -93,6 +94,12 @@ function escutarEquipe() {
     aplicarRota();
   }
   Ops.escutar(aoReceberOps, function () { estado.opsCarregadas = true; redesenhar(); });
+  estado.maquinas = []; estado.cfgFabrica = {};
+  if (Papeis.veCarga(papelCarregado)) {
+    DadosCarga.escutar(function (m) { estado.maquinas = m; redesenhar(); }, function (c) { estado.cfgFabrica = c; redesenhar(); });
+  } else {
+    DadosCarga.pararEscuta();
+  }
   // equipe de antes dos cargos novos: o gerente converte os papéis uma vez
   Auth.migrarPapeisEquipe().then(function (n) { if (n) toast(T('cfg.papeisMigrados', n)); });
 }
@@ -106,12 +113,15 @@ function aplicarRestricoesPapel() {
   document.body.classList.toggle('visao-fabrica', !veProjetos);
   document.body.classList.toggle('visao-gerente', Papeis.ehGerente(papel));
   document.body.classList.toggle('detalhe-areas', Papeis.ehGerente(papel) || papel === 'gp');
-  document.body.classList.toggle('painel-novo', Papeis.ehGerente(papel) || papel === 'gp' || papel === 'tecnico');
+  document.body.classList.toggle('painel-novo', Papeis.ehGerente(papel) || papel === 'gp' || papel === 'tecnico' || Papeis.ehProgramador(papel));
+  document.body.classList.toggle('visao-programador', Papeis.ehProgramador(papel));
   $('btn-novo-projeto').style.display = gestor ? '' : 'none';
   $('dados-acoes-escrita').style.display = gestor ? 'contents' : 'none';
-  ['painel', 'projetos', 'linha'].forEach(function (aba) {
-    const b = document.querySelector('.side-item[data-tab="' + aba + '"]');
-    if (b) b.style.display = veProjetos ? '' : 'none';
+  // programadores: painel e linha do tempo (só leitura), sem a lista de projetos
+  const leProjetos = Papeis.leProjetos(papel);
+  [['painel', leProjetos], ['projetos', veProjetos], ['linha', leProjetos], ['carga', Papeis.veCarga(papel)]].forEach(function (x) {
+    const b = document.querySelector('.side-item[data-tab="' + x[0] + '"]');
+    if (b) b.style.display = x[1] ? '' : 'none';
   });
   const bRnc = document.querySelector('.side-item[data-tab="rnc"]');
   if (bRnc) bRnc.style.display = Papeis.veRnc(papel) ? '' : 'none';

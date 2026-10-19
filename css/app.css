@@ -684,3 +684,53 @@ body.painel-novo .so-painel-antigo { display: none !important; }
   .ger-areas, .plan-embreve, .cq-grafico { grid-template-columns: 1fr; }
   .cq-rosca { max-width: 200px; margin: 0 auto; width: 100%; }
 }
+
+/* ------------------------------------------------------------------- carga */
+body:not(.visao-programador) .so-programador { display: none !important; }
+body.visao-programador .so-nao-programador { display: none !important; }
+.carga-abas { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.carga-abas:empty { display: none; }
+.carga-aba { border: 1px solid var(--line); background: var(--bg-panel); color: var(--ink-dim); border-radius: 20px; padding: 7px 16px;
+  font: 600 13px var(--font); cursor: pointer; }
+.carga-aba.ativa { background: var(--teal); border-color: var(--teal); color: #fff; }
+.carga-bloco { margin-top: 16px; }
+.carga-grid2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-top: 16px; align-items: start; }
+.carga-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.carga-grade-wrap { overflow-x: auto; margin: 8px 0; }
+.carga-grade { width: 100%; border-collapse: separate; border-spacing: 4px; min-width: 640px; }
+.carga-grade th { font-size: 10.5px; font-weight: 700; color: var(--ink-faint); text-align: center; padding: 4px; white-space: nowrap; }
+.carga-grade th:first-child { text-align: left; }
+.carga-maq { min-width: 140px; }
+.carga-maq b { display: block; font-size: 13px; color: var(--ink); }
+.carga-maq span { font-size: 11px; color: var(--ink-faint); }
+.carga-cel { border-radius: 8px; padding: 6px 4px; text-align: center; line-height: 1.15; }
+.carga-cel b { display: block; font-size: 13px; }
+.carga-cel span { font-size: 10.5px; opacity: .85; }
+.carga-vazia { background: var(--bg-panel-alt); color: var(--ink-faint); }
+.carga-ok { background: var(--green-bg); color: var(--green); }
+.carga-alta { background: var(--amber-bg); color: var(--amber-ink); }
+.carga-sobrecarga { background: var(--rust-bg); color: var(--rust); }
+.carga-ok-txt { color: var(--green); } .carga-alta-txt { color: var(--amber-ink); } .carga-sobrecarga-txt { color: var(--rust); }
+.carga-total td:first-child { font-size: 12px; color: var(--ink); }
+.carga-ops { display: flex; flex-direction: column; gap: 6px; max-height: 460px; overflow-y: auto; margin-top: 8px; }
+.carga-op { display: grid; grid-template-columns: minmax(0, 1fr) 150px 70px; gap: 8px; align-items: center; padding: 8px 10px;
+  border: 1px solid var(--line-soft); border-radius: 8px; }
+.carga-op-info { min-width: 0; font-size: 13px; color: var(--ink); }
+.carga-op-info .hint-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.carga-op select, .carga-op input { width: 100%; }
+.carga-maq-linha { display: grid; grid-template-columns: minmax(0, 1fr) 72px auto 24px; gap: 8px; align-items: center; padding: 6px 0;
+  border-bottom: 1px solid var(--line-soft); }
+.carga-maq-linha.inativa input:first-child { color: var(--ink-faint); text-decoration: line-through; }
+.carga-ativa { font-size: 12px; color: var(--ink-dim); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.carga-maq-form { display: grid; grid-template-columns: minmax(0, 1fr) 72px auto; gap: 8px; margin-top: 12px; }
+.carga-cap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-dim); }
+.carga-cap input { width: 120px; }
+.carga-tab-proj { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+.carga-tab-proj th { text-align: left; font-size: 10.5px; font-weight: 700; color: var(--ink-faint); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.carga-tab-proj td { padding: 8px; border-bottom: 1px solid var(--line-soft); color: var(--ink); vertical-align: top; }
+.carga-tab-proj .num { text-align: right; font-family: var(--mono); }
+.tl-so-leitura { cursor: default; }
+@media (max-width: 900px) {
+  .carga-grid2 { grid-template-columns: 1fr; }
+  .carga-op { grid-template-columns: minmax(0, 1fr) 120px 64px; }
+}

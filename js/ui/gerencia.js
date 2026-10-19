@@ -18,6 +18,8 @@ import { abrirModal, fecharModal } from './modal.js';
 import { desenhar, destruir, cor, falhaGrafico } from './graficos.js';
 import { irPara } from './rota.js';
 import { limparFiltroProjComStatus, limparFiltroProjPcp } from './projetos.js';
+import * as Carga from '../dominio/carga.js';
+import { resumoMaquinas, resumoFabrica, desenharGraficoKg } from './carga.js';
 
 const GRUPOS = ['andamento', 'vencendo', 'atrasado'];
 const COR_GRUPO = { andamento: '--teal', vencendo: '--amber', atrasado: '--rust', paralisado: '--ink-faint' };
@@ -28,6 +30,7 @@ let relogio = null;
 export function souGerencia() { return Papeis.ehGerente(Auth.papel()); }
 export function souTecnico() { return Auth.papel() === 'tecnico'; }
 export function souGP() { return Auth.papel() === 'gp'; }
+export function souProgramador() { return Papeis.ehProgramador(Auth.papel()); }
 // Quem acompanha o projeto pelas três áreas (sem editar o checklist do técnico).
 export function veAreasProjeto() { const p = Auth.papel(); return Papeis.ehGerente(p) || p === 'gp'; }
 
@@ -103,6 +106,43 @@ function desenharAndamento(lista) {
         borderWidth: 0, hoverOffset: total ? 6 : 0 }] },
     options: { responsive: true, maintainAspectRatio: false, cutout: '72%', animation: { duration: 300 },
       plugins: { legend: { display: false }, tooltip: { enabled: total > 0 } } } });
+}
+
+/* ------------------------------------------- painel dos programadores */
+// Saudação, OPs da área, carga desta semana e as próximas 8 semanas.
+function fmtN(n, c) { return Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: c || 0 }); }
+
+export function renderPainelProgramador() {
+  ligarRelogio();
+  desenharOla();
+  const area = Auth.areaProgramador();
+  const ops = Producao.estatisticas(estado.ops.filter(function (o) { return o.area === area; }));
+  const h = hoje();
+  let semana, cap, unidade, sems, valores, pend, pendDet;
+  if (area === 'usinagem') {
+    const x = resumoMaquinas(h);
+    sems = x.sems; valores = x.semana; cap = x.capTotal; unidade = 'h';
+    pend = x.r.resumo.semMaquina + x.r.resumo.semHoras;
+    pendDet = T('prg.semProgDet');
+  } else {
+    const x = resumoFabrica(h);
+    sems = x.sems; valores = x.r.porSemana; cap = x.r.capacidade; unidade = 'kg';
+    pend = fmtN(x.r.total) + ' kg';
+    pendDet = T('prg.kgAbertoDet', x.r.projetos.length);
+  }
+  semana = valores[0] || 0;
+  const pct = Carga.ocupacao(semana, cap);
+  $('ger-cards').innerHTML =
+    cartao('gerVerOps', T('prg.ops.' + area), '<div class="value">' + ops.abertas + '</div>',
+      T('prg.opsDet', ops.aprovadas, ops.rnc)) +
+    cartao('irCarga', T('prg.cargaSemana'),
+      '<div class="value carga-' + (cap ? Carga.faixa(pct) : 'ok') + '-txt">' + (cap ? pct + '%' : '—') + '</div>',
+      cap ? T('prg.cargaSemanaDet', fmtN(semana, 1) + ' ' + unidade, fmtN(cap) + ' ' + unidade) : T('prg.semCapacidade.' + area)) +
+    cartao('irCarga', T('prg.pendente.' + area), '<div class="value">' + pend + '</div>', pendDet);
+  $('prg-grafico-titulo').textContent = T('prg.grafico.' + area);
+  $('prg-grafico-nota').textContent = T('prg.graficoNota.' + area);
+  if (!window.Chart) { falhaGrafico('chartCargaPainel'); return; }
+  desenharGraficoKg('chartCargaPainel', sems, valores, cap, unidade);
 }
 
 /* ------------------------------------------------ painel do técnico */
@@ -443,5 +483,6 @@ registrarAcoes({
   gerVerProjetos: function () { limparFiltroProjComStatus(''); irPara('projetos'); },
   gerVerOps: function () { irPara('fabrica'); },
   tecVerProjetos: function () { limparFiltroProjComStatus(''); irPara('projetos'); },
+  irCarga: function () { irPara('carga'); },
   tecVerAtrasadas: function () { limparFiltroProjPcp('atrasada'); irPara('projetos'); }
 });

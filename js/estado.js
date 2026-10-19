@@ -12,6 +12,8 @@ export const estado = {
   notifReais: [],            // avisos entre pessoas (Firestore), separados dos alertas calculados
   ops: [],                   // ordens de produção que este cargo enxerga
   opsCarregadas: false,
+  maquinas: [],              // máquinas da usinagem (carga máquina)
+  cfgFabrica: {},            // capacidade da caldeiraria (carga fábrica)
   filtroFab: { area: '', projeto: '', status: '', busca: '' }
 };
 

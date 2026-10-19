@@ -26,5 +26,9 @@ export function veProjetos(p) { return p === 'gerente_pcp' || p === 'gp' || p ==
 export function ehProgramador(p) { return !!AREA_DO_PROGRAMADOR[p]; }
 export function areaDoProgramador(p) { return AREA_DO_PROGRAMADOR[p] || null; }
 export function ehCQ(p) { return p === 'cq'; }
+// Programadores leem os projetos (painel, linha do tempo e carga), sem editar.
+export function leProjetos(p) { return veProjetos(p) || ehProgramador(p); }
+// Carga máquina (usinagem) e carga fábrica (caldeiraria).
+export function veCarga(p) { return p === 'gerente_pcp' || ehProgramador(p); }
 export function sobePlanilha(p) { return p === 'gerente_pcp' || p === 'tecnico'; }
 export function veRnc(p) { return p === 'gerente_pcp' || p === 'gp' || p === 'tecnico'; }
