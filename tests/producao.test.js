@@ -39,3 +39,9 @@ test('papéis: coordenador é gerente e "planejador" virou técnico', () => {
   assert.ok(Papeis.veProjetos('gp') && !Papeis.veProjetos('cq'));
   assert.ok(Papeis.sobePlanilha('tecnico') && !Papeis.sobePlanilha('gp'));
 });
+
+test('projeto paralisado: a produção fica parada, não atrasada', () => {
+  const p = { status: 'paralisado', pcpFim: '2026-01-01', prodFim: '2026-01-10' };
+  assert.equal(Producao.situacao(p, Producao.estatisticas([]), '2026-02-01'), 'parada');
+  assert.equal(Producao.situacao(Object.assign({}, p, { status: 'ativo' }), Producao.estatisticas([]), '2026-02-01'), 'atrasada');
+});

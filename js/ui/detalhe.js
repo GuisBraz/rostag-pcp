@@ -19,7 +19,7 @@ import { persistir, redesenhar } from './app.js';
 import { irPara } from './rota.js';
 import { renderProjetos } from './projetos.js';
 import { renderNotificacoes } from './notificacoes.js';
-import { souGerencia, renderAcompanhamento } from './gerencia.js';
+import { souGerencia, renderAreasProjeto } from './gerencia.js';
 
 function janela(rot, corpo, obs, corObs) {
   return '<div class="rot">' + rot + '</div><div class="datas">' + corpo + '</div>' +
@@ -65,7 +65,7 @@ export function renderDetalhe() {
   // --- janela da produção (começa no fim do PCP; avanço pelas OPs aprovadas) ---
   const stOps = Producao.estatisticas(opsDoProjeto(p.id));
   const sitProd = Producao.situacao(p, stOps, h);
-  const corProd = { atrasada: 'var(--rust)', concluida: 'var(--green)', andamento: 'var(--violet)' }[sitProd] || 'var(--ink-dim)';
+  const corProd = { atrasada: 'var(--rust)', concluida: 'var(--green)', andamento: 'var(--violet)', parada: 'var(--amber-ink)' }[sitProd] || 'var(--ink-dim)';
   let obsProd = T('prod.' + sitProd);
   if (sitProd === 'atrasada') obsProd += ' — ' + plural(Producao.diasAtraso(p, h), 'x.dia', 'x.dias');
   if (p.prodFim && p.entrega && p.prodFim > p.entrega) obsProd += ' · ' + T('d.prodDepoisEntrega', plural(difDias(p.entrega, p.prodFim), 'x.dia', 'x.dias'));
@@ -116,7 +116,8 @@ export function renderDetalhe() {
       acoes = botao('btn-success', 'retomarProjeto', T('d.retomar')) + botao('btn-danger', 'cancelarProjeto', T('d.cancelarProj')) +
         botao('btn-outline', 'abrirReagendar', T('d.reagendar'));
     } else if (Projeto.aberto(p)) {
-      acoes = botao('btn-success', 'concluirProjeto', T('d.concluir')) + botao('btn-warn', 'paralisarProjeto', T('d.paralisar')) +
+      // a Gerência acompanha: quem marca a entrega é o GP
+      acoes = (souGerencia() ? '' : botao('btn-success', 'concluirProjeto', T('d.concluir'))) + botao('btn-warn', 'paralisarProjeto', T('d.paralisar')) +
         botao('btn-outline', 'abrirReagendar', T('d.reagendar')) +
         (pr === 100 ? '<span class="nota-ok">' + esc(T('d.cronograma100')) + '</span>' : '<span class="hint-txt">' + esc(T('d.avisoCancelar')) + '</span>');
     } else {
@@ -147,7 +148,7 @@ export function renderDetalhe() {
     evs.map(function (e) { return '<div class="ev"><b>' + br(e.d) + '</b> · ' + esc(e.t) + '</div>'; }).join('');
 
   // --- cronograma: a Gerência acompanha (só leitura); quem executa edita o checklist ---
-  if (souGerencia()) { renderAcompanhamento(p); return; }
+  if (souGerencia()) { renderAreasProjeto(p); return; }
   $('detail-progress-bar').style.width = pr + '%';
   $('detail-progress-pct').textContent = pr + '%';
   // não redesenha a lista de tarefas enquanto alguém digita a duração de uma delas
@@ -201,8 +202,9 @@ function concluirProjeto() {
     aplicar(T('t.entregue', plural(Projeto.ciclo(p), 'x.dia', 'x.dias')));
   });
 }
-/* Fluxo: em andamento → paralisado → cancelado. Retomar fecha o período
-   e as datas do cronograma andam junto, porque dias parados não contam. */
+/* Fluxo: em andamento → paralisado → cancelado. Paralisar para o projeto
+   inteiro (PCP, produção e entrega). Retomar fecha o período e devolve o
+   projeto para "aguardando cronograma": o GP monta um cronograma macro novo. */
 function paralisarProjeto() {
   const p = projetoAtual();
   pedirTexto(T('q.paralisar', p.commessa, br(hoje())), {
@@ -223,7 +225,12 @@ function retomarProjeto() {
     const aberta = Projeto.pausaAtual(p);
     if (aberta) aberta.fim = hoje();
     p.status = 'ativo';
-    aplicar(T('t.retomado', plural(dias, 'x.dia', 'x.dias')));
+    p.cronogramaDefinido = false;
+    aplicar(T('t.retomado', plural(dias, 'x.dia', 'x.dias'))).then(function () {
+      // se a gravação foi recusada, a tela voltou para o projeto parado: não avisa
+      const atual = buscarProjeto(p.id);
+      if (atual && atual.status !== 'paralisado' && p.gpUid) Auth.criarNotificacao(p.gpUid, 'cronograma', T('notif.retomado', p.commessa, plural(dias, 'x.dia', 'x.dias')), p.id);
+    });
   });
 }
 function cancelarProjeto() {

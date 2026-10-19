@@ -71,3 +71,11 @@ test('pontualidade separa no prazo e atrasado por mês', () => {
   assert.deepEqual(d.noPrazo, [1, 1]);
   assert.deepEqual(d.atrasado, [1, 0]);
 });
+
+test('projeto paralisado só gera o aviso de parado, nenhum alarme de prazo', () => {
+  const h = hoje();
+  const p = proj({ status: 'paralisado', pcpFim: addDias(h, -5), entrega: addDias(h, -2),
+    paralisacoes: [{ inicio: addDias(h, -3), fim: null, motivo: 'cliente' }] });
+  const ids = Alertas.gerar([p]).map(function (n) { return n.id.split(':')[0]; });
+  assert.deepEqual(ids, ['paralisado']);
+});

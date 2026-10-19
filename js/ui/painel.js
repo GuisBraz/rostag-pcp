@@ -65,7 +65,8 @@ function renderAtencao(lista) {
   const h = hoje();
   $('prazos-note').textContent = T('g.atencaoNota', prefs.alertaTarefa, prefs.alerta);
   const itens = [];
-  lista.filter(Projeto.aberto).forEach(function (p) {
+  // paralisado para inteiro: não entra nos alertas de prazo
+  lista.filter(function (p) { return Projeto.aberto(p) && Projeto.status(p) !== 'paralisado'; }).forEach(function (p) {
     const r = Cronograma.resumo(p);
     if (r.situacao === 'atrasada' || r.situacao === 'chegando') {
       const alvo = r.crono.itens.find(function (i) { return i.situacao === r.situacao; });

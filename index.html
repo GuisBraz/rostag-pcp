@@ -286,11 +286,25 @@
         <div class="hist" id="detail-hist"></div>
       </div>
 
-      <div class="card panel-pad so-gerente">
-        <div class="panel-title" data-i18n="ac.titulo">Acompanhamento das atividades</div>
-        <div class="panel-note" data-i18n="ac.nota">Andamento do cronograma do PCP feito pelo técnico de processo.</div>
-        <div id="ac-resumo"></div>
-        <div id="ac-gantt"></div>
+      <!-- Gerência: as três áreas do projeto; o cartão escolhido abre a área embaixo -->
+      <div class="so-gerente ger-areas-col">
+        <div class="ger-areas" id="ger-areas" role="tablist"></div>
+        <div class="card panel-pad area-painel" id="area-processos" role="tabpanel">
+          <div class="panel-title" data-i18n="ac.titulo">Acompanhamento das atividades</div>
+          <div class="panel-note" data-i18n="ac.nota">Andamento do cronograma do PCP feito pelo técnico de processo.</div>
+          <div id="ac-resumo"></div>
+          <div id="ac-gantt"></div>
+        </div>
+        <div class="card panel-pad area-painel" id="area-planejamento" role="tabpanel" hidden>
+          <div class="panel-title" data-i18n="ar.planTitulo">Engenharia de Planejamento</div>
+          <div class="panel-note" data-i18n="ar.planNota">Produção do projeto pelas OPs, programadas por área.</div>
+          <div id="plan-conteudo"></div>
+        </div>
+        <div class="card panel-pad area-painel" id="area-qualidade" role="tabpanel" hidden>
+          <div class="panel-title" data-i18n="ar.cqTitulo">Controle de Qualidade</div>
+          <div class="panel-note" data-i18n="ar.cqNota">Inspeção das OPs: aprovadas, com RNC e aguardando inspeção.</div>
+          <div id="cq-conteudo"></div>
+        </div>
       </div>
 
       <div class="card panel-pad so-padrao">

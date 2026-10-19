@@ -21,6 +21,12 @@ const MAX_LINHAS = 600;   // a tabela fica pesada acima disso; os filtros resolv
 function natural(a, b) { return String(a || '').localeCompare(String(b || ''), 'pt-BR', { numeric: true }); }
 function quando(iso) { return iso ? br(dataDoInstante(iso)) + ' ' + horaDoInstante(iso) : '—'; }
 function fmtNum(n) { return n == null ? '—' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 2 }); }
+// OP de projeto paralisado: a produção dele está parada inteira. Só aparece
+// para quem enxerga o projeto (Gerência, GP e técnico).
+function parado(o) {
+  const p = buscarProjeto(o.projetoId);
+  return p && Projeto.status(p) === 'paralisado' ? ' <span class="pill-prod prod-parada">' + esc(T('prod.parada')) + '</span>' : '';
+}
 function pillOp(status) { return '<span class="pill-op op-' + esc(status) + '">' + esc(T('op.' + status)) + '</span>'; }
 function pillArea(area) { return '<span class="pill-area area-' + esc(area) + '">' + esc(T('area.' + area)) + '</span>'; }
 
@@ -112,7 +118,7 @@ export function renderFabrica() {
       fim = '<span class="hint-txt">' + esc(o.finalizadoPorNome || '—') + ' · ' + esc(quando(o.finalizadoEm)) + '</span>';
     }
     return '<tr class="' + (o.status === 'rnc' ? 'linha-rnc' : '') + '"' + (o.status === 'rnc' && o.rncObs ? ' title="' + esc(o.rncObs) + '"' : '') + '>' +
-      '<td class="mono">' + esc(o.numero) + '</td><td>' + pillArea(o.area) + '</td><td class="mono">' + esc(o.commessa) + '</td>' +
+      '<td class="mono">' + esc(o.numero) + '</td><td>' + pillArea(o.area) + '</td><td class="mono">' + esc(o.commessa) + parado(o) + '</td>' +
       '<td class="mono">' + esc(o.desenho) + '</td><td>' + esc(o.posicao || '—') + '</td><td>' + esc(o.rev || '—') + '</td>' +
       '<td>' + esc(o.descricao || '—') + '</td><td class="num">' + fmtNum(o.qtd) + '</td><td class="num">' + fmtNum(o.pesoTotal) + '</td>' +
       '<td>' + pillOp(o.status) + '</td><td>' + fim + '</td></tr>';

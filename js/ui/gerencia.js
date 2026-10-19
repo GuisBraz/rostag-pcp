@@ -4,7 +4,7 @@
    A tela cheia de carga mostra quantos projetos abertos cada GP e cada
    técnico de processo têm, separados por andamento.
 --------------------------------------------------------------------------- */
-import { estado } from '../estado.js';
+import { estado, opsDoProjeto } from '../estado.js';
 import { prefs } from '../nucleo/prefs.js';
 import { esc, br, brCurto, hoje, difDias } from '../nucleo/fmt.js';
 import { T, plural, codigoIdioma, SIT_LABEL } from '../i18n/index.js';
@@ -270,6 +270,113 @@ export function renderAcompanhamento(p) {
       '</div>';
     }).join('');
 }
+
+/* ------------------------------------------------------ áreas do projeto */
+// Detalhe do projeto para a Gerência: três cartões com resumo (Processos,
+// Planejamento, Qualidade); o escolhido abre a área logo abaixo.
+const AREAS_PROJETO = ['processos', 'planejamento', 'qualidade'];
+let areaAtual = 'processos';
+
+function cartaoArea(area, titulo, valorHtml, detalhe, corVal) {
+  const ativo = area === areaAtual;
+  return '<button type="button" class="card ger-area' + (ativo ? ' ativa' : '') + '" role="tab" aria-selected="' + ativo + '"' +
+    ' data-acao="abrirAreaProjeto" data-arg="' + area + '">' +
+    '<div class="ger-area-tit">' + esc(titulo) + '</div>' +
+    '<div class="ger-area-val" style="color:var(' + (corVal || '--ink') + ')">' + valorHtml + '</div>' +
+    '<div class="ger-area-det">' + esc(detalhe) + '</div></button>';
+}
+
+export function renderAreasProjeto(p) {
+  const c = Projeto.aguardandoCronograma(p) ? null : Cronograma.calcular(p);
+  const atrasadas = c ? c.itens.filter(function (i) { return i.situacao === 'atrasada'; }).length : 0;
+  const ops = opsDoProjeto(p.id), st = Producao.estatisticas(ops);
+  $('ger-areas').innerHTML =
+    cartaoArea('processos', T('ar.processos'),
+      c ? Projeto.progresso(p) + '<small>%</small>' : '—',
+      !c ? T('sit.aguardando') : (atrasadas ? T('ar.procAtrasadas', plural(atrasadas, 'ar.ativ', 'ar.ativs')) : T('ar.procOk')),
+      !c ? '--ink-faint' : (atrasadas ? '--rust' : '--teal')) +
+    cartaoArea('planejamento', T('ar.planejamento'),
+      st.total ? st.pct + '<small>%</small>' : '—',
+      st.total ? T('ar.planDet', st.aprovadas, st.total) : T('d.semOps'), st.total ? '--violet' : '--ink-faint') +
+    cartaoArea('qualidade', T('ar.qualidade'),
+      String(st.rnc), T('ar.cqDet', plural(st.rnc, 'ar.rnc', 'ar.rncs'), st.abertas), st.rnc ? '--rust' : '--green');
+  AREAS_PROJETO.forEach(function (a) { $('area-' + a).hidden = a !== areaAtual; });
+  if (areaAtual === 'processos') renderAcompanhamento(p);
+  else if (areaAtual === 'planejamento') renderPlanejamento(p, st);
+  else renderQualidade(ops, st);
+}
+
+function barraArea(rotulo, a) {
+  return '<div class="plan-area"><div class="plan-area-topo"><b>' + esc(rotulo) + '</b><span>' + a.pct + '%</span></div>' +
+    '<div class="ac-barra"><div style="width:' + a.pct + '%; background:var(--violet)"></div></div>' +
+    '<div class="hint-txt">' + esc(T('ar.planArea', a.aprovadas, a.total, a.abertas, a.rnc)) + '</div></div>';
+}
+
+function renderPlanejamento(p, st) {
+  const sit = Producao.situacao(p, st, hoje());
+  const corSit = { atrasada: '--rust', concluida: '--green', andamento: '--violet', parada: '--amber-ink' }[sit] || '--ink-dim';
+  $('plan-conteudo').innerHTML =
+    '<div class="ano-resumo ac-kpis">' +
+      kpi(T('ar.inicioProd'), br(p.pcpFim)) + kpi(T('ar.fimProd'), br(p.prodFim)) +
+      kpi(T('ac.situacao'), '<span class="ac-sit" style="color:var(' + corSit + ')">' + esc(T('prod.' + sit)) + '</span>') +
+      kpi(T('ar.totalOps'), String(st.total)) +
+    '</div>' +
+    (st.total ? barraArea(T('fab.geral'), st) + barraArea(T('area.caldeiraria'), st.caldeiraria) + barraArea(T('area.usinagem'), st.usinagem)
+      : '<div class="empty-state">' + esc(T('d.semOps')) + '</div>') +
+    '<div class="plan-embreve">' +
+      '<div class="plan-embreve-item"><b>' + esc(T('ar.cargaMaquina')) + '</b><span>' + esc(T('ar.emBreve')) + '</span></div>' +
+      '<div class="plan-embreve-item"><b>' + esc(T('ar.cargaFabrica')) + '</b><span>' + esc(T('ar.emBreve')) + '</span></div>' +
+    '</div>';
+}
+
+function quandoFeito(o) { return o.finalizadoEm ? br(String(o.finalizadoEm).slice(0, 10)) : '—'; }
+
+function renderQualidade(ops, st) {
+  const rncs = ops.filter(function (o) { return o.status === 'rnc'; })
+    .sort(function (a, b) { return String(b.finalizadoEm || '').localeCompare(String(a.finalizadoEm || '')); });
+  const inspecionadas = st.aprovadas + st.rnc;
+  const taxa = inspecionadas ? Math.round(st.aprovadas / inspecionadas * 100) : 0;
+  const legenda = [['aprovadas', '--green', st.aprovadas], ['comRnc', '--rust', st.rnc], ['pendentes', '--amber', st.abertas]];
+  $('cq-conteudo').innerHTML =
+    '<div class="ano-resumo ac-kpis">' +
+      kpi(T('ar.aprovadas'), '<span style="color:var(--green)">' + st.aprovadas + '</span>') +
+      kpi(T('ar.comRnc'), '<span style="color:var(--rust)">' + st.rnc + '</span>') +
+      kpi(T('ar.pendentes'), '<span style="color:var(--amber-ink)">' + st.abertas + '</span>') +
+      kpi(T('ar.taxa'), inspecionadas ? taxa + '%' : '—') +
+    '</div>' +
+    (st.total
+      ? '<div class="cq-grafico"><div class="ger-rosca cq-rosca"><canvas id="chartCq"></canvas>' +
+          '<div class="ger-rosca-centro"><b>' + st.total + '</b><span>' + esc(T('ar.opsRot')) + '</span></div></div>' +
+          '<div class="ger-legenda">' + legenda.map(function (x) {
+            return '<div class="ger-leg"><span class="ger-leg-cor" style="background:var(' + x[1] + ')"></span><span class="ger-leg-rot">' + esc(T('ar.leg.' + x[0])) + '</span>' +
+              '<b>' + x[2] + '</b><span class="ger-leg-pct">' + Math.round(x[2] / st.total * 100) + '%</span></div>';
+          }).join('') + '</div></div>'
+      : '<div class="empty-state">' + esc(T('d.semOps')) + '</div>') +
+    '<div class="cq-rncs"><h4>' + esc(T('ar.rncsTitulo')) + '</h4>' +
+      (rncs.length ? rncs.map(function (o) {
+        return '<div class="cq-rnc"><div class="cq-rnc-topo"><span class="mono">OP ' + esc(o.numero) + '</span>' +
+          '<span class="pill-area area-' + esc(o.area) + '">' + esc(T('area.' + o.area)) + '</span>' +
+          '<span class="hint-txt">' + esc(T('rnc.peca', o.desenho, o.posicao || '—')) + '</span></div>' +
+          '<div class="cq-rnc-obs">' + esc(o.rncObs || '—') + '</div>' +
+          '<div class="hint-txt">' + esc((o.finalizadoPorNome || '—') + ' · ' + quandoFeito(o)) + '</div></div>';
+      }).join('') : '<div class="hint-txt">' + esc(T('ar.semRnc')) + '</div>') +
+    '</div>';
+  if (!st.total) return;
+  if (!window.Chart) { falhaGrafico('chartCq'); return; }
+  desenhar('chartCq', { type: 'doughnut',
+    data: { labels: legenda.map(function (x) { return T('ar.leg.' + x[0]); }),
+      datasets: [{ data: legenda.map(function (x) { return x[2]; }), backgroundColor: legenda.map(function (x) { return cor(x[1]); }), borderWidth: 0, hoverOffset: 6 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '72%', animation: { duration: 300 }, plugins: { legend: { display: false } } } });
+}
+
+registrarAcoes({
+  abrirAreaProjeto: function (area) {
+    if (AREAS_PROJETO.indexOf(area) < 0) return;
+    areaAtual = area;
+    const p = estado.idDetalhe && estado.projetos.find(function (x) { return x.id === estado.idDetalhe; });
+    if (p) renderAreasProjeto(p);
+  }
+});
 
 registrarAcoes({
   abrirCarga: abrirCarga,

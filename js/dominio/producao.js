@@ -24,10 +24,12 @@ export function estatisticas(ops) {
 export function inicio(p) { return p.pcpFim || null; }
 
 // Planejada → Em produção → Atrasada → Concluída. Sem fim definido: 'semData'.
+// Projeto paralisado para inteiro: a produção fica 'parada', não atrasa.
 export function situacao(p, stats, h) {
   h = h || hoje();
   const st = stats || estatisticas([]);
   if (st.total > 0 && st.aprovadas === st.total) return 'concluida';
+  if (p.status === 'paralisado') return 'parada';
   if (!p.prodFim || !p.pcpFim) return 'semData';
   if (h < p.pcpFim) return 'planejada';
   if (h > p.prodFim) return 'atrasada';

@@ -50,15 +50,18 @@ export function gerar(projetos, ctx) {
     }
     const c = Cronograma.calcular(p);
 
-    // projeto parado não gera alarme de tarefa: o cronograma está congelado
+    // projeto parado para inteiro (PCP, produção e entrega): só o aviso de
+    // que está parado, nenhum alarme de prazo
     const pausa = Projeto.pausaAtual(p);
     if (pausa) {
       lista.push({
-        id: 'paralisado:' + p.id, nivel: 'aviso', projetoId: p.id, ordem: 2.5,
+        id: 'paralisado:' + p.id, tipo: 'paralisado', nivel: 'aviso', projetoId: p.id, ordem: 2.5,
         titulo: T('n.paralisado', p.commessa),
         meta: T('n.paralisadoM', plural(Projeto.diasParadoAtual(p), 'x.dia', 'x.dias'), pausa.motivo ? ' — ' + pausa.motivo : ''),
         quando: pausa.inicio
       });
+      lista.forEach(function (n) { if (paraMim(n.tipo, p, ctx)) todos.push(n); });
+      return;
     }
 
     const atrasadas = c.itens.filter(function (i) { return i.situacao === 'atrasada'; });
