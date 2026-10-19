@@ -583,6 +583,9 @@ td.num { text-align: right; font-family: var(--mono); font-size: 11.5px; white-s
 /* ---------------------------------------------------------- painel da Gerência */
 body:not(.visao-gerente) .so-gerente { display: none !important; }
 body.visao-gerente .so-padrao { display: none !important; }
+/* painel principal novo (Gerência e técnico de processo); o GP segue no geral */
+body:not(.painel-novo) .so-painel-novo { display: none !important; }
+body.painel-novo .so-painel-antigo { display: none !important; }
 .ger-ola { margin: 4px 0 20px; }
 .ger-ola h2 { font-size: 26px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
 .ger-ola-quando { margin-top: 4px; font-size: 13px; color: var(--ink-dim); }

@@ -97,7 +97,7 @@
 <!-- ==================== PAINEL GERAL ==================== -->
 <div class="tabpanel active" id="tab-painel">
   <!-- Gerência: saudação, cartões e andamento no lugar dos indicadores gerais -->
-  <div class="so-gerente ger-ola">
+  <div class="so-painel-novo ger-ola">
     <h2 id="ger-ola-nome">Bem-vindo</h2>
     <div class="ger-ola-quando" id="ger-ola-quando">—</div>
   </div>
@@ -146,19 +146,19 @@
     </div>
   </div>
 
-  <div class="kpi-grid so-padrao" id="kpi-grid"></div>
-  <div class="ger-cards so-gerente" id="ger-cards"></div>
+  <div class="kpi-grid so-painel-antigo" id="kpi-grid"></div>
+  <div class="ger-cards so-painel-novo" id="ger-cards"></div>
 
   <div class="grid2">
-    <div class="card panel-pad so-gerente">
-      <div class="panel-title" data-i18n="ger.andamento">Andamento dos projetos</div>
+    <div class="card panel-pad so-painel-novo">
+      <div class="panel-title" id="ger-andamento-titulo">Andamento dos projetos</div>
       <div class="panel-note" id="ger-andamento-nota">—</div>
       <div class="ger-andamento">
         <div class="ger-rosca"><canvas id="chartAndamento"></canvas><div class="ger-rosca-centro" id="ger-rosca-centro"></div></div>
         <div class="ger-legenda" id="ger-andamento-legenda"></div>
       </div>
     </div>
-    <div class="card panel-pad so-padrao">
+    <div class="card panel-pad so-painel-antigo">
       <div class="panel-title" data-i18n="g.status">Projetos por status</div>
       <div class="panel-note" data-i18n="g.statusNota">Status vem da data de entrega.</div>
       <div style="height:250px"><canvas id="chartStatus"></canvas></div>
@@ -170,7 +170,7 @@
     </div>
   </div>
 
-  <div class="grid2 so-padrao">
+  <div class="grid2 so-painel-antigo">
     <div class="card panel-pad">
       <div class="panel-title" data-i18n="g.prazo">No prazo x atrasados — últimas 8 semanas</div>
       <div class="panel-note" id="prazo-note">—</div>
@@ -183,7 +183,7 @@
     </div>
   </div>
 
-  <div class="grid2 so-padrao" style="grid-template-columns:1fr;">
+  <div class="grid2 so-painel-antigo" style="grid-template-columns:1fr;">
     <div class="card panel-pad card-clicavel" data-acao="abrirPontualidadeAno" role="button" tabindex="0"
          data-i18n-title="g.pontualClickT" title="Clique para ver o ano inteiro">
       <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">

@@ -82,6 +82,13 @@ export function renderProjetos() {
   }).join('');
 }
 
+// Abre a lista só com os projetos que têm tarefa do PCP nessa situação.
+export function limparFiltroProjPcp(sit) {
+  limparCampos('pf', estado.filtroProj);
+  estado.filtroProj.pcp = sit;
+  $('pf-pcp').value = sit;
+  atualizarBadge('proj', estado.filtroProj);
+}
 export function limparFiltroProjComStatus(k) {
   limparCampos('pf', estado.filtroProj);
   estado.filtroProj.status = k;

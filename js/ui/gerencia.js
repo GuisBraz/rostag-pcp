@@ -17,7 +17,7 @@ import { $, registrarAcoes } from './dom.js';
 import { abrirModal, fecharModal } from './modal.js';
 import { desenhar, destruir, cor, falhaGrafico } from './graficos.js';
 import { irPara } from './rota.js';
-import { limparFiltroProjComStatus } from './projetos.js';
+import { limparFiltroProjComStatus, limparFiltroProjPcp } from './projetos.js';
 
 const GRUPOS = ['andamento', 'vencendo', 'atrasado'];
 const COR_GRUPO = { andamento: '--teal', vencendo: '--amber', atrasado: '--rust', paralisado: '--ink-faint' };
@@ -26,6 +26,7 @@ let membros = null, membrosDaEquipe = null;   // cache da lista de membros (nome
 let relogio = null;
 
 export function souGerencia() { return Papeis.ehGerente(Auth.papel()); }
+export function souTecnico() { return Auth.papel() === 'tecnico'; }
 
 // Em andamento · vencendo (entrega dentro do aviso de prazo) · atrasado.
 // Paralisado fica de fora do gráfico, mas aparece na carga.
@@ -81,6 +82,7 @@ function desenharAndamento(lista) {
   const n = { andamento: 0, vencendo: 0, atrasado: 0, paralisado: 0 };
   lista.forEach(function (p) { const g = grupo(p, h); if (g) n[g]++; });
   const total = n.andamento + n.vencendo + n.atrasado;
+  $('ger-andamento-titulo').textContent = T('ger.andamento');
   $('ger-andamento-nota').textContent = T('ger.andamentoNota', prefs.alerta) +
     (n.paralisado ? ' ' + T('ger.andamentoParados', plural(n.paralisado, 'lista.projeto', 'lista.projetos')) : '');
   $('ger-rosca-centro').innerHTML = '<b>' + total + '</b><span>' + esc(T(total === 1 ? 'ger.aberto' : 'ger.abertos')) + '</span>';
@@ -95,6 +97,60 @@ function desenharAndamento(lista) {
     data: { labels: GRUPOS.map(function (g) { return T('ger.g.' + g); }),
       datasets: [{ data: total ? GRUPOS.map(function (g) { return n[g]; }) : [1],
         backgroundColor: total ? GRUPOS.map(function (g) { return cor(COR_GRUPO[g]); }) : [cor('--line')],
+        borderWidth: 0, hoverOffset: total ? 6 : 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '72%', animation: { duration: 300 },
+      plugins: { legend: { display: false }, tooltip: { enabled: total > 0 } } } });
+}
+
+/* ------------------------------------------------ painel do técnico */
+// Mesmo desenho da Gerência, com o que é dele: projetos, atividades do PCP
+// (o checklist) e as OPs dos projetos dele.
+const SIT_TECNICO = ['atrasada', 'chegando', 'andamento', 'planejada', 'concluida'];
+const COR_SIT_TEC = { atrasada: '--rust', chegando: '--amber', andamento: '--teal', planejada: '--ink-faint', concluida: '--green' };
+
+function atividadesTecnico(lista) {
+  const n = { atrasada: 0, chegando: 0, andamento: 0, planejada: 0, concluida: 0 };
+  lista.forEach(function (p) {
+    if (!Projeto.aberto(p) || Projeto.status(p) === 'paralisado' || Projeto.aguardandoCronograma(p)) return;
+    Cronograma.calcular(p).itens.forEach(function (i) { if (n[i.situacao] != null) n[i.situacao]++; });
+  });
+  return n;
+}
+
+export function renderPainelTecnico(lista) {
+  ligarRelogio();
+  desenharOla();
+  const abertos = lista.filter(Projeto.aberto);
+  const n = atividadesTecnico(lista);
+  const pendentes = n.atrasada + n.chegando + n.andamento + n.planejada;
+  const ops = Producao.estatisticas(estado.ops);
+  $('ger-cards').innerHTML =
+    cartao('tecVerProjetos', T('tec.meusProjetos'), '<div class="value">' + abertos.length + '</div>',
+      T('tec.meusProjetosDet', lista.length)) +
+    cartao(n.atrasada ? 'tecVerAtrasadas' : 'tecVerProjetos', T('tec.minhasAtividades'),
+      '<div class="value">' + pendentes + '</div>' +
+      (n.atrasada ? '<span class="share" style="background:var(--rust-bg); color:var(--rust);">' + esc(T('tec.atrasadasCurto', n.atrasada)) + '</span>' : ''),
+      T('tec.atividadesDet', n.atrasada, n.chegando)) +
+    cartao('gerVerOps', T('tec.ops'),
+      '<div class="value" style="color:var(--green)">' + ops.aprovadas + '</div><span class="ger-sep">/</span>' +
+      '<div class="value" style="color:var(--rust)">' + ops.rnc + '</div>',
+      T('ger.opsDet', ops.aprovadas, ops.rnc, ops.abertas));
+
+  const total = SIT_TECNICO.reduce(function (s, k) { return s + n[k]; }, 0);
+  const pct = total ? Math.round(n.concluida / total * 100) : 0;
+  $('ger-andamento-titulo').textContent = T('tec.graficoTitulo');
+  $('ger-andamento-nota').textContent = T('tec.graficoNota', prefs.alertaTarefa);
+  $('ger-rosca-centro').innerHTML = '<b>' + pct + '%</b><span>' + esc(T('tec.concluidas')) + '</span>';
+  $('ger-andamento-legenda').innerHTML = SIT_TECNICO.map(function (k) {
+    const p = total ? Math.round(n[k] / total * 100) : 0;
+    return '<div class="ger-leg"><span class="ger-leg-cor" style="background:var(' + COR_SIT_TEC[k] + ')"></span>' +
+      '<span class="ger-leg-rot">' + esc(T('tec.sit.' + k)) + '</span><b>' + n[k] + '</b><span class="ger-leg-pct">' + p + '%</span></div>';
+  }).join('');
+  if (!window.Chart) { falhaGrafico('chartAndamento'); return; }
+  desenhar('chartAndamento', { type: 'doughnut',
+    data: { labels: SIT_TECNICO.map(function (k) { return T('tec.sit.' + k); }),
+      datasets: [{ data: total ? SIT_TECNICO.map(function (k) { return n[k]; }) : [1],
+        backgroundColor: total ? SIT_TECNICO.map(function (k) { return cor(COR_SIT_TEC[k]); }) : [cor('--line')],
         borderWidth: 0, hoverOffset: total ? 6 : 0 }] },
     options: { responsive: true, maintainAspectRatio: false, cutout: '72%', animation: { duration: 300 },
       plugins: { legend: { display: false }, tooltip: { enabled: total > 0 } } } });
@@ -382,5 +438,7 @@ registrarAcoes({
   abrirCarga: abrirCarga,
   fecharCarga: function () { fecharModal('modal-carga'); },
   gerVerProjetos: function () { limparFiltroProjComStatus(''); irPara('projetos'); },
-  gerVerOps: function () { irPara('fabrica'); }
+  gerVerOps: function () { irPara('fabrica'); },
+  tecVerProjetos: function () { limparFiltroProjComStatus(''); irPara('projetos'); },
+  tecVerAtrasadas: function () { limparFiltroProjPcp('atrasada'); irPara('projetos'); }
 });

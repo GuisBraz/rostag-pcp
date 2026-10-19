@@ -15,20 +15,21 @@ import { renderNotificacoes } from './notificacoes.js';
 import { desenhar, opcoesBase, legenda, cor, corStatus, corSituacao, falhaGrafico } from './graficos.js';
 import { irPara } from './rota.js';
 import { limparFiltroProjComStatus } from './projetos.js';
-import { souGerencia, renderPainelGerencia } from './gerencia.js';
+import { souGerencia, souTecnico, renderPainelGerencia, renderPainelTecnico } from './gerencia.js';
 
 const COR_STATUS = { andamento: 'violet', concluido: 'green', atrasado: 'rust', paralisado: 'amber', cancelado: 'ink-faint' };
 const FUNDO_STATUS = { andamento: 'violet-bg', concluido: 'green-bg', atrasado: 'rust-bg', paralisado: 'amber-bg', cancelado: 'bg-panel-alt' };
 
 export function renderPainel() {
   const lista = filtrarDash();
-  // Gerência tem painel próprio (gerencia.js); o "Precisa de atenção" é comum.
-  const gerencia = souGerencia();
+  // Gerência e técnico têm painel próprio (gerencia.js); o "Precisa de atenção" é comum.
+  const gerencia = souGerencia(), tecnico = souTecnico();
   document.body.classList.toggle('visao-gerente', gerencia);
-  if (gerencia) {
+  document.body.classList.toggle('painel-novo', gerencia || tecnico);
+  if (gerencia || tecnico) {
     escopo(lista.length);
     renderAtencao(lista);
-    renderPainelGerencia(lista);
+    if (gerencia) renderPainelGerencia(lista); else renderPainelTecnico(lista);
     renderNotificacoes();
     return;
   }
