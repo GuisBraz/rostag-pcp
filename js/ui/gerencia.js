@@ -27,6 +27,7 @@ let relogio = null;
 
 export function souGerencia() { return Papeis.ehGerente(Auth.papel()); }
 export function souTecnico() { return Auth.papel() === 'tecnico'; }
+export function souGP() { return Auth.papel() === 'gp'; }
 // Quem acompanha o projeto pelas três áreas (sem editar o checklist do técnico).
 export function veAreasProjeto() { const p = Auth.papel(); return Papeis.ehGerente(p) || p === 'gp'; }
 
