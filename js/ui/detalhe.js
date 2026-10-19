@@ -19,7 +19,7 @@ import { persistir, redesenhar } from './app.js';
 import { irPara } from './rota.js';
 import { renderProjetos } from './projetos.js';
 import { renderNotificacoes } from './notificacoes.js';
-import { souGerencia, renderAreasProjeto } from './gerencia.js';
+import { souGerencia, veAreasProjeto, renderAreasProjeto } from './gerencia.js';
 
 function janela(rot, corpo, obs, corObs) {
   return '<div class="rot">' + rot + '</div><div class="datas">' + corpo + '</div>' +
@@ -147,8 +147,8 @@ export function renderDetalhe() {
   $('detail-hist').innerHTML = '<h4>' + esc(T('d.historico')) + '</h4>' +
     evs.map(function (e) { return '<div class="ev"><b>' + br(e.d) + '</b> · ' + esc(e.t) + '</div>'; }).join('');
 
-  // --- cronograma: a Gerência acompanha (só leitura); quem executa edita o checklist ---
-  if (souGerencia()) { renderAreasProjeto(p); return; }
+  // --- cronograma: Gerência e GP acompanham (só leitura); o técnico edita o checklist ---
+  if (veAreasProjeto()) { renderAreasProjeto(p); return; }
   $('detail-progress-bar').style.width = pr + '%';
   $('detail-progress-pct').textContent = pr + '%';
   // não redesenha a lista de tarefas enquanto alguém digita a duração de uma delas

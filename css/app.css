@@ -581,8 +581,9 @@ td.num { text-align: right; font-family: var(--mono); font-size: 11.5px; white-s
 @media (max-width: 720px) { .notif-linha { flex-wrap: wrap; } .notif-acoes { width: 100%; justify-content: flex-start; } }
 
 /* ---------------------------------------------------------- painel da Gerência */
-body:not(.visao-gerente) .so-gerente { display: none !important; }
-body.visao-gerente .so-padrao { display: none !important; }
+/* detalhe do projeto: Gerência e GP acompanham pelas áreas; o técnico edita o checklist */
+body:not(.detalhe-areas) .so-areas { display: none !important; }
+body.detalhe-areas .so-checklist { display: none !important; }
 /* painel principal novo (Gerência e técnico de processo); o GP segue no geral */
 body:not(.painel-novo) .so-painel-novo { display: none !important; }
 body.painel-novo .so-painel-antigo { display: none !important; }
@@ -629,7 +630,7 @@ body.painel-novo .so-painel-antigo { display: none !important; }
 .ac-escala-leg { display: flex; justify-content: flex-end; gap: 14px; font-size: 11px; font-weight: 600; color: var(--ink-faint); margin-bottom: 4px; }
 .ac-escala-leg span { display: inline-flex; align-items: center; gap: 5px; }
 .ac-linha.ac-escala { padding: 0 0 4px; font-size: 10.5px; font-weight: 700; color: var(--ink-faint); }
-.ac-escala-datas { display: flex; justify-content: space-between; }
+.ac-escala-datas { display: flex; justify-content: space-between; gap: 8px; }
 .ac-ico-hoje, .ac-ico-limite { display: inline-block; width: 2px; height: 10px; }
 .ac-ico-hoje { background: var(--teal); }
 .ac-ico-limite { border-left: 2px dashed var(--rust); }

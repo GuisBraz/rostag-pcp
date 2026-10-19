@@ -105,6 +105,7 @@ function aplicarRestricoesPapel() {
   document.body.classList.toggle('visao-planejador', !gestor);
   document.body.classList.toggle('visao-fabrica', !veProjetos);
   document.body.classList.toggle('visao-gerente', Papeis.ehGerente(papel));
+  document.body.classList.toggle('detalhe-areas', Papeis.ehGerente(papel) || papel === 'gp');
   document.body.classList.toggle('painel-novo', Papeis.ehGerente(papel) || papel === 'tecnico');
   $('btn-novo-projeto').style.display = gestor ? '' : 'none';
   $('dados-acoes-escrita').style.display = gestor ? 'contents' : 'none';

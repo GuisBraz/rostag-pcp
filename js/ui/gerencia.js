@@ -27,6 +27,8 @@ let relogio = null;
 
 export function souGerencia() { return Papeis.ehGerente(Auth.papel()); }
 export function souTecnico() { return Auth.papel() === 'tecnico'; }
+// Quem acompanha o projeto pelas três áreas (sem editar o checklist do técnico).
+export function veAreasProjeto() { const p = Auth.papel(); return Papeis.ehGerente(p) || p === 'gp'; }
 
 // Em andamento · vencendo (entrega dentro do aviso de prazo) · atrasado.
 // Paralisado fica de fora do gráfico, mas aparece na carga.
@@ -49,7 +51,7 @@ function desenharOla() {
 }
 function ligarRelogio() {
   if (relogio) return;
-  relogio = setInterval(function () { if (souGerencia() && $('ger-ola-nome').offsetParent) desenharOla(); }, 20000);
+  relogio = setInterval(function () { if ($('ger-ola-nome').offsetParent) desenharOla(); }, 20000);
 }
 
 /* --------------------------------------------------------------- cartões */
@@ -311,7 +313,7 @@ export function renderAcompanhamento(p) {
   gantt.innerHTML =
     '<div class="ac-escala-leg"><span><i class="ac-ico-hoje"></i>' + esc(T('ac.hoje')) + '</span>' +
       '<span><i class="ac-ico-limite"></i>' + esc(T('ac.fimPlanejado')) + '</span></div>' +
-    '<div class="ac-linha ac-escala"><span></span><div class="ac-escala-datas"><span>' + br(lo) + '</span><span>' + br(hi) + '</span></div><span></span><span></span></div>' +
+    '<div class="ac-linha ac-escala"><span></span><div class="ac-escala-datas"><span>' + brCurto(lo) + '</span><span>' + brCurto(hi) + '</span></div><span></span><span></span></div>' +
     c.itens.map(function (it) {
       const obs = (p.checklist[it.idx].obs || '').trim();
       const largura = Math.max(100 / total, (difDias(it.inicio, it.fim) + 1) / total * 100);
@@ -328,7 +330,7 @@ export function renderAcompanhamento(p) {
 }
 
 /* ------------------------------------------------------ áreas do projeto */
-// Detalhe do projeto para a Gerência: três cartões com resumo (Processos,
+// Detalhe do projeto para a Gerência e o GP: três cartões com resumo (Processos,
 // Planejamento, Qualidade); o escolhido abre a área logo abaixo.
 const AREAS_PROJETO = ['processos', 'planejamento', 'qualidade'];
 let areaAtual = 'processos';
