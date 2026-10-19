@@ -15,12 +15,23 @@ import { renderNotificacoes } from './notificacoes.js';
 import { desenhar, opcoesBase, legenda, cor, corStatus, corSituacao, falhaGrafico } from './graficos.js';
 import { irPara } from './rota.js';
 import { limparFiltroProjComStatus } from './projetos.js';
+import { souGerencia, renderPainelGerencia } from './gerencia.js';
 
 const COR_STATUS = { andamento: 'violet', concluido: 'green', atrasado: 'rust', paralisado: 'amber', cancelado: 'ink-faint' };
 const FUNDO_STATUS = { andamento: 'violet-bg', concluido: 'green-bg', atrasado: 'rust-bg', paralisado: 'amber-bg', cancelado: 'bg-panel-alt' };
 
 export function renderPainel() {
   const lista = filtrarDash();
+  // Gerência tem painel próprio (gerencia.js); o "Precisa de atenção" é comum.
+  const gerencia = souGerencia();
+  document.body.classList.toggle('visao-gerente', gerencia);
+  if (gerencia) {
+    escopo(lista.length);
+    renderAtencao(lista);
+    renderPainelGerencia(lista);
+    renderNotificacoes();
+    return;
+  }
   const contagem = { andamento: 0, concluido: 0, atrasado: 0, paralisado: 0, cancelado: 0 };
   lista.forEach(function (p) { contagem[Projeto.status(p)]++; });
   const total = lista.length;
@@ -35,15 +46,18 @@ export function renderPainel() {
         '<span class="share" style="background:var(--' + FUNDO_STATUS[k] + '); color:var(--' + COR_STATUS[k] + ');">' + pct + '%</span></div></button>';
     }).join('');
   $('kpi-grid').innerHTML = kpis;
-
-  const nf = contarFiltros(estado.filtroDash);
-  $('dash-scope').textContent = nf
-    ? T('painel.escopoFiltro', total, estado.projetos.length, plural(nf, 'painel.filtroAtivo', 'painel.filtrosAtivos'))
-    : T('painel.escopoTudo', plural(estado.projetos.length, 'lista.projeto', 'lista.projetos'));
+  escopo(total);
 
   renderAtencao(lista);
   renderGraficos(lista, contagem);
   renderNotificacoes();
+}
+
+function escopo(total) {
+  const nf = contarFiltros(estado.filtroDash);
+  $('dash-scope').textContent = nf
+    ? T('painel.escopoFiltro', total, estado.projetos.length, plural(nf, 'painel.filtroAtivo', 'painel.filtrosAtivos'))
+    : T('painel.escopoTudo', plural(estado.projetos.length, 'lista.projeto', 'lista.projetos'));
 }
 
 // Junta num só painel o que precisa de ação: tarefa atrasada, tarefa vencendo, entrega chegando.
