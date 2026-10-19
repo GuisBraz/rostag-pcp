@@ -104,6 +104,7 @@ function aplicarRestricoesPapel() {
   const veProjetos = Papeis.veProjetos(papel);
   document.body.classList.toggle('visao-planejador', !gestor);
   document.body.classList.toggle('visao-fabrica', !veProjetos);
+  document.body.classList.toggle('visao-gerente', Papeis.ehGerente(papel));
   $('btn-novo-projeto').style.display = gestor ? '' : 'none';
   $('dados-acoes-escrita').style.display = gestor ? 'contents' : 'none';
   ['painel', 'projetos', 'linha'].forEach(function (aba) {

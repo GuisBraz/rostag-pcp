@@ -6,8 +6,9 @@
 --------------------------------------------------------------------------- */
 import { estado } from '../estado.js';
 import { prefs } from '../nucleo/prefs.js';
-import { esc, br, hoje, difDias } from '../nucleo/fmt.js';
-import { T, plural, codigoIdioma } from '../i18n/index.js';
+import { esc, br, brCurto, hoje, difDias } from '../nucleo/fmt.js';
+import { T, plural, codigoIdioma, SIT_LABEL } from '../i18n/index.js';
+import * as Cronograma from '../dominio/cronograma.js';
 import * as Projeto from '../dominio/projeto.js';
 import * as Producao from '../dominio/producao.js';
 import * as Papeis from '../dominio/papeis.js';
@@ -194,6 +195,80 @@ function abrirCarga() {
   membros = null;   // lista fresca a cada abertura: alguém pode ter entrado ou mudado de cargo
   abrirModal('modal-carga', { aoFechar: function () { destruir('chartCargaGp'); destruir('chartCargaTec'); } });
   desenharCarga();
+}
+
+/* ------------------------------------------ acompanhamento das atividades */
+// No detalhe do projeto a Gerência não mexe no checklist do técnico: vê o
+// progresso, as datas e o que está atrasado, numa linha do tempo só de leitura.
+const COR_SIT = { planejada: '--ink-faint', andamento: '--teal', chegando: '--amber', atrasada: '--rust', parada: '--ink-faint', concluida: '--green' };
+
+function situacaoGeral(p, c, h) {
+  if (c.concluido) return { txt: T('ac.concluido', br(c.fimPrevisto)), cor: '--green' };
+  if (Projeto.status(p) === 'paralisado') return { txt: T('ac.parado'), cor: '--amber-ink' };
+  const atrasadas = c.itens.filter(function (i) { return i.situacao === 'atrasada'; });
+  if (atrasadas.length) {
+    const maior = Math.max.apply(null, atrasadas.map(function (i) { return i.atrasoDias; }));
+    return { txt: T('ac.emAtraso', plural(atrasadas.length, 'ac.atividade', 'ac.atividades'), plural(maior, 'x.dia', 'x.dias')), cor: '--rust' };
+  }
+  if (p.pcpFim && p.pcpFim < h) return { txt: T('ac.passouFim', plural(difDias(p.pcpFim, h), 'x.dia', 'x.dias')), cor: '--rust' };
+  if (c.estouro > 0) return { txt: T('ac.vaiPassar', plural(c.estouro, 'x.dia', 'x.dias')), cor: '--amber-ink' };
+  return { txt: T('ac.noPrazo'), cor: '--green' };
+}
+
+function etiqueta(it) {
+  if (it.situacao === 'concluida') return T('ac.feitaEm', it.doneAt ? brCurto(it.doneAt) : '—');
+  if (it.situacao === 'atrasada') return T('ac.atrasadaDias', plural(it.atrasoDias, 'x.dia', 'x.dias'));
+  return SIT_LABEL(it.situacao);
+}
+
+export function renderAcompanhamento(p) {
+  const resumo = $('ac-resumo'), gantt = $('ac-gantt');
+  if (Projeto.aguardandoCronograma(p)) {
+    resumo.innerHTML = '<div class="empty-state">' + esc(T('ac.aguardando')) + '</div>';
+    gantt.innerHTML = '';
+    return;
+  }
+  const h = hoje(), c = Cronograma.calcular(p), pr = Projeto.progresso(p);
+  const feitas = c.itens.filter(function (i) { return i.done; }).length;
+  const sg = situacaoGeral(p, c, h);
+  resumo.innerHTML =
+    '<div class="ac-progresso"><div class="ac-pct">' + pr + '<small>%</small></div>' +
+      '<div class="ac-barra-wrap"><div class="ac-barra"><div style="width:' + pr + '%"></div></div>' +
+      '<div class="hint-txt">' + esc(T('ac.feitas', feitas, c.itens.length)) + '</div></div></div>' +
+    '<div class="ano-resumo ac-kpis">' +
+      kpi(T('ac.inicio'), br(p.pcpInicio)) +
+      kpi(T('ac.fimPlanejado').toUpperCase(), br(p.pcpFim)) +
+      kpi(T('ac.terminoPrevisto'), '<span style="color:var(' + (c.estouro > 0 && !c.concluido ? '--rust' : '--ink') + ')">' + br(c.fimPrevisto) + '</span>') +
+      kpi(T('ac.situacao'), '<span class="ac-sit" style="color:var(' + sg.cor + ')">' + esc(sg.txt) + '</span>') +
+    '</div>';
+
+  if (!c.itens.length) { gantt.innerHTML = '<div class="empty-state">' + esc(T('ac.semAtividades')) + '</div>'; return; }
+  // escala da linha do tempo: do início da 1ª atividade ao maior entre o fim previsto e o fim planejado
+  let lo = c.itens[0].inicio, hi = c.fimPrevisto;
+  c.itens.forEach(function (i) { if (i.inicio < lo) lo = i.inicio; if (i.fim > hi) hi = i.fim; });
+  if (p.pcpFim && p.pcpFim > hi) hi = p.pcpFim;
+  const total = difDias(lo, hi) + 1;
+  const pos = function (d) { return Math.max(0, Math.min(100, difDias(lo, d) / total * 100)); };
+  const marcaHoje = h >= lo && h <= hi ? '<div class="ac-hoje" style="left:' + (pos(h) + 50 / total) + '%" title="' + esc(T('ac.hoje') + ' ' + br(h)) + '"></div>' : '';
+  const marcaFim = p.pcpFim ? '<div class="ac-limite" style="left:' + (pos(p.pcpFim) + 100 / total) + '%" title="' + esc(T('ac.fimPlanejado') + ' ' + br(p.pcpFim)) + '"></div>' : '';
+
+  gantt.innerHTML =
+    '<div class="ac-escala-leg"><span><i class="ac-ico-hoje"></i>' + esc(T('ac.hoje')) + '</span>' +
+      '<span><i class="ac-ico-limite"></i>' + esc(T('ac.fimPlanejado')) + '</span></div>' +
+    '<div class="ac-linha ac-escala"><span></span><div class="ac-escala-datas"><span>' + br(lo) + '</span><span>' + br(hi) + '</span></div><span></span><span></span></div>' +
+    c.itens.map(function (it) {
+      const obs = (p.checklist[it.idx].obs || '').trim();
+      const largura = Math.max(100 / total, (difDias(it.inicio, it.fim) + 1) / total * 100);
+      return '<div class="ac-linha">' +
+        '<div class="ac-nome" title="' + esc(it.t) + '"><span class="dot dot-' + it.situacao + '"></span><span>' + esc(it.t) + '</span>' +
+          (obs ? '<span class="ac-obs" title="' + esc(T('cr.obs') + ': ' + obs) + '">📝</span>' : '') + '</div>' +
+        '<div class="ac-trilho">' + marcaHoje + marcaFim +
+          '<div class="ac-bar" style="left:' + pos(it.inicio) + '%; width:' + largura + '%; background:var(' + COR_SIT[it.situacao] + ')"' +
+          ' title="' + esc(it.t + ' · ' + T('cr.deAte', br(it.inicio), br(it.fim))) + '"></div></div>' +
+        '<div class="ac-datas">' + brCurto(it.inicio) + ' → ' + brCurto(it.fim) + '</div>' +
+        '<div class="ac-etq ac-etq-' + it.situacao + '">' + esc(etiqueta(it)) + '</div>' +
+      '</div>';
+    }).join('');
 }
 
 registrarAcoes({
