@@ -16,6 +16,7 @@ import * as Store from './dados/store.js';
 import * as DadosCarga from './dados/carga.js';
 import * as Ops from './dados/ops.js';
 import * as DadosRncs from './dados/rncs.js';
+import * as DadosChecklist from './dados/checklist.js';
 import * as Cronograma from './dominio/cronograma.js';
 import * as Projeto from './dominio/projeto.js';
 import * as Papeis from './dominio/papeis.js';
@@ -26,16 +27,18 @@ import { iniciarModais, fecharTodos } from './ui/modal.js';
 import { toast } from './ui/toast.js';
 import { redesenhar, atualizarChip, renderTudo } from './ui/app.js';
 import { aplicarRota, irPara, abaInicial } from './ui/rota.js';
-import { aplicarTema, aplicarIdioma, aplicarPrefs } from './ui/preferencias.js';
+import { aplicarTema, aplicarIdioma, aplicarPrefs, renderChecklistInfo } from './ui/preferencias.js';
 import { renderAtalhos, iniciarAtalhos } from './ui/atalhos.js';
 import { escutarNotificacoes, pararNotificacoes } from './ui/notificacoes.js';
 import { pararInscricaoChat } from './ui/detalhe.js';
+import { iniciarSidebar } from './ui/sidebar.js';
 import { atualizarBadge } from './ui/filtros.js';
 import { mostrarViewAcesso, mostrarTelaAcesso, atualizarSeletorEquipe, convitePendente, consumirConviteSeHouver } from './ui/acesso.js';
 import { renderEquipe } from './ui/equipe.js';
 import './ui/formulario.js';
 import './ui/ano.js';
 import './ui/dados.js';
+import './ui/checklistPadrao.js';
 
 let uidCarregado = null;       // de quem são as preferências aplicadas
 let equipeCarregada = null;    // de qual equipe são os projetos escutados
@@ -98,6 +101,10 @@ function escutarEquipe() {
   Ops.escutar(aoReceberOps, function () { estado.opsCarregadas = true; redesenhar(); });
   if (Papeis.veRnc(papelCarregado) || Papeis.ehCQ(papelCarregado)) DadosRncs.escutar(function (l) { estado.rncs = l; redesenhar(); });
   else DadosRncs.pararEscuta();
+  // checklist padrão: só quem cria projeto (Gerência e GP) precisa
+  estado.checklistPadrao = null;
+  if (Papeis.gereProjetos(papelCarregado)) DadosChecklist.escutar(function (c) { estado.checklistPadrao = c; renderChecklistInfo(); });
+  else DadosChecklist.pararEscuta();
   estado.maquinas = []; estado.cfgFabrica = {};
   if (Papeis.veCarga(papelCarregado)) {
     DadosCarga.escutar(function (m) { estado.maquinas = m; redesenhar(); }, function (c) { estado.cfgFabrica = c; redesenhar(); });
@@ -119,6 +126,7 @@ function aplicarRestricoesPapel() {
   document.body.classList.toggle('detalhe-areas', Papeis.ehGerente(papel) || papel === 'gp');
   document.body.classList.toggle('painel-novo', Papeis.ehGerente(papel) || papel === 'gp' || papel === 'tecnico' || Papeis.ehProgramador(papel) || Papeis.ehCQ(papel));
   document.body.classList.toggle('visao-cq', Papeis.ehCQ(papel));
+  document.body.classList.toggle('sem-atencao', Papeis.ehGerente(papel) || papel === 'gp');
   document.body.classList.toggle('visao-programador', Papeis.ehProgramador(papel));
   $('btn-novo-projeto').style.display = gestor ? '' : 'none';
   $('dados-acoes-escrita').style.display = gestor ? 'contents' : 'none';
@@ -150,6 +158,7 @@ function sairDoApp() {
   Store.pararEscuta();
   Ops.pararEscuta();
   DadosRncs.pararEscuta();
+  DadosChecklist.pararEscuta();
   pararInscricaoChat();
   fecharTodos();
   equipeCarregada = null;
@@ -215,6 +224,7 @@ function bootar() {
   iniciarDespachante();
   iniciarModais();
   iniciarAtalhos();
+  iniciarSidebar();
   renderAtalhos();
   registrarServiceWorker();
 

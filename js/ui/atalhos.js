@@ -14,9 +14,8 @@ import { abrirNovoProjeto, abrirEditarProjeto } from './formulario.js';
 import { reagendarAberto, fecharReagendar } from './detalhe.js';
 import { mudarAno } from './ano.js';
 import { toggleNotificacoes } from './notificacoes.js';
-import { toggleSidebar, definirTema } from './preferencias.js';
+import { toggleSidebar, alternarTema } from './preferencias.js';
 import { exportarJSON } from './dados.js';
-import { prefs } from '../nucleo/prefs.js';
 
 const ATALHOS = [
   { grupo: 'a.navegar', itens: [
@@ -100,7 +99,7 @@ export function iniciarAtalhos() {
       case 'e': case 'E': if (estado.idDetalhe && Auth.souGPouCoordenador()) { e.preventDefault(); abrirEditarProjeto(); } break;
       case 'a': case 'A': e.preventDefault(); toggleNotificacoes(); break;
       case 'b': case 'B': e.preventDefault(); toggleSidebar(); break;
-      case 't': case 'T': e.preventDefault(); definirTema(prefs.tema === 'escuro' ? 'claro' : 'escuro'); break;
+      case 't': case 'T': e.preventDefault(); alternarTema(); break;
       case '?': e.preventDefault(); irPara('config', 'atalhos'); break;
       case 'ArrowUp': if (estado.idDetalhe) { e.preventDefault(); navegarProjeto(-1); } break;
       case 'ArrowDown': if (estado.idDetalhe) { e.preventDefault(); navegarProjeto(1); } break;

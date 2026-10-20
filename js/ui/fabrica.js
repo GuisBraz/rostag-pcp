@@ -16,6 +16,8 @@ import { abrirModal, fecharModal } from './modal.js';
 import { toast } from './toast.js';
 import { avisoErro } from './app.js';
 export { renderRnc } from './qualidade.js';
+import { configurar as configurarOpManual } from './opManual.js';
+import { alternarPopup } from './app.js';
 
 const MAX_LINHAS = 600;   // a tabela fica pesada acima disso; os filtros resolvem
 
@@ -148,12 +150,17 @@ export function renderFabrica() {
     return;
   }
   const veRnc = cq || Papeis.veRnc(papel);
+  const sobe = Papeis.sobePlanilha(papel);
+  const porId = {};
+  estado.ops.forEach(function (o) { porId[o.id] = o; });
   $('fab-tbody').innerHTML = lista.slice(0, MAX_LINHAS).map(function (o) {
     const st = Producao.statusOp(o);
     const linkRnc = o.rncNumero && veRnc
       ? '<button type="button" class="link-btn" data-acao="verRncDaOp" data-arg="' + esc(o.id) + '">' + esc(T('fab.verRnc', o.rncNumero)) + '</button>' : '';
     let fim;
-    if (st === 'aberta' || st === 'retrabalho') {
+    if (st === 'aberta' && !cq && sobe) {
+      fim = '<button type="button" class="btn btn-outline btn-mini" data-acao="abrirOpManual" data-arg="' + esc(o.id) + '">' + esc(T('opm.editar')) + '</button> ' + linkRnc;
+    } else if (st === 'aberta' || st === 'retrabalho') {
       fim = cq ? '<button type="button" class="btn ' + (st === 'retrabalho' ? 'btn-danger' : 'btn-primary') + ' btn-mini" data-acao="abrirBaixa" data-arg="' + esc(o.id) + '">' +
         esc(T(st === 'retrabalho' ? 'baixa.reinspecao' : 'baixa.botao')) + '</button> ' + linkRnc : (linkRnc || '—');
     } else if (st === 'morta') {
@@ -163,7 +170,7 @@ export function renderFabrica() {
       fim = cq ? '<span class="hint-txt" title="' + esc(o.finalizadoPorNome || '') + '">' + esc(o.finalizadoEm ? br(dataDoInstante(o.finalizadoEm)) : '—') + '</span> ' + linkRnc
         : '<span class="hint-txt">' + esc(o.finalizadoPorNome || '—') + ' · ' + esc(quando(o.finalizadoEm)) + '</span> ' + linkRnc;
     }
-    const origem = o.origemOpId ? estado.ops.find(function (x) { return x.id === o.origemOpId; }) : null;
+    const origem = o.origemOpId ? porId[o.origemOpId] : null;
     const celFim = '<td class="fab-acao">' + fim + '</td>';
     return '<tr class="' + (st === 'retrabalho' ? 'linha-rnc' : (st === 'morta' ? 'linha-morta' : '')) + '">' + (cq ? celFim : '') +
       '<td class="mono">' + esc(o.numero) + (o.origemOpId ? '<span class="op-origem">' + esc(T('fab.origem', origem ? origem.numero : '—')) + '</span>' : '') + '</td>' +
@@ -319,7 +326,15 @@ document.addEventListener('change', function (e) {
   if (e.target && e.target.id === 'planilha-projeto' && lida) mostrarResumo();
 });
 
+configurarOpManual(projetosParaPlanilha);
+// escolher uma opção do menu fecha o menu
+document.addEventListener('click', function (e) {
+  if (e.target.closest && e.target.closest('.menu-add-item')) $('addops-panel').classList.remove('open');
+});
+
 registrarAcoes({
+  toggleAddOps: function (_a, _b, el) { alternarPopup('addops-panel', el); },
+  addOpsPdf: function () { toast(T('opm.pdfEmBreve')); },
   filtrarFabrica: filtrarFabrica,
   abrirPlanilha: abrirPlanilha,
   lerPlanilha: lerPlanilha,

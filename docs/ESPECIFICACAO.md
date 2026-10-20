@@ -169,5 +169,7 @@ Sistema (quando apareceu, quando foi lido) fica em
   ninguém apaga.
 - Projeto: `pedido {tipo, motivo, porUid, porNome, em}` enquanto espera a
   Gerência; `motivoCancelamento`. Equipe: `papeisMigrados`.
+- `equipes/{id}/config/checklist`: checklist padrão do PCP da equipe (`itens [{t, dias}]`, `atualizadoEm`, `porUid`, `porNome`); Gerência e GP gravam. Sem ele vale a lista de fábrica.
+- `usuarios/{uid}`: o dono pode apagar (encerrar conta).
 - `notificacoes/{id}`: `tipo`, `mensagem`, `deUid`/`deNome`, `paraUid`,
   `projetoId`, `equipeId`, `lida`, `lidaEm`, `criadoEm`.

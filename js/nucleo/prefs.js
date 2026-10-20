@@ -7,7 +7,7 @@
 
 export const PREFS_PADRAO = Object.freeze({
   idioma: 'pt', tema: 'claro', alerta: 10, alertaTarefa: 2, fimDeSemana: 'nao',
-  nome: '', sidebarRecolhida: false, lidas: {}
+  nome: '', sidebarRecolhida: false, temaClaro: 'claro', lidas: {}
 });
 
 // Campos que também vivem no perfil da conta (/usuarios/{uid}).
@@ -47,9 +47,10 @@ export function salvarPrefsLocais() {
 }
 
 // O tema salvo é aplicado o quanto antes, sem esperar o login.
+export const TEMAS = ['claro', 'escuro', 'pastel', 'tecnico', 'st', 'grego', 'prata'];
+export function temaValido(t) { return TEMAS.indexOf(t) >= 0 ? t : 'claro'; }
 export function temaInicial() {
-  const salvo = lerLocal(CHAVE_BASE + '_ultimoTema');
-  return salvo === 'escuro' ? 'escuro' : 'claro';
+  return temaValido(lerLocal(CHAVE_BASE + '_ultimoTema'));
 }
 export function lembrarTema(tema) {
   try { localStorage.setItem(CHAVE_BASE + '_ultimoTema', JSON.stringify(tema)); } catch (e) { /* sem armazenamento */ }

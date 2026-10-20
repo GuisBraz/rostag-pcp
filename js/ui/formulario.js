@@ -7,7 +7,6 @@
 import { estado, buscarProjeto, projetoAtual, opsDoProjeto } from '../estado.js';
 import { hoje, esc, br } from '../nucleo/fmt.js';
 import { T, STATUS_LABEL } from '../i18n/index.js';
-import { CHECKLIST_PADRAO } from '../dominio/constantes.js';
 import * as Projeto from '../dominio/projeto.js';
 import { papelEfetivo } from '../dominio/papeis.js';
 import * as Auth from '../dados/auth.js';
@@ -63,6 +62,9 @@ function atualizarPreviews() {
   $('f-prodInicio').value = $('f-pcpFim').value || '';
 }
 
+// Lista padrão da equipe (Configurações → Geral), se houver.
+function itensPadrao() { return estado.checklistPadrao ? estado.checklistPadrao.itens : null; }
+
 export function abrirNovoProjeto() {
   if (!Auth.souGPouCoordenador()) return;
   editandoId = null;
@@ -70,7 +72,7 @@ export function abrirNovoProjeto() {
   $('f-dataSolicitacao').value = hoje();
   $('modal-projeto-title').textContent = T('fm.novo');
   $('f-submit').textContent = T('fm.incluir');
-  $('fm-checklist-nota').textContent = T('fm.checklistZero', CHECKLIST_PADRAO.length);
+  $('fm-checklist-nota').textContent = T('fm.checklistZero', Projeto.listaPadrao(itensPadrao()).length);
   atualizarPreviews();
   // o gerente escolhe o GP; o GP que cria vira o GP do projeto
   const souGp = !Auth.souGerente();
@@ -138,7 +140,7 @@ function salvarProjeto() {
     Object.assign(p, d);
   } else {
     p = Object.assign({ id: Projeto.novoId(), status: 'ativo', concluidoEm: null, canceladoEm: null,
-      reagendamentos: [], paralisacoes: [], checklist: Projeto.checklistNovo(), criadoPor: Auth.nomeExibicao() }, d);
+      reagendamentos: [], paralisacoes: [], checklist: Projeto.checklistNovo(itensPadrao()), criadoPor: Auth.nomeExibicao() }, d);
     estado.projetos.push(p);
   }
   const definiuAgora = d.cronogramaDefinido && (!antes || !antes.definido);
@@ -146,7 +148,7 @@ function salvarProjeto() {
 
   fecharModal('modal-projeto');
   redesenhar();
-  toast(eraEdicao ? T('t.atualizado', p.commessa) : T('t.incluido', p.commessa, CHECKLIST_PADRAO.length));
+  toast(eraEdicao ? T('t.atualizado', p.commessa) : T('t.incluido', p.commessa, p.checklist.length));
   (v.avisos || []).forEach(function (a) { toast(a, { tipo: 'erro' }); });
   persistir().then(function () {
     avisarEnvolvidos(p, antes, definiuAgora);

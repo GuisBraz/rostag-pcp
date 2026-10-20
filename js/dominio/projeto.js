@@ -147,12 +147,45 @@ export function novoId() {
   return 'p_' + Date.now().toString(36) + '_' + aleatorio;
 }
 
-// Projeto novo nasce com as tarefas padrão em 0 dias — quem distribui o
-// cronograma é o planejador, tarefa por tarefa.
-export function checklistNovo() {
-  return CHECKLIST_PADRAO.map(function (t) {
-    return { t: t, dias: 0, done: false, doneAt: null, obs: '', obsEm: null };
+/* ------------------------------------------------- checklist padrão do PCP */
+export const MAX_TAREFAS_PADRAO = 60;
+export const MAX_TEXTO_TAREFA = 120;
+
+// Limpa a lista editada: sem linhas vazias, texto e duração dentro do limite.
+export function normalizarPadrao(itens) {
+  return (Array.isArray(itens) ? itens : []).map(function (i) {
+    return { t: String((i && i.t) || '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEXTO_TAREFA),
+      dias: Math.min(DIAS_MAX_TAREFA, Math.max(0, Math.round(Number(i && i.dias) || 0))) };
+  }).filter(function (i) { return i.t; }).slice(0, MAX_TAREFAS_PADRAO);
+}
+// Lista da equipe (config/checklist) ou, sem ela, a de fábrica.
+export function listaPadrao(itensEquipe) {
+  const l = normalizarPadrao(itensEquipe);
+  return l.length ? l : CHECKLIST_PADRAO.map(function (t) { return { t: t, dias: 0 }; });
+}
+// Projeto novo nasce com as tarefas padrão. Com duração 0, o sistema
+// distribui os dias da janela do PCP quando o cronograma for definido.
+export function checklistNovo(itensEquipe) {
+  return listaPadrao(itensEquipe).map(function (i) {
+    return { t: i.t, dias: i.dias, done: false, doneAt: null, obs: '', obsEm: null };
   });
+}
+// Resumo das mudanças do editor. Cada item editado traz "orig" (posição na
+// lista de antes) ou null quando é novo.
+export function resumoMudancasPadrao(antes, depois) {
+  const usados = {};
+  let novas = 0, renomeadas = 0, duracoes = 0, ordem = false, ultimo = -1;
+  depois.forEach(function (i) {
+    if (i.orig == null || !antes[i.orig]) { novas++; return; }
+    usados[i.orig] = true;
+    if (antes[i.orig].t !== i.t) renomeadas++;
+    if ((antes[i.orig].dias || 0) !== (i.dias || 0)) duracoes++;
+    if (i.orig < ultimo) ordem = true;
+    ultimo = i.orig;
+  });
+  const removidas = antes.filter(function (_x, k) { return !usados[k]; }).length;
+  return { total: depois.length, novas: novas, removidas: removidas, renomeadas: renomeadas, duracoes: duracoes, ordem: ordem,
+    mudou: !!(novas || removidas || renomeadas || duracoes || ordem) };
 }
 
 // Normaliza qualquer versão anterior do projeto para o formato atual.

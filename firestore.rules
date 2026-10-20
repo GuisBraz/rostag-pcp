@@ -98,7 +98,8 @@ service cloud.firestore {
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['equipesCriadas'])
             && request.resource.data.equipesCriadas == resource.data.get('equipesCriadas', 0) + 1)
       );
-      allow delete: if false;
+      // encerrar a conta apaga o próprio perfil
+      allow delete: if request.auth != null && request.auth.uid == uid;
 
       // Índice pessoal: em quais equipes eu estou e meu papel em cada uma.
       match /minhasEquipes/{equipeId} {
@@ -424,6 +425,14 @@ service cloud.firestore {
       // kg por semana. Toda a equipe lê; programador de caldeiraria e gerente gravam.
       match /config/{doc} {
         allow read: if membroDe(equipeId);
+        // checklist padrão do PCP: Gerência e GP (vale para projetos novos)
+        allow create, update: if doc == 'checklist'
+          && (souGerenteDe(equipeId) || souPapel(equipeId, 'gp'))
+          && request.resource.data.keys().hasOnly(['itens', 'atualizadoEm', 'porUid', 'porNome'])
+          && request.resource.data.itens is list
+          && request.resource.data.itens.size() > 0 && request.resource.data.itens.size() <= 60
+          && request.resource.data.porUid == request.auth.uid
+          && request.resource.data.atualizadoEm is string;
         allow create, update: if doc == 'fabrica'
           && (souPapel(equipeId, 'prog_caldeiraria') || souGerenteDe(equipeId))
           && request.resource.data.keys().hasOnly(['capacidadeKgSemana', 'atualizadoEm', 'atualizadoPorUid'])

@@ -22,6 +22,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/temas.css">
 <script src="vendor/chart.umd.min.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js" integrity="sha384-ZaR6mWzmJtrRibZ1Vm7SoHFr8OXjyAuGAXalGDKqbxFT18oi/z+oZLIRFkpeNor1" crossorigin="anonymous" defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js" integrity="sha384-I1LYojsZ5RM1cOda44Z2h42Qa6YfsQ1XkXxREnhp4ueYBR/4d1pG1K+NZM537Vsj" crossorigin="anonymous" defer></script>
@@ -39,6 +40,7 @@
         <div class="brand">ROSTAG PCP</div>
         <div class="sidebar-sub" data-i18n="marca.sub" data-i18n-html="1">PLANEJAMENTO E CONTROLE<br>DE PRODUÇÃO</div>
       </div>
+      <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-btn" data-acao="toggleSidebar" data-i18n-title="tt.recolher" title="Recolher menu" aria-label="Recolher menu" aria-expanded="true"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/><polyline points="16 9 13 12 16 15" class="seta-recolher"/></svg></button>
     </div>
     <nav class="sidebar-nav" aria-label="Navegação principal">
       <button type="button" class="side-item active" data-tab="painel" data-acao="irPara" data-arg="painel" title="Alt+1"><span class="icon" aria-hidden="true">▦</span><span class="label" data-i18n="nav.painel">Painel Geral</span></button>
@@ -51,24 +53,9 @@
     </nav>
 
     <div class="sidebar-bottom">
-      <div class="sidebar-equipe" id="sidebar-equipe" data-acao="toggleEquipeMenu" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" style="cursor:pointer; padding:7px 9px; border-radius:8px; display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--ink-dim); border:1px solid var(--line); margin-bottom:6px; position:relative;">
-        <span aria-hidden="true">⌂</span>
-        <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" id="sidebar-equipe-nome">—</span>
-        <span aria-hidden="true">▾</span>
-        <div class="profile-menu" id="equipe-menu" style="left:0; right:0; width:auto; bottom:calc(100% + 6px);">
-          <div id="equipe-menu-lista"></div>
-          <button type="button" class="profile-menu-item" id="equipe-menu-criar" data-acao="abrirCriarEquipeModal" data-i18n="hub.criarOutra">+ Criar outra equipe</button>
-        </div>
-      </div>
-      <div class="sidebar-profile" id="sidebar-profile" data-acao="toggleProfileMenu" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false">
-        <div class="avatar" id="avatar-iniciais" style="width:26px;height:26px;font-size:10.5px;">?</div>
-        <span class="profile-name"></span>
-      </div>
-      <button type="button" class="sidebar-gear-btn" id="gear-btn" data-acao="irPara" data-arg="config" data-i18n-title="tt.config" title="Configurações" aria-label="Configurações">⚙</button>
-      <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-btn" data-acao="toggleSidebar" data-i18n-title="tt.recolher" title="Recolher menu" aria-label="Recolher menu"><span aria-hidden="true">‹</span></button>
-      <div class="profile-menu" id="profile-menu">
-        <button type="button" class="profile-menu-item logout" data-acao="doLogout" data-i18n="btn.sair">⏻ Sair</button>
-      </div>
+      <button type="button" class="sidebar-gear-btn" id="gear-btn" data-acao="irPara" data-arg="config" aria-label="Configurações">
+        <span class="icon" aria-hidden="true">⚙</span><span class="label" data-i18n="nav.config">Configurações</span>
+      </button>
     </div>
   </aside>
 
@@ -191,7 +178,7 @@
       <div class="panel-note" data-i18n="g.statusNota">Status vem da data de entrega.</div>
       <div style="height:250px"><canvas id="chartStatus"></canvas></div>
     </div>
-    <div class="card panel-pad">
+    <div class="card panel-pad so-atencao">
       <div class="panel-title" data-i18n="g.atencao">Precisa de atenção</div>
       <div class="panel-note" id="prazos-note">—</div>
       <div id="prazos-proximos" style="max-height:245px; overflow-y:auto;"></div>
@@ -453,7 +440,14 @@
   <div class="actionbar">
     <div class="hint" id="fab-count">—</div>
     <div class="btns">
-      <button type="button" class="btn btn-primary" id="btn-subir-planilha" data-acao="abrirPlanilha" data-i18n="fab.subir">⭱ Subir planilha de OPs</button>
+      <div id="btn-subir-planilha" class="menu-add">
+        <button type="button" class="btn btn-primary" data-acao="toggleAddOps" aria-haspopup="menu" aria-expanded="false"><span data-i18n="opm.adicionar">＋ Adicionar OPs</span> ▾</button>
+        <div class="filter-panel menu-add-painel" id="addops-panel" role="menu">
+          <button type="button" class="menu-add-item" role="menuitem" data-acao="abrirOpManual"><b data-i18n="opm.mManual">✎ Manual</b><span data-i18n="opm.mManualNota">Cadastrar uma OP por vez</span></button>
+          <button type="button" class="menu-add-item" role="menuitem" data-acao="abrirPlanilha"><b data-i18n="opm.mPlanilha">⭱ Planilha</b><span data-i18n="opm.mPlanilhaNota">Várias OPs de um projeto (.xls, .xlsx, .csv)</span></button>
+          <button type="button" class="menu-add-item" role="menuitem" data-acao="addOpsPdf"><b data-i18n="opm.mPdf">⭱ PDF</b><span data-i18n="opm.mPdfNota">Em breve — leitura dos PDFs das OPs</span></button>
+        </div>
+      </div>
     </div>
   </div>
   <div class="fab-visoes" id="fab-visoes" role="tablist"></div>
@@ -551,9 +545,10 @@
         </select>
       </div>
 
-      <div style="border-top:1px solid var(--line); margin-top:18px; padding-top:16px;">
+      <div id="checklist-bloco" style="border-top:1px solid var(--line); margin-top:18px; padding-top:16px;">
         <div style="font-weight:700; font-size:13px; margin-bottom:4px;" data-i18n="cfg.checklistTit">Checklist padrão do PCP</div>
-        <div class="hint-txt" id="checklist-info">—</div>
+        <div class="hint-txt" id="checklist-info" style="margin-bottom:10px;">—</div>
+        <button type="button" class="btn btn-outline" data-acao="abrirChecklistPadrao" data-i18n="ckp.editar">✎ Editar checklist padrão</button>
       </div>
 
       <div style="border-top:1px solid var(--line); margin-top:18px; padding-top:16px;">
@@ -584,9 +579,23 @@
         <button type="button" class="btn btn-primary" data-acao="salvarConta" data-i18n="btn.salvar">Salvar</button>
       </div>
     </div>
+    <div class="card panel-pad zona-perigo" style="max-width:620px; margin-top:16px;">
+      <div class="panel-title" data-i18n="enc.zona">Zona de perigo</div>
+      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="enc.zonaNota">Encerrar a conta apaga o seu login, o seu perfil e as suas notificações, e tira você de todas as equipes. Não dá para desfazer. Projetos, OPs e RNCs são da equipe e continuam lá.</div>
+      <button type="button" class="btn btn-danger" data-acao="abrirEncerrarConta" data-i18n="enc.botao">Encerrar conta</button>
+    </div>
   </div>
 
   <div class="settings-panel" id="stab-equipe">
+    <div class="card panel-pad" style="max-width:680px; margin-bottom:16px;">
+      <div class="panel-title" data-i18n="eq.minhas">Minhas equipes</div>
+      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="eq.minhasNota">As equipes em que você está. Trocar de equipe muda os projetos e as OPs que aparecem no app.</div>
+      <div id="minhas-equipes-lista"></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+        <button type="button" class="btn btn-outline" data-acao="abrirCriarEquipeModal" data-i18n="hub.criarOutra">+ Criar outra equipe</button>
+        <button type="button" class="btn btn-outline" data-acao="abrirEntrarEquipeModal" data-i18n="eq.entrarOutra">Entrar em outra equipe</button>
+      </div>
+    </div>
     <div class="card panel-pad" style="max-width:680px;">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
         <div class="panel-title" style="margin-bottom:0;" data-i18n="cfg.equipe">Equipe</div>
@@ -626,14 +635,34 @@
     <div class="card panel-pad" style="max-width:620px;">
       <div class="panel-title" data-i18n="cfg.paleta">Paleta de cores</div>
       <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.paletaNota">A escolha fica salva.</div>
-      <div style="display:flex; gap:12px; margin-bottom:22px;">
+      <div class="paletas">
         <button type="button" class="palette-option" data-tema="claro" data-acao="definirTema" data-arg="claro">
           <div class="palette-swatch" style="background:linear-gradient(135deg, #F1F4F9 50%, #0E1B3D 50%);"></div>
-          <div class="palette-name" data-i18n="cfg.paletaClara">Azul &amp; Navy</div>
+          <div class="palette-name" data-i18n="cfg.tema.claro">Azul &amp; Navy</div>
         </button>
         <button type="button" class="palette-option" data-tema="escuro" data-acao="definirTema" data-arg="escuro">
           <div class="palette-swatch" style="background:linear-gradient(135deg, #0B0E14 50%, #4C7DF5 50%);"></div>
-          <div class="palette-name"><span data-i18n="cfg.paletaEscura">Dark</span> <span style="color:var(--ink-faint); font-weight:400;" data-i18n="cfg.paletaEscuraSub">(preto &amp; azul royal)</span></div>
+          <div class="palette-name" data-i18n="cfg.tema.escuro">Dark</div>
+        </button>
+        <button type="button" class="palette-option" data-tema="pastel" data-acao="definirTema" data-arg="pastel">
+          <div class="palette-swatch" style="background:linear-gradient(135deg, #F6F2EC 34%, #DCE8F5 34% 58%, #1B2A4A 58%);"></div>
+          <div class="palette-name" data-i18n="cfg.tema.pastel">Pastel &amp; Marinho</div>
+        </button>
+        <button type="button" class="palette-option" data-tema="tecnico" data-acao="definirTema" data-arg="tecnico">
+          <div class="palette-swatch" style="background:linear-gradient(135deg, #EEF0F3 45%, #0F172A 45% 82%, #E8711F 82%);"></div>
+          <div class="palette-name" data-i18n="cfg.tema.tecnico">Técnico</div>
+        </button>
+        <button type="button" class="palette-option" data-tema="st" data-acao="definirTema" data-arg="st">
+          <div class="palette-swatch" style="background:repeating-linear-gradient(115deg, rgba(255,255,255,.08) 0 1px, transparent 1px 9px), linear-gradient(135deg, #0A0A0A 60%, #E11D2E 60%);"></div>
+          <div class="palette-name" data-i18n="cfg.tema.st">ST Logística</div>
+        </button>
+        <button type="button" class="palette-option" data-tema="grego" data-acao="definirTema" data-arg="grego">
+          <div class="palette-swatch" style="background:linear-gradient(135deg, #F8F4EA 50%, #C9A85A 50% 70%, #1F3A44 70%);"></div>
+          <div class="palette-name" data-i18n="cfg.tema.grego">Grego (marfim &amp; dourado)</div>
+        </button>
+        <button type="button" class="palette-option" data-tema="prata" data-acao="definirTema" data-arg="prata">
+          <div class="palette-swatch" style="background:linear-gradient(135deg, #E8EBEF 30%, #9AA3AD 30% 52%, #23282E 52% 82%, #0B5FFF 82%);"></div>
+          <div class="palette-name" data-i18n="cfg.tema.prata">Prata acentuada</div>
         </button>
       </div>
       <div class="panel-title" data-i18n="cfg.idioma">Idioma</div>
@@ -658,11 +687,16 @@
     <div class="card panel-pad" style="max-width:620px;">
       <img class="sobre-logo" src="img/sobre.jpg" alt="ROSTAG" alt="ROSTAG PCP — Planejamento, Controle, Produção">
       <div style="font-size:13.5px; line-height:1.7; margin-bottom:16px;" data-i18n="cfg.sobreTexto">ROSTAG PCP.</div>
+      <div class="sobre-links">
+        <a class="btn btn-primary sobre-portfolio" href="https://guisbraz.github.io/portifolio/" target="_blank" rel="noopener noreferrer" data-i18n="cfg.portfolio">Ver meu portfólio ↗</a>
+        <a class="btn btn-outline" href="https://www.linkedin.com/in/guilherme-santos-66b8162a0" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg> <span data-i18n="cfg.linkedin">Contato no LinkedIn ↗</span></a>
+      </div>
       <div style="font-size:10.5px; color:var(--ink-faint); font-weight:700; letter-spacing:0.06em;" id="sobre-versao">ROSTAG PCP</div>
     </div>
   </div>
 </div>
 
+  <footer class="rodape-autor"><span data-i18n="rod.texto">Desenvolvido por</span> <a href="https://www.linkedin.com/in/guilherme-santos-66b8162a0" target="_blank" rel="noopener noreferrer">Guilherme dos Santos Braz</a> <span data-i18n="rod.cargo">— Técnico de processos e estudante de engenharia mecânica</span> · <a href="https://guisbraz.github.io/portifolio/" target="_blank" rel="noopener noreferrer" data-i18n="rod.portfolio">Portfólio</a></footer>
   </main>
 </div>
 
@@ -733,6 +767,45 @@
     <div class="modal-footer">
       <button type="button" class="btn btn-outline" data-acao="fecharModal" data-i18n="btn.cancelar">Cancelar</button>
       <button type="button" class="btn btn-primary" id="planilha-enviar" data-acao="enviarPlanilha" disabled data-i18n="fab.enviar">Gravar OPs</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== OP MANUAL ==================== -->
+<div class="modal-overlay" id="modal-op" role="dialog" aria-modal="true" aria-labelledby="opm-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="opm-titulo">Nova OP</h2>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-op" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="row2">
+        <div class="field"><label data-i18n="fab.projeto">PROJETO</label><select id="opm-projeto"></select></div>
+        <div class="field"><label data-i18n="fab.fArea">ÁREA</label>
+          <select id="opm-area"><option value="caldeiraria" data-i18n="area.caldeiraria">Caldeiraria</option><option value="usinagem" data-i18n="area.usinagem">Usinagem</option></select></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label data-i18n="opm.numero">Nº DA OP *</label><input id="opm-numero" class="mono" maxlength="40" autocomplete="off"></div>
+        <div class="field"><label data-i18n="opm.desenho">DESENHO *</label><input id="opm-desenho" class="mono" maxlength="60" autocomplete="off"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label data-i18n="opm.posicao">POSIÇÃO</label><input id="opm-posicao" maxlength="20" autocomplete="off"></div>
+        <div class="field"><label data-i18n="opm.rev">REV.</label><input id="opm-rev" maxlength="10" autocomplete="off"></div>
+      </div>
+      <div class="field"><label data-i18n="opm.descricao">DESCRIÇÃO</label><input id="opm-descricao" maxlength="160" autocomplete="off"></div>
+      <div class="row3">
+        <div class="field"><label data-i18n="opm.qtd">QTD.</label><input id="opm-qtd" inputmode="decimal" autocomplete="off"></div>
+        <div class="field"><label data-i18n="opm.pesoUnit">PESO UNIT. (KG)</label><input id="opm-pesoUnit" inputmode="decimal" autocomplete="off"></div>
+        <div class="field"><label data-i18n="opm.pesoTotal">PESO TOTAL (KG)</label><input id="opm-pesoTotal" inputmode="decimal" autocomplete="off" data-enter="salvarOpManual"></div>
+      </div>
+      <div class="hint-txt" data-i18n="opm.nota">A mesma peça (projeto, área, desenho e posição) vinda depois pela planilha ou pelo PDF só atualiza esta OP.</div>
+      <div class="form-error" id="opm-erro"></div>
+      <div class="hint-txt" id="opm-aviso" style="color:var(--amber-ink)"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-op" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-outline" id="opm-outra" data-acao="salvarOpManualOutra" data-i18n="opm.salvarOutra">Salvar e cadastrar outra</button>
+      <button type="button" class="btn btn-primary" data-acao="salvarOpManual" data-i18n="btn.salvar">Salvar</button>
     </div>
   </div>
 </div>
@@ -978,6 +1051,77 @@
   </div>
 </div>
 
+<!-- ==================== CHECKLIST PADRÃO DO PCP (TELA CHEIA) ==================== -->
+<div class="modal-overlay tela-cheia" id="modal-checklist" role="dialog" aria-modal="true" aria-labelledby="ckp-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <h2 id="ckp-titulo" data-i18n="ckp.titulo">Checklist padrão do PCP</h2>
+        <div class="hint-txt" data-i18n="ckp.nota">Vale para os projetos novos. Duração 0 = o sistema distribui os dias da janela do PCP quando o cronograma for definido.</div>
+      </div>
+      <button type="button" class="modal-close" data-acao="fecharChecklistPadrao" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="ckp-cabecalho"><span></span><span>#</span><span data-i18n="ckp.tarefa">TAREFA</span><span data-i18n="ckp.dias">DIAS</span><span></span></div>
+      <ol class="ckp-lista" id="ckp-lista"></ol>
+      <div class="ckp-acoes-lista">
+        <button type="button" class="btn btn-outline" data-acao="ckpAdicionar" data-i18n="ckp.adicionar">＋ Adicionar tarefa</button>
+        <button type="button" class="link-btn" data-acao="ckpRestaurar" data-i18n="ckp.restaurar">Restaurar padrão original</button>
+      </div>
+      <div class="form-error" id="ckp-erro"></div>
+    </div>
+    <div class="modal-footer">
+      <span class="hint-txt" id="ckp-contagem" style="margin-right:auto;">—</span>
+      <button type="button" class="btn btn-outline" data-acao="fecharChecklistPadrao" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-acao="ckpSalvar" data-i18n="ckp.salvar">Salvar checklist</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ENCERRAR CONTA ==================== -->
+<div class="modal-overlay" id="modal-encerrar" role="dialog" aria-modal="true" aria-labelledby="modal-encerrar-title">
+  <div class="modal-box estreita">
+    <div class="modal-header">
+      <h2 id="modal-encerrar-title" data-i18n="enc.titulo">Encerrar conta</h2>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-encerrar" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="encerrar-aviso" class="encerrar-aviso"></div>
+      <div class="field"><label data-i18n="enc.senha">SUA SENHA</label>
+        <div class="campo-senha"><input id="encerrar-senha" type="password" autocomplete="current-password">
+          <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="encerrar-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button></div></div>
+      <div class="field"><label data-i18n="enc.digite">DIGITE ENCERRAR PARA CONFIRMAR</label><input id="encerrar-palavra" autocomplete="off" data-enter="confirmarEncerrarConta"></div>
+      <div id="encerrar-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-encerrar" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-danger" data-acao="confirmarEncerrarConta" data-i18n="enc.confirmar">Encerrar definitivamente</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ENTRAR EM OUTRA EQUIPE (de dentro do app) ==================== -->
+<div class="modal-overlay" id="modal-entrar-equipe" role="dialog" aria-modal="true" aria-labelledby="modal-entrar-equipe-title">
+  <div class="modal-box estreita">
+    <div class="modal-header">
+      <h2 id="modal-entrar-equipe-title" data-i18n="eq.entrarOutra">Entrar em outra equipe</h2>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-entrar-equipe" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="eq.entrarNota">Pelo nome e senha da equipe você entra como Técnico de processo. Recebeu um link de convite? É só abrir o link.</div>
+      <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="outra-equipe-nome" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
+      <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
+        <div class="campo-senha"><input id="outra-equipe-senha" type="password" autocomplete="current-password" data-enter="entrarOutraEquipeUI">
+          <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="outra-equipe-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button></div></div>
+      <div id="outra-equipe-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-entrar-equipe" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-acao="entrarOutraEquipeUI" data-i18n="eq.entrar">Entrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ==================== CRIAR EQUIPE (a partir de dentro do app) ==================== -->
 <div class="modal-overlay" id="modal-criar-equipe" role="dialog" aria-modal="true" aria-labelledby="modal-criar-equipe-title">
   <div class="modal-box estreita">
@@ -1003,6 +1147,7 @@
 </div>
 
 <div id="tela-acesso" style="display:none; position:fixed; inset:0; z-index:200; align-items:center; justify-content:center; background:var(--bg);">
+  <footer class="rodape-autor rodape-acesso"><span data-i18n="rod.texto">Desenvolvido por</span> <a href="https://www.linkedin.com/in/guilherme-santos-66b8162a0" target="_blank" rel="noopener noreferrer">Guilherme dos Santos Braz</a> <span data-i18n="rod.cargo">— Técnico de processos e estudante de engenharia mecânica</span> · <a href="https://guisbraz.github.io/portifolio/" target="_blank" rel="noopener noreferrer" data-i18n="rod.portfolio">Portfólio</a></footer>
   <div class="modal-box estreita">
 
     <!-- ver "entrar" -->

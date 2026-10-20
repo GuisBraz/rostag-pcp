@@ -24,7 +24,7 @@ import { pendentes } from './pedidos.js';
 import './desempenho.js';
 
 const GRUPOS = ['andamento', 'vencendo', 'atrasado'];
-const COR_GRUPO = { andamento: '--teal', vencendo: '--amber', atrasado: '--rust', paralisado: '--ink-faint' };
+const COR_GRUPO = { andamento: '--andamento', vencendo: '--amber', atrasado: '--rust', paralisado: '--ink-faint' };
 
 let membros = null, membrosDaEquipe = null;   // cache da lista de membros (nomes e cargos)
 let relogio = null;
@@ -157,7 +157,7 @@ export function renderPainelProgramador() {
 // Mesmo desenho da Gerência, com o que é dele: projetos, atividades do PCP
 // (o checklist) e as OPs dos projetos dele.
 const SIT_TECNICO = ['atrasada', 'chegando', 'andamento', 'planejada', 'concluida'];
-const COR_SIT_TEC = { atrasada: '--rust', chegando: '--amber', andamento: '--teal', planejada: '--ink-faint', concluida: '--green' };
+const COR_SIT_TEC = { atrasada: '--rust', chegando: '--amber', andamento: '--andamento', planejada: '--ink-faint', concluida: '--green' };
 
 function atividadesTecnico(lista) {
   const n = { atrasada: 0, chegando: 0, andamento: 0, planejada: 0, concluida: 0 };
@@ -307,7 +307,7 @@ function abrirCarga() {
 /* ------------------------------------------ acompanhamento das atividades */
 // No detalhe do projeto a Gerência não mexe no checklist do técnico: vê o
 // progresso, as datas e o que está atrasado, numa linha do tempo só de leitura.
-const COR_SIT = { planejada: '--ink-faint', andamento: '--teal', chegando: '--amber', atrasada: '--rust', parada: '--ink-faint', concluida: '--green' };
+const COR_SIT = { planejada: '--ink-faint', andamento: '--andamento', chegando: '--amber', atrasada: '--rust', parada: '--ink-faint', concluida: '--green' };
 
 function situacaoGeral(p, c, h) {
   if (c.concluido) return { txt: T('ac.concluido', br(c.fimPrevisto)), cor: '--green' };

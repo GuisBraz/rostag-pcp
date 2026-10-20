@@ -1,15 +1,20 @@
 /* ---------------------------------------------------------------------------
    Lista de projetos — tabela ordenável com filtro.
 --------------------------------------------------------------------------- */
-import { estado } from '../estado.js';
-import { esc, br, brCurto } from '../nucleo/fmt.js';
+import { estado, buscarProjeto, opsDoProjeto } from '../estado.js';
+import { esc, br, brCurto, hoje } from '../nucleo/fmt.js';
 import { T, plural, STATUS_LABEL, SIT_LABEL } from '../i18n/index.js';
 import { STATUS_KEYS, SIT_ORDEM } from '../dominio/constantes.js';
 import * as Projeto from '../dominio/projeto.js';
 import * as Cronograma from '../dominio/cronograma.js';
+import * as Producao from '../dominio/producao.js';
+import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes } from './dom.js';
 import { filtrarProj, limparCampos, atualizarBadge } from './filtros.js';
 import { irPara } from './rota.js';
+import { confirmar } from './modal.js';
+import { toast } from './toast.js';
+import { persistir, redesenhar } from './app.js';
 
 export { refreshOpcoes } from './filtros.js';
 
@@ -42,7 +47,19 @@ function celulaPcp(p) {
     '<span class="dot dot-' + s + '"></span>' + esc(texto) + '</span>';
 }
 
+// Gerência e GP finalizam a commessa pela lista (o GP só os projetos dele).
+function podeFinalizar() { return Auth.souGPouCoordenador(); }
+
+function celulaFinalizar(p) {
+  const st = Projeto.status(p);
+  if (st === 'concluido') return '<td class="col-finalizar"><span class="hint-txt">' + esc(T('fin.em', br(p.concluidoEm))) + '</span></td>';
+  if (st === 'cancelado') return '<td class="col-finalizar"><span class="hint-txt">—</span></td>';
+  return '<td class="col-finalizar"><button type="button" class="btn btn-success btn-mini" data-acao="finalizarCommessa" data-arg="' + esc(p.id) + '">' +
+    esc(T('fin.botao')) + '</button></td>';
+}
+
 export function renderProjetos() {
+  const comFinalizar = podeFinalizar();
   $('projetos-thead').innerHTML = COLUNAS.map(function (c) {
     const ativo = estado.ordem.campo === c.campo;
     const seta = ativo ? (estado.ordem.dir === 1 ? '▲' : '▼') : '▲';
@@ -50,7 +67,7 @@ export function renderProjetos() {
     return '<th class="' + (ativo ? 'ordenado' : '') + '" aria-sort="' + (ativo ? (estado.ordem.dir === 1 ? 'ascending' : 'descending') : 'none') + '">' +
       '<button type="button" data-acao="ordenarPor" data-arg="' + c.campo + '" aria-label="' + esc(T('c.ordenarPor', rot)) + '">' +
       esc(rot) + '<span class="ord" aria-hidden="true">' + seta + '</span></button></th>';
-  }).join('');
+  }).join('') + (comFinalizar ? '<th class="col-finalizar">' + esc(T('fin.coluna')) + '</th>' : '');
 
   const total = estado.projetos.length;
   const lista = filtrarProj().slice().sort(function (a, b) {
@@ -66,7 +83,7 @@ export function renderProjetos() {
 
   if (!lista.length) {
     const msg = !estado.carregado ? T('x.carregandoDados') : (total ? T('lista.vazia') : T('lista.semProjetos'));
-    $('projetos-tbody').innerHTML = '<tr><td colspan="8"><div class="empty-state">' + esc(msg) + '</div></td></tr>';
+    $('projetos-tbody').innerHTML = '<tr><td colspan="' + (COLUNAS.length + (comFinalizar ? 1 : 0)) + '"><div class="empty-state">' + esc(msg) + '</div></td></tr>';
     return;
   }
   $('projetos-tbody').innerHTML = lista.map(function (p) {
@@ -78,7 +95,8 @@ export function renderProjetos() {
       '<td class="nowrap">' + br(p.entrega) + '</td>' +
       '<td class="col-progresso"><div class="mini-progresso"><div class="trilho"><div style="width:' + pr + '%"></div></div>' +
         '<span>' + pr + '%</span></div></td>' +
-      '<td><span class="pill pill-' + st + '">' + esc(STATUS_LABEL(st)) + '</span></td></tr>';
+      '<td><span class="pill pill-' + st + '">' + esc(STATUS_LABEL(st)) + '</span></td>' +
+      (comFinalizar ? celulaFinalizar(p) : '') + '</tr>';
   }).join('');
 }
 
@@ -96,7 +114,30 @@ export function limparFiltroProjComStatus(k) {
   atualizarBadge('proj', estado.filtroProj);
 }
 
+// Finalizar = concluir a commessa hoje. Avisa (sem bloquear) o que ainda
+// está aberto: OPs sem baixa do CQ e atividades do PCP não feitas.
+function finalizarCommessa(id) {
+  const p = buscarProjeto(id);
+  if (!p || !podeFinalizar() || !Projeto.aberto(p)) return;
+  const avisos = [];
+  const ops = opsDoProjeto(p.id).filter(Producao.emAberto).length;
+  if (ops) avisos.push(T('fin.avisoOps', ops));
+  const faltam = (p.checklist || []).filter(function (i) { return !i.done; }).length;
+  if (faltam) avisos.push(T('fin.avisoPcp', faltam));
+  const msg = T('fin.q', p.commessa, br(hoje())) + (avisos.length ? '\n\n⚠ ' + avisos.join('\n⚠ ') : '');
+  confirmar(msg, { titulo: T('fin.titulo'), textoOk: T('fin.botao') }).then(function (ok) {
+    if (!ok || !buscarProjeto(p.id) || !Projeto.aberto(p)) return;
+    const aberta = Projeto.pausaAtual(p);
+    if (aberta) aberta.fim = hoje();
+    p.status = 'concluido'; p.concluidoEm = hoje(); p.canceladoEm = null; p.pedido = null;
+    redesenhar();
+    toast(T('fin.feito', p.commessa));
+    persistir().catch(function () { /* persistir já avisou e desfez */ });
+  });
+}
+
 registrarAcoes({
+  finalizarCommessa: finalizarCommessa,
   ordenarPor: function (campo) {
     if (estado.ordem.campo === campo) estado.ordem.dir *= -1; else { estado.ordem.campo = campo; estado.ordem.dir = 1; }
     renderProjetos();

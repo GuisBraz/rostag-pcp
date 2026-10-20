@@ -1,12 +1,13 @@
 /* ---------------------------------------------------------------------------
    Preferências: tema, idioma, alertas, conta e abas de Configurações.
 --------------------------------------------------------------------------- */
-import { prefs, salvarPrefsLocais, lembrarTema, CAMPOS_PERFIL } from '../nucleo/prefs.js';
+import { prefs, salvarPrefsLocais, lembrarTema, CAMPOS_PERFIL, temaValido } from '../nucleo/prefs.js';
 import * as Auth from '../dados/auth.js';
 import * as Cronograma from '../dominio/cronograma.js';
-import { CHECKLIST_PADRAO, VERSAO } from '../dominio/constantes.js';
+import { VERSAO } from '../dominio/constantes.js';
+import * as Projeto from '../dominio/projeto.js';
+import * as Papeis from '../dominio/papeis.js';
 import { T, codigoIdioma } from '../i18n/index.js';
-import { iniciais } from '../nucleo/fmt.js';
 import { estado } from '../estado.js';
 import { $, $$, registrarAcoes } from './dom.js';
 import { toast } from './toast.js';
@@ -16,10 +17,33 @@ import { renderAtalhos } from './atalhos.js';
 import { renderEquipe } from './equipe.js';
 import { renderPainel } from './painel.js';
 import { renderDetalhe } from './detalhe.js';
+import { atualizarBotaoRecolher } from './sidebar.js';
 
 /* ------------------------------------------------------------------ tema */
+// Fonte própria de cada identidade (Google Fonts), carregada só quando usada.
+const FONTE_TEMA = {
+  pastel: 'Nunito:wght@400;600;700;800',
+  tecnico: 'IBM+Plex+Sans:wght@400;500;600;700',
+  st: 'Space+Grotesk:wght@500;600;700',
+  grego: 'Cinzel:wght@500;600;700',
+  prata: 'Exo+2:wght@500;600;700'
+};
+// Cor da barra do navegador (celular) em cada tema.
+const COR_BARRA = { claro: '#0E1B3D', escuro: '#06090F', pastel: '#1B2A4A', tecnico: '#0F172A', st: '#0A0A0A', grego: '#F2EBDA', prata: '#23282E' };
+
+function carregarFonte(t) {
+  const familia = FONTE_TEMA[t];
+  if (!familia || document.getElementById('fonte-tema-' + t)) return;
+  const l = document.createElement('link');
+  l.id = 'fonte-tema-' + t;
+  l.rel = 'stylesheet';
+  l.href = 'https://fonts.googleapis.com/css2?family=' + familia + '&display=swap';
+  document.head.appendChild(l);
+}
+
 export function aplicarTema() {
-  const t = prefs.tema === 'escuro' ? 'escuro' : 'claro';
+  const t = temaValido(prefs.tema);
+  carregarFonte(t);
   document.documentElement.setAttribute('data-tema', t);
   $$('.palette-option').forEach(function (b) {
     b.classList.toggle('selected', b.dataset.arg === t);
@@ -28,16 +52,21 @@ export function aplicarTema() {
   const btn = $('tema-btn');
   if (btn) btn.textContent = t === 'escuro' ? '☀' : '◐';
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', t === 'escuro' ? '#06090F' : '#0E1B3D');
+  if (meta) meta.setAttribute('content', COR_BARRA[t]);
   lembrarTema(t);
 }
 export function definirTema(t) {
-  prefs.tema = t === 'escuro' ? 'escuro' : 'claro';
+  const novo = temaValido(t);
+  // o botão ◐ alterna entre o escuro e o último tema claro escolhido
+  if (novo === 'escuro' && prefs.tema !== 'escuro') prefs.temaClaro = prefs.tema;
+  prefs.tema = novo;
   aplicarTema();
   salvarPrefsLocais();
   sincronizarPerfil({ tema: prefs.tema });
   if (estado.carregado) renderPainel();
 }
+
+export function alternarTema() { definirTema(prefs.tema === 'escuro' ? temaValido(prefs.temaClaro) : 'escuro'); }
 
 /* ---------------------------------------------------------------- idioma */
 // Percorre o HTML estático trocando textos, placeholders e títulos.
@@ -82,14 +111,20 @@ export function aplicarPrefs() {
   $('cfg-nome').value = nome;
   const user = Auth.usuarioAtual();
   $('cfg-email').value = user ? (user.email || '') : '';
-  document.querySelector('.profile-name').textContent = nome;
-  $('avatar-iniciais').textContent = iniciais(nome);
   $('sidebar').classList.toggle('collapsed', !!prefs.sidebarRecolhida);
-  $('sidebar-collapse-btn').setAttribute('aria-expanded', prefs.sidebarRecolhida ? 'false' : 'true');
+  atualizarBotaoRecolher(!!prefs.sidebarRecolhida);
   $('sobre-versao').textContent = T('cfg.versao', VERSAO);
-  $('checklist-info').textContent =
-    T('cfg.checklistNota', CHECKLIST_PADRAO.length, CHECKLIST_PADRAO[0], CHECKLIST_PADRAO[CHECKLIST_PADRAO.length - 1]);
+  renderChecklistInfo();
   atualizarInfoArmazenamento();
+}
+
+// Bloco do checklist padrão na aba Geral (atualiza quando a lista muda).
+export function renderChecklistInfo() {
+  const lista = Projeto.listaPadrao(estado.checklistPadrao && estado.checklistPadrao.itens);
+  const cp = estado.checklistPadrao;
+  $('checklist-bloco').style.display = Papeis.gereProjetos(Auth.papel()) ? '' : 'none';
+  $('checklist-info').textContent = T('cfg.checklistNota', lista.length, lista[0] ? lista[0].t : '—', lista.length ? lista[lista.length - 1].t : '—') +
+    (cp && cp.atualizadoEm ? ' ' + T('ckp.ultima', cp.porNome || '—', new Date(cp.atualizadoEm).toLocaleDateString(codigoIdioma())) : '');
 }
 
 // Alertas e fim de semana: mudam na hora (change dos selects).
@@ -123,7 +158,7 @@ function salvarConta() {
 export function toggleSidebar() {
   prefs.sidebarRecolhida = !$('sidebar').classList.contains('collapsed');
   $('sidebar').classList.toggle('collapsed', prefs.sidebarRecolhida);
-  $('sidebar-collapse-btn').setAttribute('aria-expanded', prefs.sidebarRecolhida ? 'false' : 'true');
+  atualizarBotaoRecolher(prefs.sidebarRecolhida);
   salvarPrefsLocais();
 }
 
@@ -141,7 +176,7 @@ export function abaConfig(k) {
 
 registrarAcoes({
   definirTema: function (t) { definirTema(t); },
-  alternarTema: function () { definirTema(prefs.tema === 'escuro' ? 'claro' : 'escuro'); },
+  alternarTema: function () { alternarTema(); },
   definirIdioma: function (valor) { definirIdioma(valor); },
   salvarPrefs: function () { salvarPrefsGerais(); },
   salvarConta: function () { salvarConta(); },

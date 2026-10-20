@@ -1,0 +1,123 @@
+/* =====================================================================
+   IDENTIDADES VISUAIS (Configurações → Aparência). Cada uma redefine as
+   variáveis do :root de app.css; as fontes extras são carregadas só quando
+   o tema é escolhido (preferencias.js). "claro" (azul) e "escuro" ficam em
+   app.css.
+   ===================================================================== */
+
+/* ---------- Pastel & marinho ---------- */
+html[data-tema="pastel"] {
+  --bg: #F6F2EC; --bg-panel: #FFFFFF; --bg-panel-alt: #F2F6FA;
+  --line: #E7E1D7; --line-soft: #F0EBE3;
+  --ink: #1B2A4A; --ink-dim: #5E6A80; --ink-faint: #A2A9B6;
+  --teal: #3D5A98; --teal-deep: #1B2A4A;
+  --terracotta: #E2956B; --terracotta-bg: #FCEDE3;
+  --green: #4E9D80; --green-bg: #E4F2EB;
+  --amber: #DDB054; --amber-bg: #FBF1DA; --amber-ink: #87621A;
+  --rust: #D86464; --rust-bg: #FBE6E6;
+  --violet: #8486D6; --violet-bg: #EDEDFA;
+  --sombra: 0 2px 6px rgba(27,42,74,0.05); --sombra-alta: 0 10px 28px rgba(27,42,74,0.14);
+  --grade-op: 0.06; --sb-marca: #A9C3F0;
+  --raio: 16px; --raio-btn: 12px; --font: 'Nunito', 'Segoe UI', sans-serif; --font-titulo: 'Nunito', 'Segoe UI', sans-serif;
+}
+html[data-tema="pastel"] .kpi, html[data-tema="pastel"] .ger-card { background: linear-gradient(160deg, #FFFFFF 55%, #EEF4FB); }
+
+/* ---------- Técnico (Calculadora de Peso / Guia Técnico) ---------- */
+html[data-tema="tecnico"] {
+  --bg: #EEF0F3; --bg-panel: #FFFFFF; --bg-panel-alt: #F5F6F8;
+  --line: #D9DDE3; --line-soft: #E7EAEE;
+  --ink: #0F172A; --ink-dim: #4B5563; --ink-faint: #9AA1AC;
+  --teal: #E8711F; --teal-deep: #0F172A;
+  --terracotta: #E8711F; --terracotta-bg: #FDEEE2;
+  --green: #15803D; --green-bg: #E5F4EA;
+  --amber: #CA8A04; --amber-bg: #FBF3D5; --amber-ink: #854D0E;
+  --rust: #DC2626; --rust-bg: #FDE8E8;
+  --violet: #4F46E5; --violet-bg: #ECEBFD;
+  --sombra: none; --sombra-alta: 0 10px 26px rgba(15,23,42,0.18);
+  --grade-op: 0; --sb-marca: #E8711F; --andamento: #1E40AF;
+  --sb-hover: rgba(255,255,255,0.05); --sb-ativo: rgba(255,255,255,0.08);
+  --raio: 2px; --raio-btn: 2px; --font: 'IBM Plex Sans', 'Segoe UI', sans-serif; --font-titulo: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+}
+html[data-tema="tecnico"] .content-topbar { background: var(--teal-deep); color: #fff; margin: -22px -28px 22px; padding: 22px 28px; border-bottom: 3px solid var(--teal); }
+html[data-tema="tecnico"] .content-topbar .sub { color: rgba(255,255,255,0.6); }
+html[data-tema="tecnico"] .content-topbar h1 { font-size: 22px; }
+html[data-tema="tecnico"] .panel-title, html[data-tema="tecnico"] th, html[data-tema="tecnico"] .field label,
+html[data-tema="tecnico"] .kpi .label { font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+html[data-tema="tecnico"] .panel-title { font-size: 12px; }
+html[data-tema="tecnico"] .kpi .value, html[data-tema="tecnico"] td.num { font-family: var(--mono); }
+html[data-tema="tecnico"] .ger-card { border-left: 3px solid var(--teal); }
+html[data-tema="tecnico"] .btn-primary { background: var(--teal-deep); }
+html[data-tema="tecnico"] .btn-primary:hover { background: var(--teal); }
+@media (max-width: 720px) { html[data-tema="tecnico"] .content-topbar { margin: -16px -14px 18px; padding: 16px 14px; } }
+
+/* ---------- ST Logística ---------- */
+html[data-tema="st"] {
+  --bg: #F5F5F6; --bg-panel: #FFFFFF; --bg-panel-alt: #FAFAFA;
+  --line: #E4E4E7; --line-soft: #EFEFF1;
+  --ink: #0A0A0A; --ink-dim: #52525B; --ink-faint: #A1A1AA;
+  --teal: #E11D2E; --teal-deep: #0A0A0A;
+  --terracotta: #F97316; --terracotta-bg: #FFF1E6;
+  --green: #16A34A; --green-bg: #E8F7EE;
+  --amber: #D97706; --amber-bg: #FDF3E1; --amber-ink: #92400E;
+  --rust: #B91C1C; --rust-bg: #FDE9E9;
+  --violet: #52525B; --violet-bg: #F0F0F2;
+  --sombra: 0 1px 2px rgba(0,0,0,0.05); --sombra-alta: 0 12px 30px rgba(0,0,0,0.18);
+  --grade-op: 0; --sb-marca: #E11D2E; --andamento: #3F3F46;
+  --raio: 16px; --raio-btn: 12px; --font-titulo: 'Space Grotesk', 'Inter', sans-serif;
+}
+html[data-tema="st"] .sidebar { background-color: #0A0A0A;
+  background-image: repeating-linear-gradient(115deg, rgba(255,255,255,0.045) 0 1px, transparent 1px 22px); }
+html[data-tema="st"] .side-item.active { background: rgba(225,29,46,0.18); }
+html[data-tema="st"] .panel-title, html[data-tema="st"] .sidebar-top .brand, html[data-tema="st"] .modal-header h2 { font-family: var(--font-titulo); }
+
+/* ---------- Grego: claro & dourado ---------- */
+html[data-tema="grego"] {
+  --bg: #F8F4EA; --bg-panel: #FFFDF8; --bg-panel-alt: #F4EEE0;
+  --line: #E6DCC5; --line-soft: #EFE8D8;
+  --ink: #1F3A44; --ink-dim: #566A6E; --ink-faint: #A19982;
+  --teal: #8A6A1F; --teal-deep: #1F3A44;
+  --terracotta: #B5652E; --terracotta-bg: #F8E9DC;
+  --green: #4F7A4A; --green-bg: #E8F0E2;
+  --amber: #C09A3A; --amber-bg: #F7EED6; --amber-ink: #7A5C12;
+  --rust: #A8322D; --rust-bg: #F6E3E0;
+  --violet: #3D6A7A; --violet-bg: #E3EEF1;
+  --sombra: 0 1px 3px rgba(90,70,20,0.07); --sombra-alta: 0 10px 28px rgba(60,45,10,0.18);
+  --grade-op: 0; --andamento: #3D6A7A;
+  --sb-bg: #F2EBDA; --sb-ink: #1F3A44; --sb-dim: #4F5F62; --sb-faint: #8A8270;
+  --sb-line: rgba(138,106,31,0.25); --sb-hover: rgba(176,141,60,0.12); --sb-ativo: rgba(176,141,60,0.24); --sb-ativo-ink: #1F3A44;
+  --sb-borda: rgba(138,106,31,0.4); --sb-marca: #B08D3C;
+  --raio: 4px; --raio-btn: 4px; --font-titulo: 'Cinzel', Georgia, serif;
+  --grega: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10' viewBox='0 0 20 10'%3E%3Cpath d='M0 9.5h4.5v-9h9v6h-4v-3h-1.5v4.5h7v-7.5h-1.5' fill='none' stroke='%23B08D3C' stroke-width='1'/%3E%3C/svg%3E");
+}
+html[data-tema="grego"] .content-topbar { padding-bottom: 14px; background: var(--grega) bottom left / 20px 10px repeat-x; }
+html[data-tema="grego"] .sidebar-top { background: var(--grega) bottom left / 20px 10px repeat-x; border-bottom: none; padding-bottom: 22px; }
+html[data-tema="grego"] .card { border-top: 2px solid #C9A85A; }
+html[data-tema="grego"] .panel-title, html[data-tema="grego"] .sidebar-top .brand, html[data-tema="grego"] .modal-header h2 { font-family: var(--font-titulo); letter-spacing: 0.03em; }
+html[data-tema="grego"] .btn-primary { background: linear-gradient(180deg, #A07D2C, #7E601B); }
+html[data-tema="grego"] .brand-mark { box-shadow: 0 0 0 1px #C9A85A; }
+html[data-tema="grego"] body { background-image: radial-gradient(circle at 20% 0%, rgba(201,168,90,0.10), transparent 45%); }
+
+/* ---------- Prata acentuada ---------- */
+html[data-tema="prata"] {
+  --bg: #E8EBEF; --bg-panel: #F9FAFB; --bg-panel-alt: #EEF1F4;
+  --line: #C9D0D8; --line-soft: #DDE2E8;
+  --ink: #1C2127; --ink-dim: #525B66; --ink-faint: #8C95A0;
+  --teal: #0B5FFF; --teal-deep: #23282E;
+  --terracotta: #FF6B00; --terracotta-bg: #FFEBDD;
+  --green: #00A86B; --green-bg: #DDF5EC;
+  --amber: #F2A900; --amber-bg: #FDF1D2; --amber-ink: #8A5F00;
+  --rust: #E0102F; --rust-bg: #FCE0E4;
+  --violet: #7A2BE2; --violet-bg: #EFE5FC;
+  --sombra: 0 1px 2px rgba(20,25,30,0.08); --sombra-alta: 0 12px 30px rgba(20,25,30,0.22);
+  --grade-op: 0.05; --sb-marca: #C9D1D9;
+  --raio: 6px; --raio-btn: 6px; --font-titulo: 'Exo 2', 'Inter', sans-serif;
+}
+html[data-tema="prata"] .sidebar { background: linear-gradient(180deg, #3B424A 0%, #23282E 55%, #1B1F24 100%); }
+html[data-tema="prata"] .card { background: linear-gradient(180deg, #FFFFFF 0%, #F2F4F6 100%); }
+html[data-tema="prata"] .btn-primary { background: linear-gradient(180deg, #2F7BFF, #0B5FFF); }
+html[data-tema="prata"] .panel-title, html[data-tema="prata"] .sidebar-top .brand { font-family: var(--font-titulo); letter-spacing: 0.02em; }
+html[data-tema="prata"] .side-item.active { background: linear-gradient(90deg, rgba(201,209,217,0.30), rgba(201,209,217,0.08)); }
+
+/* Amostras na aba Aparência */
+.paletas { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 22px; }
+.paletas .palette-option { width: 100%; }

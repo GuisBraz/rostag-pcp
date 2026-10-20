@@ -12,7 +12,7 @@ export function corStatus(k) {
     paralisado: cor('--amber'), cancelado: cor('--ink-faint') }[k];
 }
 export function corSituacao(s) {
-  return { planejada: cor('--ink-faint'), andamento: cor('--teal'), chegando: cor('--amber'),
+  return { planejada: cor('--ink-faint'), andamento: cor('--andamento'), chegando: cor('--amber'),
     atrasada: cor('--rust'), parada: cor('--amber'), concluida: cor('--green') }[s];
 }
 

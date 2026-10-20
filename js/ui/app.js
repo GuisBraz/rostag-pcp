@@ -115,8 +115,6 @@ export function alternarPopup(id, gatilho) {
 
 document.addEventListener('click', function (e) {
   if (!e.target.closest('.actionbar')) $$('.filter-panel.open').forEach(function (p) { p.classList.remove('open'); });
-  if (!e.target.closest('#sidebar-profile') && !e.target.closest('#profile-menu')) $('profile-menu').classList.remove('open');
-  if (!e.target.closest('#sidebar-equipe')) $('equipe-menu').classList.remove('open');
   if (!e.target.closest('.sino-wrap')) $('notif-panel').classList.remove('open');
 });
 
@@ -124,7 +122,6 @@ window.addEventListener('online', function () { if (estadoChip === 'offline') at
 window.addEventListener('offline', function () { atualizarChip('offline'); });
 
 registrarAcoes({
-  toggleProfileMenu: function (_a, _b, el) { alternarPopup('profile-menu', el); },
   pularConteudo: function () { const m = $('conteudo'); m.setAttribute('tabindex', '-1'); m.focus(); }
 });
 

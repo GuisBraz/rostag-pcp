@@ -15,6 +15,7 @@ export const estado = {
   maquinas: [],              // máquinas da usinagem (carga máquina)
   cfgFabrica: {},            // capacidade da caldeiraria (carga fábrica)
   rncs: [],                  // registros de não conformidade que este cargo enxerga
+  checklistPadrao: null,     // config/checklist da equipe ({itens, atualizadoEm, porNome}); null = lista de fábrica
   filtroFab: { visao: '', area: '', projeto: '', cliente: '', busca: '' }
 };
 

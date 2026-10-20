@@ -10,7 +10,6 @@ import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
 import { abrirModal, fecharModal, confirmar } from './modal.js';
 import { toast } from './toast.js';
-import { alternarPopup } from './app.js';
 
 // ?convite=codigo na URL: quem abre o link entra direto na equipe do convite
 // depois de entrar ou criar a conta. O código sai da barra de endereço na hora.
@@ -98,6 +97,34 @@ function doLogout() {
   });
 }
 
+/* ---------------------------------------------------------- encerrar conta */
+function abrirEncerrarConta() {
+  $('encerrar-senha').value = ''; $('encerrar-palavra').value = ''; $('encerrar-erro').textContent = '';
+  $('encerrar-aviso').textContent = T('enc.aviso');
+  abrirModal('modal-encerrar', { foco: 'encerrar-senha' });
+  // avisa logo se alguma equipe impede (Gerência não sai sozinha)
+  Auth.equipesQueImpedemEncerrar().then(function (eqs) {
+    if (eqs.length) $('encerrar-aviso').textContent = T('enc.aviso') + '\n\n' + T('enc.bloqueio', eqs.join(', '));
+  });
+}
+function confirmarEncerrarConta(_a, _b, btn) {
+  const senha = $('encerrar-senha').value, palavra = $('encerrar-palavra').value.trim().toUpperCase();
+  const erro = $('encerrar-erro');
+  erro.textContent = '';
+  if (!senha) { erro.textContent = T('enc.semSenha'); $('encerrar-senha').focus(); return; }
+  if (palavra !== 'ENCERRAR') { erro.textContent = T('enc.semPalavra'); $('encerrar-palavra').focus(); return; }
+  comBotaoOcupado(btn, Auth.encerrarConta(senha).then(function () {
+    fecharModal('modal-encerrar');
+    toast(T('enc.feito'), { ms: 8000 });
+  }).catch(function (e) {
+    console.warn(e);
+    const c = e && e.code;
+    if (e && e.message === 'encerrar-gerente') erro.textContent = T('enc.bloqueio', e.equipes.join(', '));
+    else if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials') erro.textContent = T('enc.senhaErrada');
+    else erro.textContent = mensagemErroAuth(e, 'enc.erro');
+  }));
+}
+
 function toggleSenhaVisivel(inputId, _b, btn) {
   const el = $(inputId);
   const mostrando = el.type === 'text';
@@ -178,18 +205,29 @@ function migrarEquipeAntiga(_a, _b, btn) {
   }).catch(function (e) { erro.textContent = mensagemErroEquipe(e); console.warn(e); }));
 }
 
-/* ------------------------------------------------- seletor de equipe */
+/* -------------------------------- minhas equipes (Configurações → Equipe) */
 export function atualizarSeletorEquipe() {
-  $('sidebar-equipe-nome').textContent = Auth.equipeAtualNome() || '—';
-}
-function renderEquipeMenu() {
+  const el = $('minhas-equipes-lista');
+  if (!el) return;
   const atualId = Auth.equipeAtualId();
-  $('equipe-menu-lista').innerHTML = Auth.minhasEquipesLista().map(function (e) {
+  el.innerHTML = Auth.minhasEquipesLista().map(function (e) {
     const ativa = e.id === atualId;
-    return '<button type="button" class="profile-menu-item' + (ativa ? ' ativa' : '') + '" data-acao="trocarEquipe" data-arg="' + esc(e.id) + '"' +
-      (ativa ? ' aria-current="true"' : '') + '>' + (ativa ? '● ' : '○ ') + esc(e.nomeEquipe || '—') +
-      '<span class="hint-txt"> · ' + esc(T('papel.' + Papeis.papelEfetivo(e.papel, false))) + '</span></button>';
-  }).join('');
+    return '<div class="minha-equipe' + (ativa ? ' atual' : '') + '"><div><div class="minha-equipe-nome">' + esc(e.nomeEquipe || '—') + '</div>' +
+      '<div class="hint-txt">' + esc(T('papel.' + Papeis.papelEfetivo(e.papel, false))) + '</div></div>' +
+      (ativa ? '<span class="minha-equipe-aqui">' + esc(T('eq.voceAqui')) + '</span>'
+        : '<button type="button" class="btn btn-outline btn-mini" data-acao="trocarEquipe" data-arg="' + esc(e.id) + '">' + esc(T('eq.trocar')) + '</button>') +
+      '</div>';
+  }).join('') || '<div class="hint-txt">—</div>';
+}
+function entrarOutraEquipe(_a, _b, btn) {
+  const nome = $('outra-equipe-nome').value.trim(), senha = $('outra-equipe-senha').value;
+  const erro = $('outra-equipe-erro');
+  erro.textContent = '';
+  if (!nome) { erro.textContent = T('hub.erroNome'); return; }
+  comBotaoOcupado(btn, Auth.entrarPorNomeSenha(nome, senha).then(function () {
+    fecharModal('modal-entrar-equipe');
+    toast(T('hub.conviteAceito'));
+  }).catch(function (e) { erro.textContent = mensagemErroEquipe(e); console.warn(e); }));
 }
 
 function criarEquipeModal(_a, _b, btn) {
@@ -206,19 +244,20 @@ function criarEquipeModal(_a, _b, btn) {
 registrarAcoes({
   fazerLogin: fazerLogin, fazerCadastro: fazerCadastro, fazerRecuperarSenha: fazerRecuperarSenha,
   doLogout: doLogout, toggleSenhaVisivel: toggleSenhaVisivel,
+  abrirEncerrarConta: abrirEncerrarConta, confirmarEncerrarConta: confirmarEncerrarConta,
   mostrarViewAcesso: function (v) { if (VIEWS.indexOf(v) >= 0) mostrarViewAcesso(v); },
   hubMudarAba: function (aba) { hubMudarAba(aba === 'entrar' ? 'entrar' : 'criar'); },
   criarEquipeUI: criarEquipeHub, entrarPorNomeSenhaUI: entrarPorNomeSenha, migrarEquipeAntigaUI: migrarEquipeAntiga,
-  toggleEquipeMenu: function (_a, _b, el) {
-    if (alternarPopup('equipe-menu', el)) renderEquipeMenu();
-  },
   trocarEquipe: function (id) {
-    $('equipe-menu').classList.remove('open');
     if (id === Auth.equipeAtualId()) return;
     Auth.trocarEquipe(id).catch(function (e) { toast(T('hub.trocaErro'), { tipo: 'erro' }); console.warn(e); });
   },
+  abrirEntrarEquipeModal: function () {
+    $('outra-equipe-nome').value = ''; $('outra-equipe-senha').value = ''; $('outra-equipe-erro').textContent = '';
+    abrirModal('modal-entrar-equipe', { foco: 'outra-equipe-nome' });
+  },
+  entrarOutraEquipeUI: entrarOutraEquipe,
   abrirCriarEquipeModal: function () {
-    $('equipe-menu').classList.remove('open');
     ['nova-equipe-nome', 'nova-equipe-senha', 'nova-equipe-senha2'].forEach(function (id) { $(id).value = ''; });
     $('nova-equipe-erro').textContent = '';
     abrirModal('modal-criar-equipe', { foco: 'nova-equipe-nome' });

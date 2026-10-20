@@ -6,15 +6,15 @@
    nova aparece no próximo carregamento, sem ficar presa em cache.
    Os dados (Firestore) não passam por aqui: o próprio SDK guarda o cache.
 --------------------------------------------------------------------------- */
-const CACHE = 'rostag-pcp-v10';
+const CACHE = 'rostag-pcp-v11';
 const ARQUIVOS = [
-  './', 'index.html', 'manifest.json', 'css/app.css', 'vendor/chart.umd.min.js',
+  './', 'index.html', 'manifest.json', 'css/app.css', 'css/temas.css', 'vendor/chart.umd.min.js',
   'img/logo.png', 'img/favicon.png', 'img/sobre.jpg', 'icon-192.png', 'icon-512.png',
   'js/main.js', 'js/estado.js',
   'js/nucleo/prefs.js', 'js/nucleo/fmt.js',
   'js/i18n/index.js', 'js/i18n/pt.js', 'js/i18n/en.js',
   'js/dominio/constantes.js', 'js/dominio/cronograma.js', 'js/dominio/projeto.js', 'js/dominio/serie.js', 'js/dominio/alertas.js',
-  'js/dominio/papeis.js', 'js/dominio/producao.js', 'js/dominio/planilha.js', 'js/dominio/semana.js', 'js/dados/ops.js', 'js/ui/fabrica.js', 'js/dominio/rnc.js', 'js/dados/rncs.js', 'js/ui/qualidade.js', 'js/ui/painelCq.js', 'js/ui/rncPdf.js', 'js/ui/pedidos.js', 'js/ui/desempenho.js', 'js/dominio/desempenho.js', 'img/logo-sofir.png', 'js/ui/gerencia.js', 'js/dominio/carga.js', 'js/dados/carga.js', 'js/ui/carga.js',
+  'js/dominio/papeis.js', 'js/dominio/producao.js', 'js/dominio/planilha.js', 'js/dominio/semana.js', 'js/dados/ops.js', 'js/ui/fabrica.js', 'js/dominio/rnc.js', 'js/dados/rncs.js', 'js/ui/qualidade.js', 'js/ui/painelCq.js', 'js/ui/rncPdf.js', 'js/ui/pedidos.js', 'js/ui/desempenho.js', 'js/dominio/desempenho.js', 'js/ui/sidebar.js', 'js/dados/checklist.js', 'js/ui/checklistPadrao.js', 'js/ui/opManual.js', 'js/dominio/opManual.js', 'img/logo-sofir.png', 'js/ui/gerencia.js', 'js/dominio/carga.js', 'js/dados/carga.js', 'js/ui/carga.js',
   'js/dados/firebase.js', 'js/dados/auth.js', 'js/dados/store.js',
   'js/ui/dom.js', 'js/ui/toast.js', 'js/ui/modal.js', 'js/ui/app.js', 'js/ui/rota.js', 'js/ui/preferencias.js',
   'js/ui/painel.js', 'js/ui/graficos.js', 'js/ui/filtros.js', 'js/ui/projetos.js', 'js/ui/formulario.js',

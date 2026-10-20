@@ -462,6 +462,64 @@ export function migrarPapeisEquipe() {
     });
   }).catch(function (e) { console.warn('cargos não migrados:', e && e.code); return 0; });
 }
+/* ---------------------------------------------------------- encerrar conta */
+// Equipes em que a pessoa é Gerência: lá ela não pode sair sozinha (a regra
+// do Firestore recusa), então o encerramento fica bloqueado até outro
+// gerente mudar o cargo dela.
+export function equipesQueImpedemEncerrar() {
+  if (!usuario) return Promise.resolve([]);
+  const uid = usuario.uid;
+  return Promise.all(minhasEquipes.map(function (e) {
+    return Promise.all([docEquipe(e.id).get(), colMembros(e.id).doc(uid).get()]).then(function (r) {
+      const eq = r[0].exists ? r[0].data() : null, m = r[1].exists ? r[1].data() : null;
+      if (!eq || !m) return null;
+      const criadorLegado = eq.coordenadorUid === uid && !eq.papeisMigrados;
+      return Papeis.papelEfetivo(m.papel, criadorLegado) === 'gerente_pcp' ? (e.nomeEquipe || eq.nome || e.id) : null;
+    }).catch(function () { return null; });
+  })).then(function (l) { return l.filter(Boolean); });
+}
+
+// Apaga a conta: confere a senha (o Firebase exige login recente), tira a
+// pessoa de cada equipe, apaga o índice, os alertas, as notificações dela e o
+// perfil, e por último o login. Projetos, OPs e RNCs são da equipe e ficam.
+export function encerrarConta(senha) {
+  if (!usuario || !usuario.email) return Promise.reject(new Error('sem-sessao'));
+  const u = auth().currentUser;
+  const uid = u.uid;
+  const cred = firebase.auth.EmailAuthProvider.credential(u.email, senha);
+  return u.reauthenticateWithCredential(cred).then(function () {
+    return equipesQueImpedemEncerrar();
+  }).then(function (bloqueio) {
+    if (bloqueio.length) { const e = new Error('encerrar-gerente'); e.equipes = bloqueio; throw e; }
+    pararEscutaMembro();
+    const apagar = [];
+    minhasEquipes.forEach(function (e) {
+      apagar.push(colMembros(e.id).doc(uid).delete().catch(function () {}));
+    });
+    return Promise.all(apagar);
+  }).then(function () {
+    return Promise.all([
+      colMinhasEquipes(uid).get(),
+      docPerfil(uid).collection('alertas').get(),
+      db().collection('notificacoes').where('paraUid', '==', uid).get()
+    ]);
+  }).then(function (r) {
+    const refs = [];
+    r.forEach(function (qs) { qs.forEach(function (d) { refs.push(d.ref); }); });
+    const envios = [];
+    for (let i = 0; i < refs.length; i += 400) {
+      const lote = db().batch();
+      refs.slice(i, i + 400).forEach(function (ref) { lote.delete(ref); });
+      envios.push(lote.commit());
+    }
+    return Promise.all(envios);
+  }).then(function () {
+    return docPerfil(uid).delete();
+  }).then(function () {
+    return u.delete();
+  });
+}
+
 // Sair da equipe por conta própria. Gerente não sai sozinho (a equipe não
 // pode ficar sem Gerência): outro gerente muda o cargo dele antes.
 export function sairDaEquipe() {

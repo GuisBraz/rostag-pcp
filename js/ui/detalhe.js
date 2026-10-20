@@ -121,8 +121,7 @@ export function renderDetalhe() {
         botao('btn-outline', 'abrirReagendar', T('d.reagendar'));
     } else if (Projeto.aberto(p)) {
       // a Gerência acompanha: quem marca a entrega é o GP
-      acoes = (ger ? '' : botao('btn-success', 'concluirProjeto', T('d.concluir'))) +
-        (ger ? botao('btn-warn', 'paralisarProjeto', T('d.paralisar')) : (pedido ? '' : botao('btn-warn', 'pedirParalisar', T('ped.pedirParalisar')))) +
+      acoes =         (ger ? botao('btn-warn', 'paralisarProjeto', T('d.paralisar')) : (pedido ? '' : botao('btn-warn', 'pedirParalisar', T('ped.pedirParalisar')))) +
         botao('btn-outline', 'abrirReagendar', T('d.reagendar')) +
         (pr === 100 ? '<span class="nota-ok">' + esc(T('d.cronograma100')) + '</span>' : '<span class="hint-txt">' + esc(T('d.avisoCancelar')) + '</span>');
     } else {
@@ -197,17 +196,6 @@ function aplicar(mensagem) {
 }
 
 /* ------------------------------------------------------------ status */
-function concluirProjeto() {
-  const p = projetoAtual();
-  confirmar(T('q.concluir', p.commessa, br(hoje())), { titulo: T('d.concluir'), textoOk: T('d.concluir') }).then(function (ok) {
-    if (!ok || !buscarProjeto(p.id)) return;
-    p.status = 'concluido'; p.concluidoEm = hoje(); p.canceladoEm = null;
-    p.pedido = null;
-    const aberta = Projeto.pausaAtual(p);
-    if (aberta) aberta.fim = hoje();
-    aplicar(T('t.entregue', plural(Projeto.ciclo(p), 'x.dia', 'x.dias')));
-  });
-}
 /* Fluxo: em andamento → paralisado → cancelado. Paralisar para o projeto
    inteiro (PCP, produção e entrega). Retomar fecha o período e devolve o
    projeto para "aguardando cronograma": o GP monta um cronograma macro novo. */
@@ -436,7 +424,7 @@ document.addEventListener('change', function (e) {
 });
 
 registrarAcoes({
-  concluirProjeto: concluirProjeto, paralisarProjeto: paralisarProjeto, retomarProjeto: retomarProjeto,
+  paralisarProjeto: paralisarProjeto, retomarProjeto: retomarProjeto,
   cancelarProjeto: cancelarProjeto, reabrirProjeto: reabrirProjeto, excluirProjeto: excluirProjeto,
   pedirParalisar: function () { Pedidos.pedir(projetoAtual(), 'paralisar'); },
   pedirCancelar: function () { Pedidos.pedir(projetoAtual(), 'cancelar'); },

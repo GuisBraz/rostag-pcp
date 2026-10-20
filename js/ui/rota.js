@@ -57,7 +57,8 @@ export function aplicarRota() {
   $$('.tabpanel').forEach(function (p) { p.classList.remove('active'); });
   $('tab-' + aba).classList.add('active');
   $('page-title').textContent = T('nav.' + aba);
-  $('page-sub').textContent = T(aba === 'painel' && Papeis.ehCQ(Auth.papel()) ? 'sub.painelCq' : 'sub.' + aba);
+  // o Painel Geral não tem subtítulo (a saudação ocupa o topo)
+  $('page-sub').textContent = aba === 'painel' ? '' : T('sub.' + aba);
   fecharPopups();
   document.title = 'ROSTAG PCP';   // o detalhe troca pelo nome do projeto
 

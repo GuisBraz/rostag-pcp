@@ -170,6 +170,26 @@ describe('projetos: fábrica e quem é de fora', () => {
 });
 
 /* ------------------------------------------------------------------ carga */
+describe('checklist padrão do PCP', () => {
+  const lista = (uid, extra) => ({ itens: [{ t: 'Receber o projeto', dias: 0 }], atualizadoEm: 'x', porUid: uid, porNome: uid, ...extra });
+  test('Gerência e GP gravam; os outros cargos só leem', async () => {
+    await assertSucceeds(como(M).doc('equipes/E1/config/checklist').set(lista(M)));
+    await assertSucceeds(como(G).doc('equipes/E1/config/checklist').set(lista(G)));
+    for (const uid of [P, T, U, K, Q]) {
+      await assertFails(como(uid).doc('equipes/E1/config/checklist').set(lista(uid)));
+      await assertSucceeds(como(uid).doc('equipes/E1/config/checklist').get());
+    }
+    await assertFails(como(Y).doc('equipes/E1/config/checklist').get());
+  });
+  test('fora do formato, vazio, grande demais ou em nome de outro', async () => {
+    await assertFails(como(G).doc('equipes/E1/config/checklist').set(lista(G, { itens: [] })));
+    await assertFails(como(G).doc('equipes/E1/config/checklist').set(lista(G, { itens: Array.from({ length: 61 }, (_x, i) => ({ t: 't' + i, dias: 0 })) })));
+    await assertFails(como(G).doc('equipes/E1/config/checklist').set(lista(M)));
+    await assertFails(como(G).doc('equipes/E1/config/checklist').set(lista(G, { extra: 1 })));
+    await assertFails(como(G).doc('equipes/E1/config/checklist').delete());
+  });
+});
+
 describe('carga máquina e carga fábrica', () => {
   const prog = (uid, extra) => ({ maquinaId: 'm1', horasPrevistas: 6, programadoEm: 'x', programadoPorUid: uid, ...extra });
   test('programador de usinagem programa máquina e horas da OP de usinagem', async () => {
@@ -644,6 +664,10 @@ describe('/usuarios', () => {
     await assertFails(como(C).collection('usuarios').get());
     await assertSucceeds(como(P).doc('usuarios/' + P).update({ nome: 'Novo', tema: 'escuro' }));
     await assertFails(como(G).doc('usuarios/' + P).update({ nome: 'x' }));
+  });
+  test('encerrar a conta: só o dono apaga o próprio perfil', async () => {
+    await assertFails(como(G).doc('usuarios/' + P).delete());
+    await assertSucceeds(como(P).doc('usuarios/' + P).delete());
   });
   test('perfil nasce com o contador zerado e só pelo dono', async () => {
     await env.withSecurityRulesDisabled((ctx) => ctx.firestore().doc('usuarios/' + X).delete());
