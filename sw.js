@@ -6,7 +6,7 @@
    nova aparece no próximo carregamento, sem ficar presa em cache.
    Os dados (Firestore) não passam por aqui: o próprio SDK guarda o cache.
 --------------------------------------------------------------------------- */
-const CACHE = 'rostag-pcp-v11';
+const CACHE = 'rostag-pcp-v12';
 const ARQUIVOS = [
   './', 'index.html', 'manifest.json', 'css/app.css', 'css/temas.css', 'vendor/chart.umd.min.js',
   'img/logo.png', 'img/favicon.png', 'img/sobre.jpg', 'icon-192.png', 'icon-512.png',

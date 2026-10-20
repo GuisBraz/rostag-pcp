@@ -3,6 +3,7 @@
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto } from '../estado.js';
 import { T } from '../i18n/index.js';
+import { esc } from '../nucleo/fmt.js';
 import { $, $$, registrarAcoes } from './dom.js';
 import { fecharPopups } from './app.js';
 import { renderPainel } from './painel.js';
@@ -56,11 +57,13 @@ export function aplicarRota() {
   $('gear-btn').classList.toggle('active', aba === 'config');
   $$('.tabpanel').forEach(function (p) { p.classList.remove('active'); });
   $('tab-' + aba).classList.add('active');
-  $('page-title').textContent = T('nav.' + aba);
+  // no Painel Geral o título diz o módulo de quem está logado
+  const modulo = aba === 'painel' ? Papeis.moduloDe(Auth.papel()) : null;
+  $('page-title').innerHTML = esc(T('nav.' + aba)) + (modulo ? '<span class="titulo-modulo"><span class="titulo-traco"> — </span>' + esc(T('modulo.' + modulo)) + '</span>' : '');
   // o Painel Geral não tem subtítulo (a saudação ocupa o topo)
   $('page-sub').textContent = aba === 'painel' ? '' : T('sub.' + aba);
   fecharPopups();
-  document.title = 'ROSTAG PCP';   // o detalhe troca pelo nome do projeto
+  document.title = (modulo ? T('nav.painel') + ' — ' + T('modulo.' + modulo) + ' · ' : '') + 'ROSTAG PCP';   // o detalhe troca pelo nome do projeto
 
   if (aba === 'painel') renderPainel();
   if (aba === 'linha') renderLinha();

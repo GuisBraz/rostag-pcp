@@ -19,6 +19,10 @@ export function papelEfetivo(papel, ehCoordenador) {
 }
 
 export function ehGerente(p) { return p === 'gerente_pcp'; }
+// Módulo de cada cargo (aparece no título do Painel Geral).
+const MODULO = { gerente_pcp: 'gerencia', cq: 'qualidade', tecnico: 'processos', gp: 'planejamento',
+  prog_usinagem: 'planejamento', prog_caldeiraria: 'planejamento' };
+export function moduloDe(p) { return MODULO[p] || null; }
 // Quem cria e edita projetos (o GP só os dele — a consulta já filtra).
 export function gereProjetos(p) { return p === 'gerente_pcp' || p === 'gp'; }
 // Quem trabalha com projetos (painel, lista, linha do tempo).

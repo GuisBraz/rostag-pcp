@@ -637,6 +637,7 @@ export default {
   'enc.senhaErrada':'Senha incorreta.', 'enc.erro':'Não foi possível encerrar a conta', 'enc.feito':'Conta encerrada. Até mais!',
   'cfg.tema.claro':'Azul & Navy', 'cfg.tema.escuro':'Dark (preto & azul)', 'cfg.tema.pastel':'Pastel & Marinho', 'cfg.tema.tecnico':'Técnico (laranja)',
   'cfg.tema.st':'ST Logística', 'cfg.tema.grego':'Grego (marfim & dourado)', 'cfg.tema.prata':'Prata acentuada',
+  'modulo.gerencia':'Gerência', 'modulo.qualidade':'Controle de qualidade', 'modulo.processos':'Engenharia de processos', 'modulo.planejamento':'Engenharia de planejamento',
   'eq.minhas':'Minhas equipes', 'eq.minhasNota':'As equipes em que você está. Trocar de equipe muda os projetos e as OPs que aparecem no app.',
   'eq.voceAqui':'Você está aqui', 'eq.trocar':'Trocar', 'eq.entrarOutra':'Entrar em outra equipe', 'eq.entrar':'Entrar',
   'eq.entrarNota':'Pelo nome e senha da equipe você entra como Técnico de processo. Recebeu um link de convite? É só abrir o link.',
