@@ -16,6 +16,10 @@ export function status(p) {
 // "Aberto" = ainda dá trabalho. Paralisado conta como aberto.
 export function aberto(p) { const s = status(p); return s !== 'concluido' && s !== 'cancelado'; }
 
+// Pedido do GP aguardando a Gerência (paralisar ou cancelar o projeto).
+export const PEDIDOS = ['paralisar', 'cancelar'];
+export function pedidoPendente(p) { return p && p.pedido && PEDIDOS.indexOf(p.pedido.tipo) >= 0 ? p.pedido : null; }
+
 // Paralisações: a última sem 'fim' é a que está correndo agora.
 export function pausaAtual(p) {
   const ps = p.paralisacoes || [];
@@ -195,6 +199,11 @@ export function migrarProjeto(bruto) {
   if (o.status === 'cancelado' && !o.paralisacoes.length && dataValida(o.canceladoEm)) {
     o.paralisacoes.push({ inicio: o.canceladoEm, fim: o.canceladoEm, motivo: 'migrado' });
   }
+  o.pedido = pedidoPendente(o) && (o.status === 'ativo' || o.status === 'paralisado') ? {
+    tipo: o.pedido.tipo, motivo: String(o.pedido.motivo || '').slice(0, 200),
+    porUid: o.pedido.porUid || null, porNome: String(o.pedido.porNome || ''), em: o.pedido.em || null
+  } : null;
+  o.motivoCancelamento = o.status === 'cancelado' ? String(o.motivoCancelamento || '').slice(0, 200) : '';
   o.concluidoEm = o.status === 'concluido' ? (dataValida(o.concluidoEm) ? o.concluidoEm : o.entrega) : null;
   o.canceladoEm = o.status === 'cancelado' ? (dataValida(o.canceladoEm) ? o.canceladoEm : o.entrega) : null;
 

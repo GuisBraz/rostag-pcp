@@ -102,7 +102,7 @@
     <h2 id="ger-ola-nome">Bem-vindo</h2>
     <div class="ger-ola-quando" id="ger-ola-quando">—</div>
   </div>
-  <div class="actionbar">
+  <div class="actionbar so-nao-cq">
     <div class="hint" id="dash-scope">—</div>
     <div class="btns">
       <button type="button" class="btn btn-outline" data-acao="toggleFilterPanel" data-arg="dash"><span data-i18n="btn.filtro">Filtro</span> <span id="dash-filter-badge" style="display:none;" class="filter-btn-badge">0</span></button>
@@ -150,6 +150,26 @@
   <div class="kpi-grid so-painel-antigo" id="kpi-grid"></div>
   <div class="ger-cards so-painel-novo" id="ger-cards"></div>
 
+  <!-- CQ: indicadores do mês (clique abre o semestre e o ano) -->
+  <div class="grid2 so-cq">
+    <div class="card panel-pad card-clicavel" data-acao="cqIndicadores" data-arg="aprovacao" role="button" tabindex="0" data-i18n-title="cqp.clique" title="Clique para ver o semestre e o ano">
+      <div class="cq-card-topo"><span class="panel-title" data-i18n="cqp.aprovXRnc">Aprovadas × RNC</span><span class="hint-txt" data-i18n="cqp.cliqueCurto">semestre e ano ↗</span></div>
+      <div class="panel-note" id="cq-mes-1">—</div>
+      <div class="ger-andamento">
+        <div class="ger-rosca"><canvas id="chartCqAprov"></canvas><div class="ger-rosca-centro" id="cq-aprov-centro"></div></div>
+        <div class="ger-legenda" id="cq-aprov-legenda"></div>
+      </div>
+    </div>
+    <div class="card panel-pad card-clicavel" data-acao="cqIndicadores" data-arg="abertas" role="button" tabindex="0" data-i18n-title="cqp.clique" title="Clique para ver o semestre e o ano">
+      <div class="cq-card-topo"><span class="panel-title" data-i18n="cqp.abertasXFinal">OPs em aberto × finalizadas</span><span class="hint-txt" data-i18n="cqp.cliqueCurto">semestre e ano ↗</span></div>
+      <div class="panel-note" id="cq-mes-2">—</div>
+      <div class="ger-andamento">
+        <div class="ger-rosca"><canvas id="chartCqAbertas"></canvas><div class="ger-rosca-centro" id="cq-abertas-centro"></div></div>
+        <div class="ger-legenda" id="cq-abertas-legenda"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Programadores: carga das próximas semanas no lugar do andamento e do "Precisa de atenção" -->
   <div class="card panel-pad so-programador" style="margin-bottom:18px;">
     <div class="panel-title" id="prg-grafico-titulo">Carga</div>
@@ -157,7 +177,7 @@
     <div style="height:280px"><canvas id="chartCargaPainel"></canvas></div>
   </div>
 
-  <div class="grid2 so-nao-programador">
+  <div class="grid2 so-nao-programador so-nao-cq">
     <div class="card panel-pad so-painel-novo">
       <div class="panel-title" id="ger-andamento-titulo">Andamento dos projetos</div>
       <div class="panel-note" id="ger-andamento-nota">—</div>
@@ -436,6 +456,7 @@
       <button type="button" class="btn btn-primary" id="btn-subir-planilha" data-acao="abrirPlanilha" data-i18n="fab.subir">⭱ Subir planilha de OPs</button>
     </div>
   </div>
+  <div class="fab-visoes" id="fab-visoes" role="tablist"></div>
   <div class="fab-filtros card panel-pad">
     <div class="field"><label data-i18n="fab.fArea">ÁREA</label>
       <select id="fab-area" data-change="filtrarFabrica">
@@ -444,13 +465,7 @@
         <option value="usinagem" data-i18n="area.usinagem">Usinagem</option>
       </select></div>
     <div class="field"><label data-i18n="fab.fProjeto">PROJETO</label><select id="fab-projeto" data-change="filtrarFabrica"><option value="" data-i18n="btn.todos">Todos</option></select></div>
-    <div class="field"><label data-i18n="fab.fSituacao">SITUAÇÃO</label>
-      <select id="fab-status" data-change="filtrarFabrica">
-        <option value="" data-i18n="btn.todas">Todas</option>
-        <option value="aberta" data-i18n="op.aberta">Aberta</option>
-        <option value="aprovada" data-i18n="op.aprovada">Aprovada</option>
-        <option value="rnc" data-i18n="op.rnc">Com RNC</option>
-      </select></div>
+    <div class="field"><label data-i18n="fab.fCliente">CLIENTE</label><select id="fab-cliente" data-change="filtrarFabrica"><option value="" data-i18n="btn.todos">Todos</option></select></div>
     <div class="field fab-busca"><label data-i18n="fab.fBusca">BUSCAR (OP, DESENHO, DESCRIÇÃO)</label><input id="fab-busca" data-i18n-ph="f.buscarPh" placeholder="buscar..."></div>
   </div>
   <div id="fab-avanco" class="fab-avanco"></div>
@@ -580,7 +595,7 @@
           <button type="button" class="btn btn-primary" data-acao="convidarMembro" data-i18n="cfg.equipeConvidar">+ Gerar convite</button>
         </div>
       </div>
-      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Quem entra pelo link de convite já recebe o cargo escolhido. O Gerente de PCP muda cargos e remove pessoas; só o coordenador troca a senha e passa a coordenação adiante.</div>
+      <div class="hint-txt" style="margin-bottom:14px;" data-i18n="cfg.equipeNota2">Quem entra pelo link de convite já recebe o cargo escolhido. A Gerência pode ter várias pessoas: qualquer Gerente de PCP muda cargos, remove pessoas e troca a senha — só não muda o próprio cargo nem sai sozinho (outro gerente faz isso).</div>
       <div id="equipe-lista"></div>
       <div id="equipe-convites-bloco" style="display:none; margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
         <div style="font-weight:700; font-size:13px; margin-bottom:8px;" data-i18n="cfg.equipeConvitesAbertos">Convites em aberto</div>
@@ -722,25 +737,173 @@
   </div>
 </div>
 
-<!-- ==================== RNC (CQ) ==================== -->
-<div class="modal-overlay" id="modal-rnc" role="dialog" aria-modal="true" aria-labelledby="modal-rnc-title">
+<!-- ==================== DAR BAIXA NA OP (CQ) ==================== -->
+<div class="modal-overlay" id="modal-baixa" role="dialog" aria-modal="true" aria-labelledby="modal-baixa-title">
   <div class="modal-box estreita">
     <div class="modal-header">
       <div style="min-width:0;">
-        <h2 id="modal-rnc-title" data-i18n="cq.rncTit">Registrar não conformidade</h2>
-        <div class="detail-sub" id="rnc-op" style="margin-top:2px;">—</div>
+        <h2 id="modal-baixa-title" data-i18n="baixa.titulo">Dar baixa na OP</h2>
+        <div class="detail-sub" id="baixa-op" style="margin-top:2px;">—</div>
       </div>
       <button type="button" class="modal-close" data-acao="fecharModal" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
-      <div class="field"><label data-i18n="cq.rncObs">NÃO CONFORMIDADE ENCONTRADA *</label>
-        <textarea id="rnc-texto" rows="6" maxlength="1000" data-i18n-ph="cq.rncPh" placeholder="Descreva o que foi encontrado na peça..."></textarea></div>
-      <div class="hint-txt" data-i18n="cq.rncNota">Depois de gravada, a RNC não pode ser desfeita: a OP aguarda a disposição do responsável.</div>
-      <div class="form-error" id="rnc-erro"></div>
+      <div id="baixa-info" class="baixa-info"></div>
+      <div id="baixa-botoes" class="baixa-botoes"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== FORMULÁRIO DA RNC (R02) ==================== -->
+<div class="modal-overlay tela-cheia" id="modal-rnc-form" role="dialog" aria-modal="true" aria-labelledby="rnc-form-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div style="min-width:0;">
+        <h2 id="rnc-form-titulo">RNC</h2>
+        <div class="detail-sub" id="rnc-form-sub" style="margin-top:2px;">—</div>
+      </div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-rnc-form" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint-txt" id="rnc-form-nota"></div>
+      <div class="rnc-folha" id="rnc-form">
+        <div class="rf-cab">
+          <div class="rf-logo"><img src="img/logo-sofir.png" alt="SOFIR"></div>
+          <div class="rf-titulo">REGISTRO DE NÃO CONFORMIDADE</div>
+          <div class="rf-num"><label for="rf-numero">Nº</label><input id="rf-numero" class="mono" autocomplete="off"></div>
+        </div>
+        <div class="rf-linha">
+          <div class="rf-c rf-g3"><label for="rf-produto">PRODUTO:</label><input id="rf-produto"></div>
+          <div class="rf-c"><label for="rf-desenho">Nº DES.:</label><input id="rf-desenho" class="mono"></div>
+          <div class="rf-c rf-p"><label for="rf-rev">REV.:</label><input id="rf-rev" class="mono"></div>
+        </div>
+        <div class="rf-linha">
+          <div class="rf-c"><label for="rf-commessa">COMMESSA:</label><input id="rf-commessa" class="mono"></div>
+          <div class="rf-c"><label for="rf-op">OP:</label><input id="rf-op" class="mono"></div>
+          <div class="rf-c rf-p"><label for="rf-qtd">QTD.:</label><input id="rf-qtd"></div>
+          <div class="rf-c"><label for="rf-tag">TAG:</label><input id="rf-tag"></div>
+          <div class="rf-c rf-p"><label for="rf-item">ITEM:</label><input id="rf-item" class="mono"></div>
+        </div>
+        <div class="rf-linha rf-setores"><span class="rf-rot">SETOR:</span><label class="rf-chk"><input type="checkbox" id="rf-setor-usinagem"> USINAGEM</label><label class="rf-chk"><input type="checkbox" id="rf-setor-caldeiraria"> CALDEIRARIA</label><label class="rf-chk"><input type="checkbox" id="rf-setor-pintura"> PINTURA</label><label class="rf-chk"><input type="checkbox" id="rf-setor-fornecedor"> FORNECEDOR</label><label class="rf-chk"><input type="checkbox" id="rf-setor-outros"> OUTROS:</label><input id="rf-setorOutros" class="rf-outros" aria-label="Outros"></div>
+        <div class="rf-linha rf-setores"><span class="rf-rot">PROCEDÊNCIA:</span><label class="rf-chk"><input type="checkbox" id="rf-proc-interno"> Interno</label><label class="rf-chk"><input type="checkbox" id="rf-proc-externo"> Externo</label></div>
+        <div class="rf-bloco">
+          <label class="rf-sec" for="rf-descricao">Descrição da não-conformidade *</label>
+          <textarea id="rf-descricao" rows="8" class="rf-pautado"></textarea>
+          <div class="rf-linha rf-sem-borda">
+            <div class="rf-c rf-g2"><label for="rf-inspetor">Inspetor *</label><input id="rf-inspetor"></div>
+            <div class="rf-c"><label for="rf-qtdNc">Qtde. N/C</label><input id="rf-qtdNc"></div>
+            <div class="rf-c"><label for="rf-data">Data</label><input id="rf-data" type="date"></div>
+          </div>
+        </div>
+        <div class="rf-bloco">
+          <label class="rf-sec" for="rf-disposicao">Disposição / correção</label>
+          <textarea id="rf-disposicao" rows="6" class="rf-pautado"></textarea>
+          <div class="rf-linha rf-sem-borda">
+            <div class="rf-c rf-g2"><label for="rf-dispResponsavel">Responsável</label><input id="rf-dispResponsavel"></div>
+            <div class="rf-c"><label for="rf-dispData">Data</label><input id="rf-dispData" type="date"></div>
+          </div>
+        </div>
+        <div class="rf-bloco rf-reinspecao">
+          <div class="rf-sec rf-faixa">REINSPEÇÃO</div>
+          <div class="rf-linha rf-sem-borda">
+            <div class="rf-c"><label for="rf-reOp">Nº OP – RETRABALHO</label><input id="rf-reOp" class="mono"></div>
+            <div class="rf-c rf-g2"><label for="rf-reInspetor">INSPETOR</label><input id="rf-reInspetor"></div>
+            <div class="rf-c"><label for="rf-reData">DATA</label><input id="rf-reData" type="date"></div>
+          </div>
+          <div class="rf-linha rf-setores rf-sem-borda"><label class="rf-chk"><input type="checkbox" id="rf-res-retrabalho"> RETRABALHO</label><label class="rf-chk"><input type="checkbox" id="rf-res-conforme"> CONFORME</label><label class="rf-chk"><input type="checkbox" id="rf-res-nao_conforme"> NÃO CONFORME</label><label class="rf-chk"><input type="checkbox" id="rf-res-desvio"> LIBERADA COM DESVIO</label></div>
+          <div class="rf-linha rf-sem-borda"><div class="rf-c rf-g2"><label for="rf-reResponsavel">RESPONSÁVEL</label><input id="rf-reResponsavel"></div></div>
+          <div class="hint-txt" data-i18n="rf.notaReinspecao">Conforme → OP aprovada · Liberada com desvio → aprovada com desvio · Não conforme → continua em retrabalho (pode abrir nova RNC) · Nº OP – Retrabalho preenchido → nasce a OP nova e esta vira peça morta.</div>
+        </div>
+        <div class="rf-bloco">
+          <label class="rf-sec" for="rf-observacoes">OBSERVAÇÕES</label>
+          <textarea id="rf-observacoes" rows="5" class="rf-pautado"></textarea>
+        </div>
+        <div class="rf-rodape">R02 - Registro de não conformidade - rev.: 01 data 08/10/2024</div>
+      </div>
+      <div class="form-error" id="rnc-form-erro"></div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-i18n="btn.cancelar">Cancelar</button>
-      <button type="button" class="btn btn-danger" data-acao="confirmarRnc" data-i18n="cq.rncGravar">Gravar RNC</button>
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-rnc-form" data-i18n="btn.fechar">Fechar</button>
+      <button type="button" class="btn btn-outline" data-acao="baixarPdfRnc" data-i18n="rf.pdf">⭳ Baixar PDF</button>
+      <button type="button" class="btn btn-danger" id="rnc-form-salvar" data-acao="salvarFormRnc">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PENDÊNCIAS DA GERÊNCIA ==================== -->
+<div class="modal-overlay tela-cheia" id="modal-pendencias" role="dialog" aria-modal="true" aria-labelledby="pend-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <h2 id="pend-titulo" data-i18n="pend.titulo">Pendências</h2>
+        <div class="hint-txt" id="pend-resumo">—</div>
+      </div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-pendencias" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint-txt" data-i18n="pend.nota">Pedidos dos GPs para paralisar ou cancelar projetos. O projeto só muda depois da sua aprovação; ao recusar, o GP recebe o motivo.</div>
+      <div class="pend-lista" id="pend-lista"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DESEMPENHO POR PESSOA ==================== -->
+<div class="modal-overlay tela-cheia" id="modal-desempenho" role="dialog" aria-modal="true" aria-labelledby="des-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <h2 id="des-titulo" data-i18n="des.titulo">Desempenho por pessoa</h2>
+        <div class="hint-txt" data-i18n="des.nota">Atividades do PCP comparadas com o fim planejado de cada uma; entregas comparadas com a data de entrega do projeto.</div>
+      </div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-desempenho" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body des-grid">
+      <div class="card panel-pad">
+        <div class="panel-title" data-i18n="des.tecnicos">Técnicos de processo</div>
+        <div class="panel-note" data-i18n="des.tecnicosNota">Atividades do checklist: feitas no prazo × com atraso, abertas e atrasadas agora.</div>
+        <div id="des-tec"></div>
+      </div>
+      <div class="card panel-pad">
+        <div class="panel-title" data-i18n="des.gps">GPs</div>
+        <div class="panel-note" data-i18n="des.gpsNota">Projetos entregues no prazo × com atraso, carga atual e reagendamentos de datas.</div>
+        <div id="des-gp"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== INDICADORES DO CQ (TELA CHEIA) ==================== -->
+<div class="modal-overlay tela-cheia" id="modal-cq-ind" role="dialog" aria-modal="true" aria-labelledby="cqi-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <h2 id="cqi-titulo">Indicadores da qualidade</h2>
+        <div class="cqi-periodo" role="group">
+          <button type="button" id="cqi-p6" data-acao="cqPeriodo" data-arg="6" data-i18n="cqi.semestre">Semestre</button>
+          <button type="button" id="cqi-p12" data-acao="cqPeriodo" data-arg="12" data-i18n="cqi.ano">12 meses</button>
+        </div>
+      </div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-cq-ind" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="ano-resumo" id="cqi-resumo"></div>
+      <div class="cqi-grid">
+        <div class="card panel-pad" id="cqi-card-aprov">
+          <div class="panel-title" data-i18n="cqp.aprovXRnc">Aprovadas × RNC</div>
+          <div class="panel-note" data-i18n="cqi.aprovNota">Por mês: OPs aprovadas (com e sem desvio) e RNCs abertas.</div>
+          <div class="cqi-caixa"><canvas id="chartCqiAprov"></canvas></div>
+        </div>
+        <div class="card panel-pad" id="cqi-card-abertas">
+          <div class="panel-title" data-i18n="cqp.abertasXFinal">OPs em aberto × finalizadas</div>
+          <div class="panel-note" data-i18n="cqi.abertasNota">Em aberto no fim de cada mês (inclui retrabalho) e finalizadas no mês.</div>
+          <div class="cqi-caixa"><canvas id="chartCqiAbertas"></canvas></div>
+        </div>
+        <div class="card panel-pad cqi-largo">
+          <div class="panel-title" data-i18n="cqi.perdas">Retrabalho, peças mortas e desvio</div>
+          <div class="panel-note" data-i18n="cqi.perdasNota">Em retrabalho no fim do mês · peças mortas e liberadas com desvio no mês.</div>
+          <div class="cqi-caixa"><canvas id="chartCqiPerdas"></canvas></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -962,7 +1125,7 @@
         <div id="hub-painel-entrar" style="display:none">
           <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="hub-entrar-nome" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
           <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
-            <div class="campo-senha"><input id="hub-entrar-senha" type="password" autocomplete="current-password" data-i18n-ph="hub.senhaEquipePh" placeholder="senha combinada com o coordenador">
+            <div class="campo-senha"><input id="hub-entrar-senha" type="password" autocomplete="current-password" data-i18n-ph="hub.senhaEquipePh" placeholder="senha combinada com a Gerência">
               <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="hub-entrar-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
             </div>
           </div>

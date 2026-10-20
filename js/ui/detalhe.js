@@ -20,6 +20,7 @@ import { irPara } from './rota.js';
 import { renderProjetos } from './projetos.js';
 import { renderNotificacoes } from './notificacoes.js';
 import { souGerencia, veAreasProjeto, renderAreasProjeto } from './gerencia.js';
+import * as Pedidos from './pedidos.js';
 
 function janela(rot, corpo, obs, corObs) {
   return '<div class="rot">' + rot + '</div><div class="datas">' + corpo + '</div>' +
@@ -106,25 +107,29 @@ export function renderDetalhe() {
   if (p.concluidoEm) info += linha(T('d.cicloTotal'), esc(plural(Projeto.ciclo(p), 'x.dia', 'x.dias')));
   $('detail-info').innerHTML = info;
 
-  // --- ações: cancelar só existe depois de paralisar; planejador só cuida do checklist ---
+  // --- ações: cancelar só existe depois de paralisar; planejador só cuida do checklist.
+  // Paralisar e cancelar são da Gerência: o GP pede (Pedidos) e espera a resposta. ---
   $('detail-btn-editar').style.display = podeGerir ? '' : 'none';
   $('detail-btn-excluir').style.display = podeGerir ? '' : 'none';
   function botao(classe, acao, rotulo) { return '<button type="button" class="btn ' + classe + '" data-acao="' + acao + '">' + esc(rotulo) + '</button>'; }
   let acoes = '';
+  const ger = souGerencia(), pedido = Projeto.pedidoPendente(p);
   if (podeGerir) {
     if (parado) {
-      acoes = botao('btn-success', 'retomarProjeto', T('d.retomar')) + botao('btn-danger', 'cancelarProjeto', T('d.cancelarProj')) +
+      acoes = botao('btn-success', 'retomarProjeto', T('d.retomar')) +
+        (ger ? botao('btn-danger', 'cancelarProjeto', T('d.cancelarProj')) : (pedido ? '' : botao('btn-danger', 'pedirCancelar', T('ped.pedirCancelar')))) +
         botao('btn-outline', 'abrirReagendar', T('d.reagendar'));
     } else if (Projeto.aberto(p)) {
       // a Gerência acompanha: quem marca a entrega é o GP
-      acoes = (souGerencia() ? '' : botao('btn-success', 'concluirProjeto', T('d.concluir'))) + botao('btn-warn', 'paralisarProjeto', T('d.paralisar')) +
+      acoes = (ger ? '' : botao('btn-success', 'concluirProjeto', T('d.concluir'))) +
+        (ger ? botao('btn-warn', 'paralisarProjeto', T('d.paralisar')) : (pedido ? '' : botao('btn-warn', 'pedirParalisar', T('ped.pedirParalisar')))) +
         botao('btn-outline', 'abrirReagendar', T('d.reagendar')) +
         (pr === 100 ? '<span class="nota-ok">' + esc(T('d.cronograma100')) + '</span>' : '<span class="hint-txt">' + esc(T('d.avisoCancelar')) + '</span>');
     } else {
       acoes = botao('btn-outline', 'reabrirProjeto', T('d.reabrir'));
     }
   }
-  $('detail-actions').innerHTML = acoes;
+  $('detail-actions').innerHTML = Pedidos.htmlFaixaPedido(p) + acoes;
 
   // --- histórico ---
   const evs = [];
@@ -197,6 +202,7 @@ function concluirProjeto() {
   confirmar(T('q.concluir', p.commessa, br(hoje())), { titulo: T('d.concluir'), textoOk: T('d.concluir') }).then(function (ok) {
     if (!ok || !buscarProjeto(p.id)) return;
     p.status = 'concluido'; p.concluidoEm = hoje(); p.canceladoEm = null;
+    p.pedido = null;
     const aberta = Projeto.pausaAtual(p);
     if (aberta) aberta.fim = hoje();
     aplicar(T('t.entregue', plural(Projeto.ciclo(p), 'x.dia', 'x.dias')));
@@ -211,9 +217,8 @@ function paralisarProjeto() {
     titulo: T('d.paralisar'), rotuloCampo: T('q.motivoRot'), placeholder: T('q.motivoPh'), textoOk: T('d.paralisar')
   }).then(function (motivo) {
     if (motivo === null || !buscarProjeto(p.id)) return;
-    p.paralisacoes = p.paralisacoes || [];
-    p.paralisacoes.push({ inicio: hoje(), fim: null, motivo: motivo.slice(0, 200) });
-    p.status = 'paralisado';
+    Pedidos.aplicarParalisar(p, motivo);
+    p.pedido = null;
     aplicar(T('t.paralisado'));
   });
 }
@@ -225,6 +230,7 @@ function retomarProjeto() {
     const aberta = Projeto.pausaAtual(p);
     if (aberta) aberta.fim = hoje();
     p.status = 'ativo';
+    p.pedido = null;   // retomou: um pedido de cancelamento perde o sentido
     p.cronogramaDefinido = false;
     aplicar(T('t.retomado', plural(dias, 'x.dia', 'x.dias'))).then(function () {
       // se a gravação foi recusada, a tela voltou para o projeto parado: não avisa
@@ -236,12 +242,12 @@ function retomarProjeto() {
 function cancelarProjeto() {
   const p = projetoAtual();
   if (p.status !== 'paralisado') { toast(T('d.avisoCancelar'), { tipo: 'erro' }); return; }
-  confirmar(T('q.cancelar', p.commessa, plural(Projeto.diasParadoAtual(p), 'x.dia', 'x.dias')),
-    { titulo: T('d.cancelarProj'), textoOk: T('d.cancelarProj'), perigo: true }).then(function (ok) {
-    if (!ok || !buscarProjeto(p.id)) return;
-    const aberta = Projeto.pausaAtual(p);
-    if (aberta) aberta.fim = hoje();
-    p.status = 'cancelado'; p.canceladoEm = hoje(); p.concluidoEm = null;
+  pedirTexto(T('q.cancelar', p.commessa, plural(Projeto.diasParadoAtual(p), 'x.dia', 'x.dias')),
+    { titulo: T('d.cancelarProj'), rotuloCampo: T('ped.motivoRot'), placeholder: T('q.motivoPh'), textoOk: T('d.cancelarProj'), perigo: true }).then(function (motivo) {
+    if (motivo === null || !buscarProjeto(p.id)) return;
+    if (!motivo) { toast(T('ped.semMotivo'), { tipo: 'erro' }); return; }
+    Pedidos.aplicarCancelar(p, motivo);
+    p.pedido = null;
     aplicar(T('t.canceladoT'));
   });
 }
@@ -432,6 +438,8 @@ document.addEventListener('change', function (e) {
 registrarAcoes({
   concluirProjeto: concluirProjeto, paralisarProjeto: paralisarProjeto, retomarProjeto: retomarProjeto,
   cancelarProjeto: cancelarProjeto, reabrirProjeto: reabrirProjeto, excluirProjeto: excluirProjeto,
+  pedirParalisar: function () { Pedidos.pedir(projetoAtual(), 'paralisar'); },
+  pedirCancelar: function () { Pedidos.pedir(projetoAtual(), 'cancelar'); },
   abrirReagendar: abrirReagendar, fecharReagendar: fecharReagendar, confirmarReagendar: confirmarReagendar,
   marcarItem: marcarItem, mudarDias: mudarDias, addItemChecklist: addItemChecklist, removerItem: removerItem,
   abrirObs: abrirObs, salvarObs: function () { salvarObs(false); }, apagarObs: function () { salvarObs(true); },

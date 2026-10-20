@@ -75,11 +75,10 @@ export function gravarPlanilha(projeto, comparacao) {
 
 export function idOp(projetoId, area, desenho, posicao) { return Planilha.idOp(projetoId, area, desenho, posicao); }
 
-// CQ: Aprovada ou Com RNC (observação obrigatória). Uma vez só (regra).
-export function finalizar(opId, status, rncObs) {
-  const dados = { status: status, finalizadoPorUid: Auth.uid(), finalizadoPorNome: Auth.nomeExibicao(), finalizadoEm: agoraIso() };
-  if (status === 'rnc') dados.rncObs = String(rncObs || '').slice(0, 1000);
-  return colOps().doc(opId).update(dados);
+// CQ aprova a OP (aberta, ou em retrabalho depois de reinspecionada). A RNC
+// e a reinspeção vão por dados/rncs.js.
+export function aprovar(opId) {
+  return colOps().doc(opId).update({ status: 'aprovada', finalizadoPorUid: Auth.uid(), finalizadoPorNome: Auth.nomeExibicao(), finalizadoEm: agoraIso() });
 }
 
 export function apagar(opId) { return colOps().doc(opId).delete(); }

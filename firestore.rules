@@ -22,12 +22,15 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/equipes/$(equipeId))
         && get(/databases/$(database)/documents/equipes/$(equipeId)).data.coordenadorUid == request.auth.uid;
     }
-    function coordenadorDe(equipeId) {
-      return get(/databases/$(database)/documents/equipes/$(equipeId)).data.coordenadorUid;
-    }
     // Gerente de PCP: administra a equipe e vê/edita todos os projetos.
+    // A Gerência pode ter várias pessoas (papel gerente_pcp). Em equipe de
+    // antes dos cargos (sem papeisMigrados), quem a criou também vale.
+    function equipeMigrada(equipeId) {
+      return get(/databases/$(database)/documents/equipes/$(equipeId)).data.get('papeisMigrados', false) == true;
+    }
     function souGerenteDe(equipeId) {
-      return membroDe(equipeId) && (souCoordDe(equipeId) || papelEm(equipeId) == 'gerente_pcp');
+      return membroDe(equipeId) && (papelEm(equipeId) == 'gerente_pcp'
+        || (souCoordDe(equipeId) && !equipeMigrada(equipeId)));
     }
     function souPapel(equipeId, papel) {
       return membroDe(equipeId) && papelEm(equipeId) == papel;
@@ -137,7 +140,7 @@ service cloud.firestore {
         && request.resource.data.equipeId is string
         && request.resource.data.sal is string
         && get(/databases/$(database)/documents/equipes/$(request.resource.data.equipeId)).data.criadoPorUid == request.auth.uid;
-      allow update: if souCoordDe(resource.data.equipeId)
+      allow update: if souGerenteDe(resource.data.equipeId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sal'])
         && request.resource.data.sal is string;
       allow delete: if false;
@@ -148,8 +151,11 @@ service cloud.firestore {
     // criação da equipe (mesma transação, por isso getAfter) ou ao redefinir.
     match /equipeSegredos/{equipeId} {
       allow read: if false;
+      // criada junto com a equipe (pelo criador); a senha nova, qualquer gerente
       allow create, update: if request.auth != null
-        && getAfter(/databases/$(database)/documents/equipes/$(equipeId)).data.coordenadorUid == request.auth.uid
+        && (getAfter(/databases/$(database)/documents/equipes/$(equipeId)).data.coordenadorUid == request.auth.uid
+            && !exists(/databases/$(database)/documents/equipes/$(equipeId))
+          || souGerenteDe(equipeId))
         && request.resource.data.keys().hasOnly(['senhaHash'])
         && request.resource.data.senhaHash is string;
       allow delete: if false;
@@ -180,11 +186,11 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('equipesCriadas', 0) < 3
         && getAfter(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('equipesCriadas', 0)
              == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('equipesCriadas', 0) + 1;
-      // Transferir coordenação, ou apagar o hash antigo (sem sal) que ficava
-      // aqui — feito ao redefinir a senha da equipe. Só o coordenador.
-      allow update: if souCoordDe(equipeId) && (
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coordenadorUid'])
-          && exists(/databases/$(database)/documents/equipes/$(equipeId)/membros/$(request.resource.data.coordenadorUid)))
+      // Qualquer gerente: marcar a equipe como migrada (uma vez) ou apagar o
+      // hash antigo (sem sal) que ficava aqui, ao redefinir a senha.
+      allow update: if souGerenteDe(equipeId) && (
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['papeisMigrados'])
+          && request.resource.data.papeisMigrados == true)
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['senhaHash'])
           && !('senhaHash' in request.resource.data))
       );
@@ -197,18 +203,21 @@ service cloud.firestore {
           || convitePraMim(equipeId, request.resource.data.papel)
           || senhaConfere(equipeId, request.resource.data.papel)
         );
-        // O Gerente de PCP muda o cargo de qualquer um, menos o do
-        // coordenador (só o próprio coordenador mexe no dele); cada um pode
-        // atualizar o próprio nome de exibição.
+        // Gerente muda o cargo de qualquer outro (inclusive de outro gerente),
+        // nunca o próprio — a equipe nunca fica sem Gerência. Exceção: na
+        // migração, o criador da equipe antiga grava o próprio "gerente_pcp".
+        // Cada um pode atualizar o próprio nome de exibição.
         allow update: if (souGerenteDe(equipeId)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['papel'])
             && request.resource.data.papel in papeis()
-            && (uid != coordenadorDe(equipeId) || request.auth.uid == uid))
+            && (uid != request.auth.uid
+              || (souCoordDe(equipeId) && !equipeMigrada(equipeId) && request.resource.data.papel == 'gerente_pcp')))
           || (request.auth != null && request.auth.uid == uid
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome'])
             && request.resource.data.nome is string && request.resource.data.nome.size() <= 60);
-        allow delete: if (souGerenteDe(equipeId) && uid != coordenadorDe(equipeId))
-          || (request.auth != null && request.auth.uid == uid);
+        // Gerente remove os outros; cada um sai sozinho, menos gerente.
+        allow delete: if (souGerenteDe(equipeId) && uid != request.auth.uid)
+          || (request.auth != null && request.auth.uid == uid && !souGerenteDe(equipeId));
       }
 
       // Projetos: um documento por projeto.
@@ -220,13 +229,31 @@ service cloud.firestore {
       //  - programadores leem todos (linha do tempo e carga), sem editar;
       //    o chat continua só para quem vê o projeto (vejoProjeto)
       match /projetos/{projetoId} {
+        // Paralisar e cancelar são da Gerência: o GP só pede (campo "pedido",
+        // em nome dele) e a Gerência aprova ou recusa. Retomar, concluir e
+        // reabrir o GP faz direto.
+        function statusDoGpOk() {
+          return request.resource.data.get('status', 'ativo') == resource.data.get('status', 'ativo')
+            || request.resource.data.get('status', 'ativo') in ['ativo', 'concluido'];
+        }
+        function pedidoDoGpOk() {
+          return request.resource.data.get('pedido', null) == resource.data.get('pedido', null)
+            || request.resource.data.get('pedido', null) == null
+            || (request.resource.data.pedido.tipo in ['paralisar', 'cancelar']
+              && request.resource.data.pedido.porUid == request.auth.uid
+              && request.resource.data.pedido.motivo is string
+              && request.resource.data.pedido.motivo.size() > 0 && request.resource.data.pedido.motivo.size() <= 200);
+        }
         allow read: if vejoProjeto(equipeId, resource.data)
           || souPapel(equipeId, 'prog_usinagem') || souPapel(equipeId, 'prog_caldeiraria');
         allow create: if souGerenteDe(equipeId)
-          || (souPapel(equipeId, 'gp') && request.resource.data.gpUid == request.auth.uid);
+          || (souPapel(equipeId, 'gp') && request.resource.data.gpUid == request.auth.uid
+            && request.resource.data.get('status', 'ativo') in ['ativo', 'concluido']
+            && request.resource.data.get('pedido', null) == null);
         allow update: if souGerenteDe(equipeId)
           || (souPapel(equipeId, 'gp') && resource.data.get('gpUid', null) == request.auth.uid
-            && request.resource.data.get('gpUid', null) == request.auth.uid)
+            && request.resource.data.get('gpUid', null) == request.auth.uid
+            && statusDoGpOk() && pedidoDoGpOk())
           || (souTecnicoDe(equipeId) && resource.data.get('responsavelUid', null) == request.auth.uid
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checklist']));
         allow delete: if souGerenteDe(equipeId)
@@ -274,15 +301,26 @@ service cloud.firestore {
           || (souPapel(equipeId, 'prog_caldeiraria') && resource.data.area == 'caldeiraria')
           || (souPapel(equipeId, 'gp') && resource.data.gpUid == request.auth.uid)
           || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid);
+        // Pela planilha (técnico do projeto ou gerente) ou, no retrabalho, pelo
+        // CQ: OP nova ligada à original, que vira peça morta no mesmo lote.
         allow create: if request.resource.data.projetoId is string
-          && (souGerenteDe(equipeId) || souTecnicoDoProjeto(projeto(equipeId, request.resource.data.projetoId)))
           && designacaoConfere(request.resource.data, projeto(equipeId, request.resource.data.projetoId))
-          && request.resource.data.keys().hasOnly(camposOp())
-          && request.resource.data.area in ['caldeiraria', 'usinagem']
           && request.resource.data.status == 'aberta'
           && request.resource.data.numero is string
           && request.resource.data.numero.size() > 0 && request.resource.data.numero.size() <= 40
-          && request.resource.data.criadoPorUid == request.auth.uid;
+          && request.resource.data.criadoPorUid == request.auth.uid
+          && (
+            ((souGerenteDe(equipeId) || souTecnicoDoProjeto(projeto(equipeId, request.resource.data.projetoId)))
+              && request.resource.data.keys().hasOnly(camposOp())
+              && request.resource.data.area in ['caldeiraria', 'usinagem'])
+            || (souPapel(equipeId, 'cq')
+              && request.resource.data.keys().hasOnly(camposOp().concat(['origemOpId', 'origemRncId']))
+              && request.resource.data.origemOpId is string
+              && get(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.origemOpId)).data.status in ['retrabalho', 'rnc']
+              && getAfter(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.origemOpId)).data.status == 'morta'
+              && get(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.origemOpId)).data.projetoId == request.resource.data.projetoId
+              && get(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.origemOpId)).data.area == request.resource.data.area)
+          );
         allow update: if (
             (souGerenteDe(equipeId) || souTecnicoDoProjeto(projeto(equipeId, resource.data.projetoId))
               || (souPapel(equipeId, 'gp') && projeto(equipeId, resource.data.projetoId).get('gpUid', null) == request.auth.uid))
@@ -304,18 +342,68 @@ service cloud.firestore {
                 && request.resource.data.horasPrevistas >= 0 && request.resource.data.horasPrevistas <= 10000))
             && request.resource.data.programadoPorUid == request.auth.uid
           ) || (
-            souPapel(equipeId, 'cq') && resource.data.status == 'aberta'
+            // Controle de qualidade. Da OP aberta ou em retrabalho:
+            //  → aprovada (aberta ou retrabalho) / desvio (só do retrabalho)
+            //  → retrabalho, apontando para a RNC que existe depois deste lote
+            //  → morta (só do retrabalho), com a OP nova já criada no lote
+            // Aprovada, desvio e morta são finais: o CQ não desfaz.
+            souPapel(equipeId, 'cq') && resource.data.status in ['aberta', 'retrabalho', 'rnc']
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['status', 'rncObs', 'finalizadoPorUid', 'finalizadoPorNome', 'finalizadoEm'])
-            && request.resource.data.status in ['aprovada', 'rnc']
-            && request.resource.data.finalizadoPorUid == request.auth.uid
-            && request.resource.data.finalizadoEm is string
-            && (request.resource.data.status == 'aprovada'
-              || (request.resource.data.rncObs is string
-                && request.resource.data.rncObs.size() > 0 && request.resource.data.rncObs.size() <= 1000))
+                 .hasOnly(['status', 'finalizadoPorUid', 'finalizadoPorNome', 'finalizadoEm',
+                           'rncAtualId', 'rncNumero', 'retrabalhoDesde', 'mortaEm', 'opNovaId', 'opNovaNumero'])
+            && (
+              (request.resource.data.status == 'aprovada'
+                || (request.resource.data.status == 'desvio' && resource.data.status in ['retrabalho', 'rnc']))
+                && request.resource.data.finalizadoPorUid == request.auth.uid
+                && request.resource.data.finalizadoEm is string
+              || (request.resource.data.status == 'retrabalho'
+                && request.resource.data.rncAtualId is string
+                && existsAfter(/databases/$(database)/documents/equipes/$(equipeId)/rncs/$(request.resource.data.rncAtualId)))
+              || (request.resource.data.status == 'morta' && resource.data.status in ['retrabalho', 'rnc']
+                && request.resource.data.opNovaId is string
+                && existsAfter(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.opNovaId))
+                && request.resource.data.mortaEm is string)
+            )
           );
         allow delete: if souGerenteDe(equipeId)
           || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid && resource.data.status == 'aberta');
+      }
+
+      // Registro de Não Conformidade (formulário R02), ligado a uma OP. Só o
+      // CQ abre e preenche; ao abrir, a OP vai para "retrabalho" apontando
+      // para esta RNC no mesmo lote. Gerência e CQ leem todas; GP e técnico,
+      // as dos projetos deles. Nunca se apaga (é registro da qualidade).
+      match /rncs/{rncId} {
+        function camposForm() {
+          return ['numero', 'produto', 'desenho', 'rev', 'commessa', 'op', 'qtd', 'tag', 'item', 'setor', 'setorOutros',
+                  'procedencia', 'descricao', 'inspetor', 'qtdNc', 'data', 'disposicao', 'dispResponsavel', 'dispData',
+                  'reOp', 'reInspetor', 'reData', 'reResultado', 'reResponsavel', 'observacoes', 'situacao', 'atualizadoEm'];
+        }
+        function textosOk(d) {
+          return d.numero is string && d.numero.size() > 0 && d.numero.size() <= 30
+            && d.descricao is string && d.descricao.size() > 0 && d.descricao.size() <= 3000
+            && d.disposicao is string && d.disposicao.size() <= 3000
+            && d.observacoes is string && d.observacoes.size() <= 6000
+            && d.situacao in ['aberta', 'encerrada'];
+        }
+        allow read: if souGerenteDe(equipeId) || souPapel(equipeId, 'cq')
+          || (souPapel(equipeId, 'gp') && resource.data.gpUid == request.auth.uid)
+          || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid);
+        allow create: if souPapel(equipeId, 'cq')
+          && request.resource.data.keys().hasOnly(camposForm().concat(['opId', 'projetoId', 'area', 'gpUid', 'tecnicoUid',
+               'criadoPorUid', 'criadoPorNome', 'criadoEm']))
+          && textosOk(request.resource.data)
+          && request.resource.data.criadoPorUid == request.auth.uid
+          && request.resource.data.opId is string
+          && get(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.opId)).data.status in ['aberta', 'retrabalho', 'rnc']
+          && getAfter(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.opId)).data.rncAtualId == rncId
+          && request.resource.data.projetoId == get(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.opId)).data.projetoId
+          && request.resource.data.gpUid == get(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.opId)).data.gpUid
+          && request.resource.data.tecnicoUid == get(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.opId)).data.tecnicoUid;
+        allow update: if souPapel(equipeId, 'cq')
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(camposForm())
+          && textosOk(request.resource.data);
+        allow delete: if false;
       }
 
       // Máquinas da usinagem (carga máquina): toda a equipe lê; o programador
@@ -386,7 +474,7 @@ service cloud.firestore {
         && request.resource.data.paraUid is string
         && request.resource.data.deUid == request.auth.uid
         && request.resource.data.tipo in ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas',
-                                          'designacaoTrocada', 'planilhaOps', 'rnc', 'chat']
+                                          'designacaoTrocada', 'planilhaOps', 'rnc', 'chat', 'pedido', 'pedidoAprovado', 'pedidoRecusado']
         && request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 500
         && (request.resource.data.projetoId == null || request.resource.data.projetoId is string)
         && request.resource.data.lida == false

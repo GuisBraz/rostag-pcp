@@ -4,16 +4,29 @@
 --------------------------------------------------------------------------- */
 import { hoje, difDias } from '../nucleo/fmt.js';
 
-// Contagem das OPs de um projeto: geral e por área. RNC conta como não aprovada.
+// Situação da OP, já normalizada: o antigo "rnc" (antes da reinspeção existir)
+// vale como "retrabalho".
+//   aberta → aprovada | retrabalho → aprovada | desvio (liberada com desvio)
+//                                  → morta (substituída por uma OP de retrabalho)
+export function statusOp(o) { return o && o.status === 'rnc' ? 'retrabalho' : (o && o.status) || 'aberta'; }
+export function finalizada(o) { const s = statusOp(o); return s === 'aprovada' || s === 'desvio'; }
+export function emAberto(o) { const s = statusOp(o); return s === 'aberta' || s === 'retrabalho'; }
+
+// Contagem das OPs de um projeto: geral e por área. "aprovadas" inclui as
+// liberadas com desvio; retrabalho conta como não aprovada; peça morta sai do
+// total (a OP de retrabalho que a substitui é que conta). O campo "rnc" é o
+// mesmo que "retrabalho", mantido para as telas que já usavam o nome.
 export function estatisticas(ops) {
-  const vazio = function () { return { total: 0, aprovadas: 0, rnc: 0, abertas: 0, pct: 0 }; };
+  const vazio = function () { return { total: 0, aprovadas: 0, desvio: 0, retrabalho: 0, rnc: 0, abertas: 0, mortas: 0, pct: 0 }; };
   const r = Object.assign(vazio(), { caldeiraria: vazio(), usinagem: vazio() });
   (ops || []).forEach(function (o) {
+    const s = statusOp(o);
     [r, r[o.area]].forEach(function (alvo) {
       if (!alvo) return;
+      if (s === 'morta') { alvo.mortas++; return; }
       alvo.total++;
-      if (o.status === 'aprovada') alvo.aprovadas++;
-      else if (o.status === 'rnc') alvo.rnc++;
+      if (s === 'aprovada' || s === 'desvio') { alvo.aprovadas++; if (s === 'desvio') alvo.desvio++; }
+      else if (s === 'retrabalho') { alvo.retrabalho++; alvo.rnc++; }
       else alvo.abertas++;
     });
   });

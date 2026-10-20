@@ -266,20 +266,119 @@ describe('OPs: controle de qualidade', () => {
   const fim = (extra) => ({ status: 'aprovada', finalizadoPorUid: Q, finalizadoPorNome: 'Q', finalizadoEm: 'x', ...extra });
   test('CQ aprova uma vez e não desfaz', async () => {
     await assertSucceeds(como(Q).doc('equipes/E1/ops/op1').update(fim()));
-    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim({ status: 'rnc', rncObs: 'trinca' })));
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update({ status: 'retrabalho' }));
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim({ status: 'desvio' })));
   });
-  test('RNC exige observação', async () => {
-    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim({ status: 'rnc' })));
-    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim({ status: 'rnc', rncObs: '' })));
-    await assertSucceeds(como(Q).doc('equipes/E1/ops/op1').update(fim({ status: 'rnc', rncObs: 'Furo fora de posição' })));
+  test('desvio só depois do retrabalho; o legado "rnc" conta como retrabalho', async () => {
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim({ status: 'desvio' })));
+    await semear('equipes/E1/ops/op4', op({ status: 'rnc' }));
+    await assertSucceeds(como(Q).doc('equipes/E1/ops/op4').update(fim({ status: 'desvio' })));
   });
   test('CQ não finaliza em nome de outro nem mexe nos dados da peça', async () => {
     await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim({ finalizadoPorUid: P })));
     await assertFails(como(Q).doc('equipes/E1/ops/op1').update({ descricao: 'x' }));
     await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim({ status: 'aberta' })));
   });
+  test('retrabalho só apontando para uma RNC que existe', async () => {
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update({ status: 'retrabalho' }));
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update({ status: 'retrabalho', rncAtualId: 'naoExiste' }));
+  });
   test('só o CQ finaliza', async () => {
     for (const uid of [M, G, P, U]) await assertFails(como(uid).doc('equipes/E1/ops/op1').update(fim({ finalizadoPorUid: uid })));
+  });
+});
+
+describe('RNC (formulário R02)', () => {
+  const fim = (extra) => ({ status: 'aprovada', finalizadoPorUid: Q, finalizadoPorNome: 'Q', finalizadoEm: 'x', ...extra });
+  function form(extra) {
+    return { numero: '001', produto: 'SUPORTE', desenho: '1609568', rev: '0', commessa: '2026-001', op: '02052501001', qtd: '2',
+      tag: '', item: '1', setor: { usinagem: true, caldeiraria: false, pintura: false, fornecedor: false, outros: false }, setorOutros: '',
+      procedencia: 'interno', descricao: 'Furo fora de posição', inspetor: 'Q', qtdNc: '1', data: '2026-10-20',
+      disposicao: '', dispResponsavel: '', dispData: '', reOp: '', reInspetor: '', reData: '', reResultado: '', reResponsavel: '',
+      observacoes: '', situacao: 'aberta', atualizadoEm: 'x', ...extra };
+  }
+  function doc(extra) {
+    return { ...form(), opId: 'op1', projetoId: 'doP', area: 'usinagem', gpUid: G, tecnicoUid: P,
+      criadoPorUid: Q, criadoPorNome: 'Q', criadoEm: 'x', ...extra };
+  }
+  // Mesmo caminho do app (dados/rncs.js → abrir): RNC + OP em retrabalho no mesmo lote.
+  async function abrir(db, id, extraRnc, extraOp) {
+    const lote = db.batch();
+    lote.set(db.doc('equipes/E1/rncs/' + id), doc(extraRnc));
+    lote.update(db.doc('equipes/E1/ops/' + ((extraRnc && extraRnc.opId) || 'op1')),
+      { status: 'retrabalho', rncAtualId: id, rncNumero: '001', retrabalhoDesde: 'x', ...extraOp });
+    return lote.commit();
+  }
+
+  test('CQ abre a RNC e a OP vai para retrabalho no mesmo lote', async () => {
+    await assertSucceeds(abrir(como(Q), 'r1'));
+  });
+  test('sem mexer na OP, a RNC não é criada; nem a OP vai para retrabalho sozinha', async () => {
+    await assertFails(como(Q).doc('equipes/E1/rncs/r1').set(doc()));
+    await assertFails(abrir(como(Q), 'r1', {}, { rncAtualId: 'outra' }));
+  });
+  test('RNC fora do formato ou com dados que não batem com a OP', async () => {
+    await assertFails(abrir(como(Q), 'r1', { descricao: '' }));
+    await assertFails(abrir(como(Q), 'r1', { numero: 'x'.repeat(31) }));
+    await assertFails(abrir(como(Q), 'r1', { gpUid: 'outroGP' }));
+    await assertFails(abrir(como(Q), 'r1', { projetoId: 'doT' }));
+    await assertFails(abrir(como(Q), 'r1', { criadoPorUid: P }));
+    await assertFails(abrir(como(Q), 'r1', { campoEstranho: 1 }));
+  });
+  test('não abre RNC de OP já aprovada', async () => {
+    await semear('equipes/E1/ops/op5', op({ status: 'aprovada', finalizadoPorUid: Q }));
+    await assertFails(abrir(como(Q), 'r1', { opId: 'op5' }));
+  });
+  test('só o CQ abre e edita; ninguém apaga', async () => {
+    for (const uid of [M, G, P, U]) await assertFails(abrir(como(uid), 'r1', { criadoPorUid: uid }));
+    await semear('equipes/E1/rncs/r2', doc());
+    await assertSucceeds(como(Q).doc('equipes/E1/rncs/r2').update({ disposicao: 'Retrabalhar furo', atualizadoEm: 'y' }));
+    await assertFails(como(Q).doc('equipes/E1/rncs/r2').update({ opId: 'op2' }));
+    await assertFails(como(M).doc('equipes/E1/rncs/r2').update({ disposicao: 'x' }));
+    await assertFails(como(Q).doc('equipes/E1/rncs/r2').delete());
+    await assertFails(como(M).doc('equipes/E1/rncs/r2').delete());
+  });
+  test('quem lê: Gerência e CQ todas; GP e técnico só as dos projetos deles', async () => {
+    await semear('equipes/E1/rncs/r2', doc());
+    await semear('equipes/E1/rncs/r3', doc({ opId: 'op2', projetoId: 'doT', area: 'caldeiraria', gpUid: 'outroGP', tecnicoUid: T }));
+    for (const uid of [C, M, Q]) await assertSucceeds(como(uid).collection('equipes/E1/rncs').get());
+    await assertSucceeds(como(G).collection('equipes/E1/rncs').where('gpUid', '==', G).get());
+    await assertFails(como(G).doc('equipes/E1/rncs/r3').get());
+    await assertSucceeds(como(P).doc('equipes/E1/rncs/r2').get());
+    await assertSucceeds(como(T).doc('equipes/E1/rncs/r3').get());
+    await assertFails(como(T).doc('equipes/E1/rncs/r2').get());
+    for (const uid of [U, K, Y]) await assertFails(como(uid).doc('equipes/E1/rncs/r2').get());
+  });
+  test('reinspeção conforme aprova; desvio libera com desvio', async () => {
+    await assertSucceeds(abrir(como(Q), 'r1'));
+    await assertSucceeds(como(Q).doc('equipes/E1/ops/op1').update(fim({ status: 'desvio' })));
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim()));
+  });
+  test('nova RNC na OP que continua em retrabalho', async () => {
+    await assertSucceeds(abrir(como(Q), 'r1'));
+    await assertSucceeds(abrir(como(Q), 'r9', { numero: '002' }, { rncNumero: '002' }));
+  });
+  test('Nº OP de retrabalho: nasce a OP nova ligada e a original vira peça morta', async () => {
+    await assertSucceeds(abrir(como(Q), 'r1'));
+    const db = como(Q);
+    const nova = op({ numero: '02052501099', criadoPorUid: Q, origemOpId: 'op1', origemRncId: 'r1' });
+    const lote = db.batch();
+    lote.set(db.doc('equipes/E1/ops/op1__rt1'), nova);
+    lote.update(db.doc('equipes/E1/ops/op1'), { status: 'morta', mortaEm: 'x', opNovaId: 'op1__rt1', opNovaNumero: '02052501099' });
+    await assertSucceeds(lote.commit());
+    // morta é final
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim()));
+  });
+  test('peça morta exige a OP nova no mesmo lote, e OP nova exige a morta', async () => {
+    await assertSucceeds(abrir(como(Q), 'r1'));
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update({ status: 'morta', mortaEm: 'x', opNovaId: 'naoExiste' }));
+    await assertFails(como(Q).doc('equipes/E1/ops/op1__rt2').set(op({ criadoPorUid: Q, origemOpId: 'op1', origemRncId: 'r1' })));
+    // de OP aberta (sem RNC) não dá
+    const db = como(Q);
+    const lote = db.batch();
+    lote.set(db.doc('equipes/E1/ops/op2__rt'), op({ projetoId: 'doT', gpUid: 'outroGP', tecnicoUid: T, area: 'caldeiraria', criadoPorUid: Q, origemOpId: 'op2', origemRncId: 'r1' }));
+    lote.update(db.doc('equipes/E1/ops/op2'), { status: 'morta', mortaEm: 'x', opNovaId: 'op2__rt' });
+    await assertFails(lote.commit());
   });
 });
 
@@ -417,40 +516,90 @@ describe('entrar por nome + senha', () => {
 
 /* ----------------------------------------------------- papéis e membros */
 describe('cargos e remoção de membros', () => {
-  test('o Gerente de PCP muda o cargo de qualquer um para um cargo válido', async () => {
+  test('o Gerente de PCP muda o cargo de qualquer outro para um cargo válido', async () => {
     await assertSucceeds(como(M).doc('equipes/E1/membros/' + P).update({ papel: 'tecnico' }));
     await assertSucceeds(como(M).doc('equipes/E1/membros/' + T).update({ papel: 'cq' }));
     await assertSucceeds(como(C).doc('equipes/E1/membros/' + G).update({ papel: 'gerente_pcp' }));
     await assertFails(como(M).doc('equipes/E1/membros/' + P).update({ papel: 'coordenador' }));
     await assertFails(como(M).doc('equipes/E1/membros/' + P).update({ papel: 'planejador' }));
   });
-  test('ninguém além do gerente muda cargo; o do coordenador só ele', async () => {
+  test('gerente muda o cargo de outro gerente, nunca o próprio', async () => {
+    await assertFails(como(M).doc('equipes/E1/membros/' + M).update({ papel: 'tecnico' }));
+    await assertSucceeds(como(M).doc('equipes/E1/membros/' + C).update({ papel: 'tecnico' }));
     for (const uid of [G, P, Q]) await assertFails(como(uid).doc('equipes/E1/membros/' + uid).update({ papel: 'gerente_pcp' }));
-    await assertFails(como(M).doc('equipes/E1/membros/' + C).update({ papel: 'tecnico' }));
-    await assertSucceeds(como(C).doc('equipes/E1/membros/' + C).update({ papel: 'gerente_pcp' }));
+  });
+  test('migração: o criador da equipe antiga grava o próprio gerente_pcp e marca a equipe', async () => {
+    const db = como(C);
+    const lote = db.batch();
+    lote.update(db.doc('equipes/E1/membros/' + C), { papel: 'gerente_pcp' });
+    lote.update(db.doc('equipes/E1'), { papeisMigrados: true });
+    await assertSucceeds(lote.commit());
+    await assertFails(como(C).doc('equipes/E1').update({ papeisMigrados: false }));
+    await assertFails(como(G).doc('equipes/E1').update({ papeisMigrados: true }));
+  });
+  test('depois da migração o criador vale só pelo papel gravado', async () => {
+    await semear('equipes/E1', { nome: 'Equipe 1', coordenadorUid: C, criadoPorUid: C, papeisMigrados: true });
+    // C ficou com o papel antigo "gp" gravado: não é mais Gerência
+    await assertFails(como(C).doc('equipes/E1/membros/' + P).update({ papel: 'tecnico' }));
+    await assertFails(como(C).doc('equipes/E1/projetos/doT').get());
+    await assertSucceeds(como(M).doc('equipes/E1/projetos/doT').get());
   });
   test('cada um muda só o próprio nome de exibição', async () => {
     await assertSucceeds(como(P).doc('equipes/E1/membros/' + P).update({ nome: 'Novo nome' }));
     await assertFails(como(P).doc('equipes/E1/membros/' + G).update({ nome: 'x' }));
     await assertFails(como(P).doc('equipes/E1/membros/' + P).update({ nome: 'x'.repeat(61) }));
   });
-  test('o gerente remove outro membro (menos o coordenador); cada um pode sair', async () => {
+  test('gerente remove os outros (inclusive gerente); cada um sai, menos gerente', async () => {
     await assertFails(como(G).doc('equipes/E1/membros/' + P).delete());
-    await assertFails(como(M).doc('equipes/E1/membros/' + C).delete());
     await assertSucceeds(como(M).doc('equipes/E1/membros/' + P).delete());
     await assertSucceeds(como(G).doc('equipes/E1/membros/' + G).delete());
+    await assertFails(como(M).doc('equipes/E1/membros/' + M).delete());
+    await assertFails(como(C).doc('equipes/E1/membros/' + C).delete());
+    await assertSucceeds(como(M).doc('equipes/E1/membros/' + C).delete());
   });
-  test('só o coordenador passa a coordenação', async () => {
-    await assertFails(como(G).doc('equipes/E1').update({ coordenadorUid: G }));
+  test('não existe mais passar coordenação', async () => {
+    await assertFails(como(C).doc('equipes/E1').update({ coordenadorUid: M }));
     await assertFails(como(M).doc('equipes/E1').update({ coordenadorUid: M }));
-    await assertSucceeds(como(C).doc('equipes/E1').update({ coordenadorUid: M }));
   });
-  test('coordenador não passa o cargo para quem não é membro', async () => {
-    await assertFails(como(C).doc('equipes/E1').update({ coordenadorUid: X }));
+  test('qualquer gerente troca a senha da equipe; os outros não', async () => {
+    await assertSucceeds(como(M).doc('equipeSegredos/E1').set({ senhaHash: 'nova' }));
+    await assertSucceeds(como(C).doc('equipeSegredos/E1').set({ senhaHash: 'nova2' }));
+    for (const uid of [G, P, Q, Y]) await assertFails(como(uid).doc('equipeSegredos/E1').set({ senhaHash: 'x' }));
   });
   test('ninguém se adiciona como membro sem convite nem senha', async () => {
     await assertFails(como(X).doc('equipes/E1/membros/' + X).set({ nome: X, papel: 'gp' }));
     await assertFails(como(M).doc('equipes/E1/membros/' + X).set({ nome: X, papel: 'tecnico' }));
+  });
+});
+
+describe('pedidos do GP à Gerência', () => {
+  const ped = (extra) => ({ tipo: 'paralisar', motivo: 'Cliente suspendeu', porUid: G, porNome: 'G', em: 'x', ...extra });
+  test('GP pede para paralisar sem mudar o status; desiste', async () => {
+    await assertSucceeds(como(G).doc('equipes/E1/projetos/doP').update({ pedido: ped() }));
+    await assertSucceeds(como(G).doc('equipes/E1/projetos/doP').update({ pedido: null }));
+  });
+  test('pedido fora do formato ou em nome de outro', async () => {
+    await assertFails(como(G).doc('equipes/E1/projetos/doP').update({ pedido: ped({ porUid: M }) }));
+    await assertFails(como(G).doc('equipes/E1/projetos/doP').update({ pedido: ped({ tipo: 'apagar' }) }));
+    await assertFails(como(G).doc('equipes/E1/projetos/doP').update({ pedido: ped({ motivo: '' }) }));
+  });
+  test('GP não paralisa nem cancela direto; retoma, conclui e reabre', async () => {
+    await assertFails(como(G).doc('equipes/E1/projetos/doP').update({ status: 'paralisado' }));
+    await assertFails(como(G).doc('equipes/E1/projetos/doP').update({ status: 'cancelado' }));
+    await semear('equipes/E1/projetos/doP', { nome: 'Projeto do P', gpUid: G, responsavelUid: P, checklist: [], status: 'paralisado' });
+    await assertSucceeds(como(G).doc('equipes/E1/projetos/doP').update({ status: 'ativo' }));
+    await assertSucceeds(como(G).doc('equipes/E1/projetos/doP').update({ status: 'concluido' }));
+    await assertSucceeds(como(G).doc('equipes/E1/projetos/doP').update({ status: 'ativo' }));
+  });
+  test('GP não cria projeto já paralisado ou com pedido', async () => {
+    await assertFails(como(G).doc('equipes/E1/projetos/n1').set({ gpUid: G, status: 'paralisado' }));
+    await assertFails(como(G).doc('equipes/E1/projetos/n2').set({ gpUid: G, status: 'ativo', pedido: ped() }));
+    await assertSucceeds(como(G).doc('equipes/E1/projetos/n3').set({ gpUid: G, status: 'ativo' }));
+  });
+  test('Gerência aprova (aplica e limpa o pedido) ou recusa', async () => {
+    await semear('equipes/E1/projetos/doP', { nome: 'Projeto do P', gpUid: G, responsavelUid: P, checklist: [], status: 'ativo', pedido: ped() });
+    await assertSucceeds(como(M).doc('equipes/E1/projetos/doP').update({ status: 'paralisado', pedido: null }));
+    await assertSucceeds(como(C).doc('equipes/E1/projetos/doP').update({ status: 'cancelado' }));
   });
 });
 

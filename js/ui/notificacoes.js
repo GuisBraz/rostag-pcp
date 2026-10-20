@@ -51,11 +51,12 @@ export function pararNotificacoes() {
   registrando = new Set();
 }
 
-const TIPOS_REAIS = ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas', 'designacaoTrocada', 'planilhaOps', 'rnc', 'chat'];
+const TIPOS_REAIS = ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas', 'designacaoTrocada', 'planilhaOps', 'rnc', 'chat', 'pedido', 'pedidoAprovado', 'pedidoRecusado'];
 // Categorias para o filtro da tela cheia.
 const CATEGORIA = {
   designacao: 'projeto', projetoCriado: 'projeto', cronograma: 'projeto', datas: 'projeto', designacaoTrocada: 'projeto',
-  planilhaOps: 'fabrica', rnc: 'fabrica', chat: 'conversa', observacao: 'conversa'
+  planilhaOps: 'fabrica', rnc: 'fabrica', chat: 'conversa', observacao: 'conversa',
+  pedido: 'projeto', pedidoAprovado: 'projeto', pedidoRecusado: 'projeto'
 };
 function categoriaDe(n) { return n.real ? (CATEGORIA[n.tipo] || 'conversa') : (/^prod-/.test(n.tipo) ? 'fabrica' : 'prazos'); }
 
@@ -63,7 +64,7 @@ function mapReal(n) {
   const tipo = TIPOS_REAIS.indexOf(n.tipo) >= 0 ? n.tipo : 'observacao';
   return {
     id: 'real:' + n.id, real: true, tipo: tipo, projetoId: n.projetoId || '', equipeId: n.equipeId || '',
-    nivel: tipo === 'rnc' ? 'alerta' : 'aviso', titulo: T('notif.titulo.' + tipo),
+    nivel: tipo === 'rnc' || tipo === 'pedido' || tipo === 'pedidoRecusado' ? 'alerta' : 'aviso', titulo: T('notif.titulo.' + tipo),
     meta: n.mensagem, criadoEm: n.criadoEm || null, lidaEm: n.lidaEm || null, lida: !!n.lida,
     origem: n.deNome || '—'
   };

@@ -15,6 +15,7 @@ import * as Auth from './dados/auth.js';
 import * as Store from './dados/store.js';
 import * as DadosCarga from './dados/carga.js';
 import * as Ops from './dados/ops.js';
+import * as DadosRncs from './dados/rncs.js';
 import * as Cronograma from './dominio/cronograma.js';
 import * as Projeto from './dominio/projeto.js';
 import * as Papeis from './dominio/papeis.js';
@@ -77,6 +78,7 @@ function escutarEquipe() {
   estado.carregado = false;
   estado.ops = [];
   estado.opsCarregadas = false;
+  estado.rncs = [];
   estado.idDetalhe = null;
   limparFiltros();
   atualizarBadge('dash', estado.filtroDash);
@@ -94,6 +96,8 @@ function escutarEquipe() {
     aplicarRota();
   }
   Ops.escutar(aoReceberOps, function () { estado.opsCarregadas = true; redesenhar(); });
+  if (Papeis.veRnc(papelCarregado) || Papeis.ehCQ(papelCarregado)) DadosRncs.escutar(function (l) { estado.rncs = l; redesenhar(); });
+  else DadosRncs.pararEscuta();
   estado.maquinas = []; estado.cfgFabrica = {};
   if (Papeis.veCarga(papelCarregado)) {
     DadosCarga.escutar(function (m) { estado.maquinas = m; redesenhar(); }, function (c) { estado.cfgFabrica = c; redesenhar(); });
@@ -113,18 +117,19 @@ function aplicarRestricoesPapel() {
   document.body.classList.toggle('visao-fabrica', !veProjetos);
   document.body.classList.toggle('visao-gerente', Papeis.ehGerente(papel));
   document.body.classList.toggle('detalhe-areas', Papeis.ehGerente(papel) || papel === 'gp');
-  document.body.classList.toggle('painel-novo', Papeis.ehGerente(papel) || papel === 'gp' || papel === 'tecnico' || Papeis.ehProgramador(papel));
+  document.body.classList.toggle('painel-novo', Papeis.ehGerente(papel) || papel === 'gp' || papel === 'tecnico' || Papeis.ehProgramador(papel) || Papeis.ehCQ(papel));
+  document.body.classList.toggle('visao-cq', Papeis.ehCQ(papel));
   document.body.classList.toggle('visao-programador', Papeis.ehProgramador(papel));
   $('btn-novo-projeto').style.display = gestor ? '' : 'none';
   $('dados-acoes-escrita').style.display = gestor ? 'contents' : 'none';
   // programadores: painel e linha do tempo (só leitura), sem a lista de projetos
   const leProjetos = Papeis.leProjetos(papel);
-  [['painel', leProjetos], ['projetos', veProjetos], ['linha', leProjetos], ['carga', Papeis.veCarga(papel)]].forEach(function (x) {
+  [['painel', leProjetos || Papeis.ehCQ(papel)], ['projetos', veProjetos], ['linha', leProjetos], ['carga', Papeis.veCarga(papel)]].forEach(function (x) {
     const b = document.querySelector('.side-item[data-tab="' + x[0] + '"]');
     if (b) b.style.display = x[1] ? '' : 'none';
   });
   const bRnc = document.querySelector('.side-item[data-tab="rnc"]');
-  if (bRnc) bRnc.style.display = Papeis.veRnc(papel) ? '' : 'none';
+  if (bRnc) bRnc.style.display = Papeis.veRnc(papel) || Papeis.ehCQ(papel) ? '' : 'none';
 }
 
 function aplicarUsuario() {
@@ -144,6 +149,7 @@ function aplicarUsuario() {
 function sairDoApp() {
   Store.pararEscuta();
   Ops.pararEscuta();
+  DadosRncs.pararEscuta();
   pararInscricaoChat();
   fecharTodos();
   equipeCarregada = null;
@@ -152,6 +158,7 @@ function sairDoApp() {
   estado.carregado = false;
   estado.ops = [];
   estado.opsCarregadas = false;
+  estado.rncs = [];
   estado.idDetalhe = null;
 }
 

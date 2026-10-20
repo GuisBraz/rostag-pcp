@@ -186,11 +186,15 @@ export function equipeAtualId() { return equipeAtualId_; }
 export function equipeAtualNome() { return equipeAtual ? equipeAtual.nome : ''; }
 export function membro() { return !!(equipeAtualId_ && equipeAtual && meuMembro); }
 export function podeEntrar() { return logado() && membro(); }
-export function souCoordenador() { return !!(equipeAtual && usuario && equipeAtual.coordenadorUid === usuario.uid); }
-export function coordenadorUidAtual() { return equipeAtual ? equipeAtual.coordenadorUid : null; }
+// Não existe mais "coordenador": a Gerência pode ter várias pessoas. Até a
+// equipe ser migrada (papeisMigrados), quem a criou vale como Gerente de PCP
+// mesmo com o papel antigo gravado.
+function equipeMigrada() { return !!(equipeAtual && equipeAtual.papeisMigrados); }
+export function souCoordenador() { return !!(equipeAtual && usuario && !equipeMigrada() && equipeAtual.coordenadorUid === usuario.uid); }
+export function coordenadorUidAtual() { return equipeAtual && !equipeMigrada() ? equipeAtual.coordenadorUid : null; }
 // Papel gravado em /membros (pode ser o legado "planejador").
 export function papelGravado() { return meuMembro ? meuMembro.papel : null; }
-// Papel efetivo: coordenador = Gerente de PCP; "planejador" = Técnico.
+// Papel efetivo: criador da equipe antiga = Gerente de PCP; "planejador" = Técnico.
 export function papel() { return membro() ? Papeis.papelEfetivo(meuMembro.papel, souCoordenador()) : null; }
 export function souGerente() { return Papeis.ehGerente(papel()); }
 // Gerente de PCP e GP criam e editam projetos (o GP só os dele).
@@ -437,32 +441,32 @@ export function alterarPapel(alvoUid, papelNovo) {
 // Equipes de antes dos cargos novos: planejador → técnico e o coordenador
 // (gravado como "gp") → Gerente de PCP. Roda uma vez, quando um gerente abre a
 // equipe; a regra só deixa o gerente mudar papéis.
+// Marca a equipe como migrada no mesmo lote: daí em diante só o papel
+// gravado vale (o criador deixa de ser especial).
 export function migrarPapeisEquipe() {
-  if (!equipeAtualId_ || !souGerente()) return Promise.resolve(0);
-  const coordUid = coordenadorUidAtual();
-  return colMembros(equipeAtualId_).get().then(function (qs) {
+  if (!equipeAtualId_ || !souGerente() || equipeMigrada()) return Promise.resolve(0);
+  const id = equipeAtualId_;
+  const criador = equipeAtual.coordenadorUid;
+  return colMembros(id).get().then(function (qs) {
     const lote = db().batch();
     let n = 0;
     qs.forEach(function (doc) {
       const atual = doc.data().papel;
-      const novo = doc.id === coordUid ? 'gerente_pcp' : (atual === 'planejador' ? 'tecnico' : null);
+      const novo = doc.id === criador ? 'gerente_pcp' : (atual === 'planejador' ? 'tecnico' : null);
       if (novo && novo !== atual) { lote.update(doc.ref, { papel: novo }); n++; }
     });
-    return n ? lote.commit().then(function () { return n; }) : 0;
+    lote.update(docEquipe(id), { papeisMigrados: true });
+    return lote.commit().then(function () {
+      if (equipeAtualId_ === id) equipeAtual = Object.assign({}, equipeAtual, { papeisMigrados: true });
+      return n;
+    });
   }).catch(function (e) { console.warn('cargos não migrados:', e && e.code); return 0; });
 }
-export function transferirCoordenacao(novoUid) {
-  if (!equipeAtualId_) return Promise.reject(new Error('sem-equipe'));
-  const id = equipeAtualId_;
-  return docEquipe(id).update({ coordenadorUid: novoUid }).then(function () {
-    equipeAtual = Object.assign({}, equipeAtual, { coordenadorUid: novoUid });
-    avisar();
-  });
-}
-// Sair da equipe por conta própria (o coordenador precisa transferir antes).
+// Sair da equipe por conta própria. Gerente não sai sozinho (a equipe não
+// pode ficar sem Gerência): outro gerente muda o cargo dele antes.
 export function sairDaEquipe() {
   if (!equipeAtualId_) return Promise.reject(new Error('sem-equipe'));
-  if (souCoordenador()) return Promise.reject(new Error('coordenador-nao-sai'));
+  if (souGerente()) return Promise.reject(new Error('gerente-nao-sai'));
   const id = equipeAtualId_;
   pararEscutaMembro();
   return colMembros(id).doc(usuario.uid).delete().then(function () {
@@ -553,7 +557,7 @@ export function notificarVarios(uids, tipo, mensagem, projetoId) {
   const unicos = Array.from(new Set((uids || []).filter(Boolean)));
   return Promise.all(unicos.map(function (u) { return criarNotificacao(u, tipo, mensagem, projetoId); }));
 }
-// Uids dos Gerentes de PCP da equipe (o coordenador sempre conta).
+// Uids dos Gerentes de PCP da equipe (em equipe antiga, o criador também).
 export function uidsGerentes() {
   const coord = coordenadorUidAtual();
   return listarEquipe().then(function (membros) {

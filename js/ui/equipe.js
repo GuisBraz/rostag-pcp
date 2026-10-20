@@ -57,13 +57,14 @@ function opcoesPapel(selecionado) {
 
 export function renderEquipe() {
   if (!Auth.podeEntrar()) { pararEscutas(); return; }
-  const souCoord = Auth.souCoordenador(), gerente = Auth.souGerente();
+  const gerente = Auth.souGerente();
   $('btn-convidar').style.display = gerente ? 'flex' : 'none';
   const sel = $('convite-papel');
   if (sel && !sel.options.length) sel.innerHTML = opcoesPapel('tecnico');
-  $('equipe-senha-bloco').style.display = souCoord ? 'block' : 'none';
-  $('equipe-senha-aviso').style.display = (souCoord && Auth.senhaFormatoAntigo()) ? 'block' : 'none';
-  $('equipe-sair-bloco').style.display = souCoord ? 'none' : 'block';
+  // qualquer gerente troca a senha; gerente não sai sozinho (ver Auth.sairDaEquipe)
+  $('equipe-senha-bloco').style.display = gerente ? 'block' : 'none';
+  $('equipe-senha-aviso').style.display = (gerente && Auth.senhaFormatoAntigo()) ? 'block' : 'none';
+  $('equipe-sair-bloco').style.display = gerente ? 'none' : 'block';
   $('equipe-convites-bloco').style.display = gerente ? 'block' : 'none';
   garantirEscutas();
   desenharMembros();
@@ -73,19 +74,19 @@ export function renderEquipe() {
 function desenharMembros() {
   const lista = $('equipe-lista');
   if (!membrosCache) { lista.innerHTML = '<div class="hint-txt">' + esc(T('cfg.equipeCarregando')) + '</div>'; return; }
-  const souCoord = Auth.souCoordenador(), gerente = Auth.souGerente(), meuUid = Auth.uid(), coordUid = Auth.coordenadorUidAtual();
+  const gerente = Auth.souGerente(), meuUid = Auth.uid(), coordUid = Auth.coordenadorUidAtual();
   lista.innerHTML = membrosCache.map(function (m) {
     const voce = m.uid === meuUid, ehCoord = m.uid === coordUid;
     const efetivo = papelEfetivo(m.papel, ehCoord);
-    const papelTxt = T('papel.' + efetivo) + (ehCoord ? ' · ' + T('cfg.equipeCoordenador') : '');
-    const classePapel = ehCoord ? 'papel-coord' : (efetivo === 'gerente_pcp' || efetivo === 'gp' ? 'papel-gp' : 'papel-planejador');
+    const papelTxt = T('papel.' + efetivo);
+    const classePapel = efetivo === 'gerente_pcp' ? 'papel-coord' : (efetivo === 'gp' ? 'papel-gp' : 'papel-planejador');
     let acoes = '';
-    // o Gerente de PCP muda o cargo e remove; o coordenador fica de fora (só ele passa a coordenação)
-    if (gerente && !ehCoord && !voce) {
+    // qualquer gerente muda o cargo e remove os outros (inclusive outro
+    // gerente); o próprio cargo ninguém muda, para a equipe nunca ficar sem Gerência
+    if (gerente && !voce) {
       const dados = ' data-arg="' + esc(m.uid) + '" data-arg2="' + esc(m.nome || m.email || '') + '"';
       acoes = '<select class="papel-select" data-change="mudarPapelMembro"' + dados + ' aria-label="' + esc(T('cfg.papelDe', m.nome || m.email || '')) + '">' +
           opcoesPapel(efetivo) + '</select>' +
-        (souCoord ? '<button type="button" class="btn btn-outline" data-acao="transferirCoordenacao"' + dados + '>' + esc(T('cfg.equipeTransferir')) + '</button>' : '') +
         '<button type="button" class="btn btn-danger" data-acao="removerDaEquipe"' + dados + '>' + esc(T('cfg.equipeRemover')) + '</button>';
     }
     return '<div class="membro-linha"><div class="membro-info">' +
@@ -163,13 +164,6 @@ registrarAcoes({
     confirmar(T('cfg.equipeConfirmarRemover', nome), { titulo: T('cfg.equipeRemover'), textoOk: T('cfg.equipeRemover'), perigo: true }).then(function (ok) {
       if (!ok) return;
       Auth.removerMembro(uid).then(function () { toast(T('cfg.equipeRemovidoFeito', nome)); renderEquipe(); })
-        .catch(function (e) { avisoErro(e); });
-    });
-  },
-  transferirCoordenacao: function (uid, nome) {
-    confirmar(T('cfg.equipeConfirmarTransferir', nome), { titulo: T('cfg.equipeTransferir'), textoOk: T('cfg.equipeTransferir'), perigo: true }).then(function (ok) {
-      if (!ok) return;
-      Auth.transferirCoordenacao(uid).then(function () { toast(T('cfg.equipeTransferido', nome)); renderEquipe(); })
         .catch(function (e) { avisoErro(e); });
     });
   },

@@ -19,16 +19,17 @@ import * as Papeis from '../dominio/papeis.js';
 const PAGINAS = { painel: 1, projetos: 1, linha: 1, fabrica: 1, carga: 1, rnc: 1, notificacoes: 1, config: 1 };
 
 // Telas que cada cargo usa. Programadores: painel, linha do tempo, Fábrica
-// e Carga (sem a lista de projetos). CQ trabalha só na Fábrica.
+// e Carga (sem a lista de projetos). CQ: painel de indicadores, Fábrica e RNC.
 export function abaPermitida(aba) {
   const papel = Auth.papel();
   if (aba === 'config' || aba === 'fabrica' || aba === 'notificacoes') return true;
-  if (aba === 'rnc') return Papeis.veRnc(papel);
+  if (aba === 'rnc') return Papeis.veRnc(papel) || Papeis.ehCQ(papel);
+  if (aba === 'painel' && Papeis.ehCQ(papel)) return true;
   if (aba === 'carga') return Papeis.veCarga(papel);
   if (aba === 'painel' || aba === 'linha') return Papeis.leProjetos(papel);
   return Papeis.veProjetos(papel);
 }
-export function abaInicial() { return Papeis.leProjetos(Auth.papel()) ? 'painel' : 'fabrica'; }
+export function abaInicial() { const p = Auth.papel(); return Papeis.leProjetos(p) || Papeis.ehCQ(p) ? 'painel' : 'fabrica'; }
 
 export function irPara(aba, arg) {
   const nova = '#/' + aba + (arg ? '/' + encodeURIComponent(arg) : '');
@@ -56,7 +57,7 @@ export function aplicarRota() {
   $$('.tabpanel').forEach(function (p) { p.classList.remove('active'); });
   $('tab-' + aba).classList.add('active');
   $('page-title').textContent = T('nav.' + aba);
-  $('page-sub').textContent = T('sub.' + aba);
+  $('page-sub').textContent = T(aba === 'painel' && Papeis.ehCQ(Auth.papel()) ? 'sub.painelCq' : 'sub.' + aba);
   fecharPopups();
   document.title = 'ROSTAG PCP';   // o detalhe troca pelo nome do projeto
 

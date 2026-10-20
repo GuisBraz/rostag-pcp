@@ -11,7 +11,7 @@ Gerente de PCP (ou GP) cria a commessa ─► GP define o cronograma macro ─�
         commessa, cliente, entrega,           PCP: início e fim             checklist + planilha de OPs
         GP e técnico responsáveis             Produção: fim                          │
                                                                                      ▼
-                                     CQ finaliza cada OP: ✅ Aprovada  ou  🔴 Com RNC (+ observação)
+                       CQ dá baixa em cada OP: ✅ Aprovada  ou  🔴 RNC (formulário R02) → retrabalho → reinspeção
 ```
 
 Situação do projeto enquanto não tem cronograma: **Aguardando cronograma**
@@ -31,14 +31,18 @@ Uma pessoa tem **um** cargo por equipe. Um projeto tem **um** GP e **um** técni
 | Checklist do PCP | | | ✅ | | | |
 | Subir a planilha de OPs | ✅ | | ✅ | | | |
 | Ver OPs | todas | dos projetos dele | dos projetos dele | todas de usinagem | todas de caldeiraria | todas |
-| Finalizar OP (Aprovada / RNC) | | | | | | ✅ |
-| Aba RNC | ✅ | dos projetos dele | dos projetos dele | | | |
+| Dar baixa na OP (Aprovar / RNC / reinspeção) | | | | | | ✅ |
+| Aba RNC (formulário e PDF) | ✅ (leitura) | dos projetos dele (leitura) | dos projetos dele (leitura) | | | ✅ (edita) |
+| Paralisar / cancelar projeto | ✅ (direto ou aprovando pedido) | pede à Gerência | | | | |
 | Projetos que vê | todos | os dele | os dele (após o cronograma) | — | — | — |
 
-- O **coordenador** da equipe (quem criou ou recebeu a coordenação) é sempre
-  Gerente de PCP. Só ele troca a senha da equipe e transfere a coordenação.
+- **Não há mais coordenador.** A Gerência pode ter várias pessoas; qualquer
+  gerente administra a equipe e troca a senha. Ninguém muda o próprio cargo e
+  gerente não sai sozinho (outro gerente muda o cargo dele antes), então a
+  equipe nunca fica sem Gerência. Em equipe antiga, quem a criou vale como
+  gerente até a migração gravar `papeisMigrados` na equipe.
 - Programadores apenas **consultam** as OPs da área (não dão baixa).
-- **Migração** das equipes que já existem: Coordenador → Gerente de PCP,
+- **Migração** das equipes que já existem: quem criou → Gerente de PCP,
   GP → GP, Planejador → Técnico de processo. Programadores e CQ são
   atribuídos depois pelo Gerente de PCP. Quem entra pelo nome + senha da
   equipe entra como Técnico de processo.
@@ -59,13 +63,18 @@ Duas etapas, cada uma com início e fim, mais a entrega:
 - Produção que termina depois da entrega **não é bloqueada**: o sistema avisa
   e conta os dias.
 - Toda reprogramação fica no histórico do projeto (data antiga, nova, quem e
-  quando) — base do **relatório de desempenho (depois)**.
+  quando) e entra no **desempenho por pessoa** da Gerência.
+- **Paralisar e cancelar** são da Gerência. O GP pede (com motivo); o projeto
+  não muda enquanto o pedido espera ("Aguardando a Gerência"); a Gerência
+  aprova (aplica) ou recusa (com motivo) pela fila de pendências ou pelo
+  detalhe do projeto. Retomar, concluir e reabrir o GP faz direto.
 
 Situação da Produção: *Planejada* (antes do início) → *Em produção* → *Atrasada*
 (passou do fim com OPs abertas) → *Concluída* (todas as OPs aprovadas).
 
 Avanço da Produção em 3 números: **geral, caldeiraria e usinagem** = OPs
-aprovadas ÷ total. OP com RNC conta como não aprovada.
+aprovadas (com e sem desvio) ÷ total. OP em retrabalho conta como não
+aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 
 ## 4. Fábrica (OPs)
 
@@ -78,11 +87,20 @@ aprovadas ÷ total. OP com RNC conta como não aprovada.
   quantidade, peso unitário e peso total.
 - **Reenvio da planilha:** OPs novas entram; as que já existem são
   atualizadas sem perder a finalização do CQ.
-- O **CQ** finaliza cada OP a qualquer momento: *Aprovada* ou *Com RNC* (com
-  observação obrigatória). O sistema grava quem e quando.
-- O CQ **não desfaz** uma finalização. A OP com RNC aguarda a **disposição**
-  do responsável **(fluxo da disposição: depois)**.
-- Aba **RNC**: só as OPs com não conformidade, em vermelho, com a observação.
+- Situações da OP: *Aberta* → *Em retrabalho* (com RNC) → *Aprovada*,
+  *Aprovada com desvio* ou *Peça morta*. Aprovada, desvio e morta são finais.
+- O **CQ dá baixa**: *Aprovar* (com confirmação) ou *Abrir RNC*. A RNC é o
+  formulário **R02** da SOFIR em tela cheia; o que a OP já tem vem preenchido.
+  Ao salvar, a OP volta para a Fábrica *em retrabalho*.
+- **Reinspeção** (na RNC atual): conforme → aprovada; liberada com desvio →
+  aprovada com desvio; não conforme → RNC encerrada e a OP segue em retrabalho
+  (pode abrir nova RNC); **Nº OP – Retrabalho** preenchido → nasce a OP nova
+  ligada à original (`origemOpId`) e a original vira **peça morta**.
+- **PDF** da RNC igual à planilha R02 (logo SOFIR, frente e verso).
+- Aba **RNC**: todas as RNCs (abertas e encerradas) com o resultado; o
+  formulário completo e o PDF para Gerência, GP e técnico do projeto.
+- **Painel do CQ**: aprovadas × RNC e em aberto × finalizadas do mês, com tela
+  cheia de 6 e 12 meses; retrabalho, peças mortas e desvio.
 
 ## 5. Notificações
 
@@ -95,7 +113,7 @@ aprovadas ÷ total. OP com RNC conta como não aprovada.
 | 5 | Tarefa do checklist vencendo / atrasada | Técnico e GP | Sistema |
 | 6 | PCP concluído (checklist 100%) | GP e Gerente de PCP | Sistema |
 | 7 | Planilha de OPs enviada | GP do projeto | técnico |
-| 8 | OP com RNC | Gerente de PCP, GP e técnico | CQ |
+| 8 | RNC aberta | Gerente de PCP, GP e técnico | CQ |
 | 9 | Produção atrasada | Gerente de PCP e GP | Sistema |
 | 10 | Produção concluída | Gerente de PCP, GP e técnico | Sistema |
 | 11 | Entrega se aproximando | GP e técnico | Sistema |
@@ -103,6 +121,8 @@ aprovadas ÷ total. OP com RNC conta como não aprovada.
 | 13 | Mensagem no chat do projeto | GP e técnico, menos quem enviou | quem enviou |
 | 14 | Observação numa tarefa | técnico do projeto | quem escreveu |
 | 15 | PCP atrasado | GP e Gerente de PCP | Sistema |
+| 16 | Pedido para paralisar / cancelar | Gerentes | GP |
+| 17 | Pedido aprovado ou recusado (com motivo) | GP que pediu | Gerente |
 
 As de *Sistema* são calculadas pelas datas e aparecem com origem "Sistema".
 
@@ -126,7 +146,8 @@ Sistema (quando apareceu, quando foi lido) fica em
 3. Fábrica: planilha, lista de OPs, finalização pelo CQ, aba RNC. ✅
 4. Tela cheia de notificações com expiração semanal. ✅
 5. Linha do tempo com as etapas. **(depois)**
-6. Disposição da RNC e relatório de desempenho. **(depois)**
+6. CQ completo (RNC R02, reinspeção, peça morta, PDF, painel) e Gerência
+   (pedidos, pendências, desempenho, vários gerentes). ✅
 
 ## 7. Modelo de dados (Firestore)
 
@@ -139,5 +160,14 @@ Sistema (quando apareceu, quando foi lido) fica em
 - `equipes/{id}/ops/{id}`: uma por peça e área. Id =
   `projeto__area__desenho__posicao`. Guarda cópia de `gpUid`/`tecnicoUid` do
   projeto para as regras decidirem quem vê.
+  Situação em `status`: `aberta`, `retrabalho` (legado `rnc`), `aprovada`,
+  `desvio`, `morta`; mais `rncAtualId`/`rncNumero`, `retrabalhoDesde`,
+  `finalizadoEm`, `mortaEm`, `opNovaId` e, na OP de retrabalho,
+  `origemOpId`/`origemRncId`.
+- `equipes/{id}/rncs/{id}`: os campos do R02, `opId`, `projetoId`, `area`,
+  `gpUid`, `tecnicoUid`, `situacao` (`aberta`/`encerrada`). Só o CQ grava;
+  ninguém apaga.
+- Projeto: `pedido {tipo, motivo, porUid, porNome, em}` enquanto espera a
+  Gerência; `motivoCancelamento`. Equipe: `papeisMigrados`.
 - `notificacoes/{id}`: `tipo`, `mensagem`, `deUid`/`deNome`, `paraUid`,
   `projetoId`, `equipeId`, `lida`, `lidaEm`, `criadoEm`.

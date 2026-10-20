@@ -16,6 +16,8 @@ import { desenhar, opcoesBase, legenda, cor, corStatus, corSituacao, falhaGrafic
 import { irPara } from './rota.js';
 import { limparFiltroProjComStatus } from './projetos.js';
 import { souGerencia, souGP, souTecnico, souProgramador, renderPainelGerencia, renderPainelTecnico, renderPainelProgramador } from './gerencia.js';
+import { renderPainelCq } from './painelCq.js';
+import * as Auth from '../dados/auth.js';
 
 const COR_STATUS = { andamento: 'violet', concluido: 'green', atrasado: 'rust', paralisado: 'amber', cancelado: 'ink-faint' };
 const FUNDO_STATUS = { andamento: 'violet-bg', concluido: 'green-bg', atrasado: 'rust-bg', paralisado: 'amber-bg', cancelado: 'bg-panel-alt' };
@@ -25,6 +27,7 @@ export function renderPainel() {
   // Gerência, GP e técnico têm o painel novo (gerencia.js); o GP usa o da
   // Gerência com os projetos dele. O "Precisa de atenção" é comum.
   const gerencia = souGerencia(), gp = souGP(), tecnico = souTecnico(), prog = souProgramador();
+  if (Auth.souCQ()) { renderPainelCq(); renderNotificacoes(); return; }
   document.body.classList.toggle('visao-gerente', gerencia);
   document.body.classList.toggle('painel-novo', gerencia || gp || tecnico || prog);
   if (gerencia || gp || tecnico || prog) {

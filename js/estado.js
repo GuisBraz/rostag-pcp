@@ -14,7 +14,8 @@ export const estado = {
   opsCarregadas: false,
   maquinas: [],              // máquinas da usinagem (carga máquina)
   cfgFabrica: {},            // capacidade da caldeiraria (carga fábrica)
-  filtroFab: { area: '', projeto: '', status: '', busca: '' }
+  rncs: [],                  // registros de não conformidade que este cargo enxerga
+  filtroFab: { visao: '', area: '', projeto: '', cliente: '', busca: '' }
 };
 
 export function buscarProjeto(id) {

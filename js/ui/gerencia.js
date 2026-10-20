@@ -20,6 +20,8 @@ import { irPara } from './rota.js';
 import { limparFiltroProjComStatus, limparFiltroProjPcp } from './projetos.js';
 import * as Carga from '../dominio/carga.js';
 import { resumoMaquinas, resumoFabrica, desenharGraficoKg } from './carga.js';
+import { pendentes } from './pedidos.js';
+import './desempenho.js';
 
 const GRUPOS = ['andamento', 'vencendo', 'atrasado'];
 const COR_GRUPO = { andamento: '--teal', vencendo: '--amber', atrasado: '--rust', paralisado: '--ink-faint' };
@@ -46,20 +48,20 @@ export function grupo(p, h) {
 
 /* -------------------------------------------------------------- saudação */
 function primeiroNome() { return (Auth.nomeExibicao() || '').trim().split(/\s+/)[0] || ''; }
-function desenharOla() {
+export function desenharOla() {
   const agora = new Date();
   const dia = agora.toLocaleDateString(codigoIdioma(), { weekday: 'long' });
   const hora = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
   $('ger-ola-nome').textContent = T('ger.ola', primeiroNome());
   $('ger-ola-quando').textContent = dia.charAt(0).toUpperCase() + dia.slice(1) + ', ' + br(hoje()) + ' · ' + hora;
 }
-function ligarRelogio() {
+export function ligarRelogio() {
   if (relogio) return;
   relogio = setInterval(function () { if ($('ger-ola-nome').offsetParent) desenharOla(); }, 20000);
 }
 
 /* --------------------------------------------------------------- cartões */
-function cartao(acao, rotulo, valorHtml, detalhe) {
+export function cartao(acao, rotulo, valorHtml, detalhe) {
   return '<button type="button" class="card kpi ger-card" data-acao="' + acao + '">' +
     '<div class="label">' + esc(rotulo) + '</div>' +
     '<div class="value-row">' + valorHtml + '</div>' +
@@ -71,6 +73,10 @@ function desenharCartoes(lista) {
   const pessoas = new Set();
   abertos.forEach(function (p) { if (p.gpUid) pessoas.add(p.gpUid); if (p.responsavelUid) pessoas.add(p.responsavelUid); });
   const ops = Producao.estatisticas(estado.ops);
+  // pedidos do GP esperando resposta (só a Gerência decide)
+  const nPend = pendentes().length;
+  const pend = cartao('abrirPendencias', T('pend.titulo').toUpperCase(),
+    '<div class="value" style="color:var(' + (nPend ? '--amber-ink' : '--green') + ')">' + nPend + '</div>', T(nPend ? 'pend.cartaoDet' : 'pend.cartaoVazio'));
   $('ger-cards').innerHTML =
     cartao('gerVerProjetos', T('kpi.total'), '<div class="value">' + lista.length + '</div>',
       T('ger.totalDet', abertos.length)) +
@@ -79,7 +85,9 @@ function desenharCartoes(lista) {
     cartao('gerVerOps', T('ger.ops'),
       '<div class="value" style="color:var(--green)">' + ops.aprovadas + '</div><span class="ger-sep">/</span>' +
       '<div class="value" style="color:var(--rust)">' + ops.rnc + '</div>',
-      T('ger.opsDet', ops.aprovadas, ops.rnc, ops.abertas));
+      T('ger.opsDet', ops.aprovadas, ops.rnc, ops.abertas)) +
+    (souGerencia() ? pend +
+      cartao('abrirDesempenho', T('des.titulo').toUpperCase(), '<div class="value">' + pessoas.size + '</div>', T('des.cartaoDet')) : '');
 }
 
 /* ------------------------------------------------------------- andamento */
@@ -428,18 +436,22 @@ function renderPlanejamento(p, st) {
     '</div>';
 }
 
-function quandoFeito(o) { return o.finalizadoEm ? br(String(o.finalizadoEm).slice(0, 10)) : '—'; }
+function quandoFeito(iso) { return iso ? br(String(iso).slice(0, 10)) : '—'; }
 
 function renderQualidade(ops, st) {
-  const rncs = ops.filter(function (o) { return o.status === 'rnc'; })
-    .sort(function (a, b) { return String(b.finalizadoEm || '').localeCompare(String(a.finalizadoEm || '')); });
-  const inspecionadas = st.aprovadas + st.rnc;
-  const taxa = inspecionadas ? Math.round(st.aprovadas / inspecionadas * 100) : 0;
-  const legenda = [['aprovadas', '--green', st.aprovadas], ['comRnc', '--rust', st.rnc], ['pendentes', '--amber', st.abertas]];
+  const projetoId = ops[0] ? ops[0].projetoId : estado.idDetalhe;
+  const rncs = (estado.rncs || []).filter(function (r) { return r.projetoId === projetoId; })
+    .sort(function (a, b) { return String(b.criadoEm || '').localeCompare(String(a.criadoEm || '')); });
+  const inspecionadas = st.aprovadas + st.retrabalho;
+  const taxa = inspecionadas ? Math.round((st.aprovadas - st.desvio) / inspecionadas * 100) : 0;
+  const legenda = [['aprovadas', '--green', st.aprovadas - st.desvio], ['desvio', '--terracotta', st.desvio],
+    ['comRnc', '--rust', st.retrabalho], ['pendentes', '--amber', st.abertas]];
   $('cq-conteudo').innerHTML =
     '<div class="ano-resumo ac-kpis">' +
       kpi(T('ar.aprovadas'), '<span style="color:var(--green)">' + st.aprovadas + '</span>') +
-      kpi(T('ar.comRnc'), '<span style="color:var(--rust)">' + st.rnc + '</span>') +
+      kpi(T('ar.comRnc'), '<span style="color:var(--rust)">' + st.retrabalho + '</span>') +
+      kpi(T('ar.desvio'), '<span style="color:var(--terracotta)">' + st.desvio + '</span>') +
+      kpi(T('ar.mortas'), String(st.mortas)) +
       kpi(T('ar.pendentes'), '<span style="color:var(--amber-ink)">' + st.abertas + '</span>') +
       kpi(T('ar.taxa'), inspecionadas ? taxa + '%' : '—') +
     '</div>' +
@@ -452,12 +464,14 @@ function renderQualidade(ops, st) {
           }).join('') + '</div></div>'
       : '<div class="empty-state">' + esc(T('d.semOps')) + '</div>') +
     '<div class="cq-rncs"><h4>' + esc(T('ar.rncsTitulo')) + '</h4>' +
-      (rncs.length ? rncs.map(function (o) {
-        return '<div class="cq-rnc"><div class="cq-rnc-topo"><span class="mono">OP ' + esc(o.numero) + '</span>' +
-          '<span class="pill-area area-' + esc(o.area) + '">' + esc(T('area.' + o.area)) + '</span>' +
-          '<span class="hint-txt">' + esc(T('rnc.peca', o.desenho, o.posicao || '—')) + '</span></div>' +
-          '<div class="cq-rnc-obs">' + esc(o.rncObs || '—') + '</div>' +
-          '<div class="hint-txt">' + esc((o.finalizadoPorNome || '—') + ' · ' + quandoFeito(o)) + '</div></div>';
+      (rncs.length ? rncs.map(function (r) {
+        return '<div class="cq-rnc"><div class="cq-rnc-topo"><span class="mono">RNC ' + esc(r.numero) + ' · OP ' + esc(r.op) + '</span>' +
+          '<span class="pill-area area-' + esc(r.area) + '">' + esc(T('area.' + r.area)) + '</span>' +
+          '<span class="hint-txt">' + esc(T('rnc.peca', r.desenho, r.item || '—')) + '</span>' +
+          '<span class="hint-txt">' + esc(T(r.situacao === 'encerrada' ? 'rnc.encerrada' : 'rnc.aguardando')) + '</span></div>' +
+          '<div class="cq-rnc-obs">' + esc(r.descricao || '—') + '</div>' +
+          '<div class="hint-txt">' + esc((r.inspetor || r.criadoPorNome || '—') + ' · ' + quandoFeito(r.criadoEm)) + ' ' +
+            '<button type="button" class="link-btn" data-acao="verRnc" data-arg="' + esc(r.id) + '">' + esc(T('rnc.verFormulario')) + '</button></div></div>';
       }).join('') : '<div class="hint-txt">' + esc(T('ar.semRnc')) + '</div>') +
     '</div>';
   if (!st.total) return;
