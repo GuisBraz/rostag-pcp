@@ -51,7 +51,7 @@ export function renderCarga() {
 export function resumoMaquinas(h) {
   const sems = Carga.semanas(Carga.SEMANAS_PADRAO, h);
   const maquinas = (estado.maquinas || []).filter(function (m) { return m.ativa !== false; });
-  const r = Carga.cargaMaquinas(estado.ops, estado.projetos, maquinas, sems, h);
+  const r = Carga.cargaMaquinas(estado.ops, estado.projetos, maquinas, sems, h, estado.setores);
   const capTotal = r.linhas.reduce(function (s, l) { return s + l.capacidade; }, 0);
   const semana = r.linhas.map(function (l) { return l.porSemana; })
     .reduce(function (acc, v) { return acc.map(function (x, i) { return x + v[i]; }); }, sems.map(function () { return 0; }));
@@ -65,6 +65,52 @@ function opsUsinagemAbertas() {
     const p = porId[o.projetoId];
     return o.area === 'usinagem' && o.status === 'aberta' && (!p || Projeto.aberto(p));
   }).sort(function (a, b) { return String(a.commessa).localeCompare(String(b.commessa), 'pt-BR', { numeric: true }) || String(a.numero).localeCompare(String(b.numero)); });
+}
+
+// OP com PDF: as horas vêm das operações (por setor); não se programa à mão.
+function opDoPdf(o, ativas) {
+  const hm = Carga.horasPorMaquina(o, ativas, estado.setores).porMaquina;
+  const partes = Object.keys(hm).map(function (id) {
+    const m = ativas.find(function (x) { return x.id === id; });
+    return esc((m && m.nome) || '—') + ' ' + fmtNum(hm[id], 1) + ' h';
+  });
+  const pendentes = Array.from(new Set(o.operacoes.filter(function (x) { return !Carga.setorResolvido(x.setor, ativas, estado.setores); })
+    .map(function (x) { return x.setor; })));
+  return '<div class="carga-op">' +
+    '<div class="carga-op-info"><b class="mono">OP ' + esc(o.numero) + '</b> <span class="hint-inline">' + esc(o.commessa) + '</span>' +
+      '<div class="hint-txt">' + esc(T('rnc.peca', o.desenho, o.posicao || '—')) + (o.descricao ? ' · ' + esc(o.descricao) : '') + ' · ' + esc(T('cg.qtd', fmtNum(o.qtd))) + '</div></div>' +
+    '<div class="carga-op-pdf"><span class="pill-area">' + esc(T('cg.doPdf')) + '</span> ' + (partes.join(' · ') || '—') +
+      (pendentes.length ? '<div class="hint-txt carga-pendente">' + esc(T('cg.setoresPendentes', pendentes.join(', '))) + '</div>' : '') + '</div>' +
+    '</div>';
+}
+
+// Setores que aparecem nos PDFs das OPs de usinagem e a máquina de cada um.
+function renderSetores(editar) {
+  const ativas = (estado.maquinas || []).filter(function (m) { return m.ativa !== false; });
+  const vistos = {};
+  estado.ops.forEach(function (o) {
+    if (o.area !== 'usinagem' || !Array.isArray(o.operacoes)) return;
+    o.operacoes.forEach(function (x) { const k = Carga.chaveSetor(x.setor); if (k && !vistos[k]) vistos[k] = x.setor; });
+  });
+  const chaves = Object.keys(vistos).sort();
+  if (!chaves.length) { $('cu-setores').innerHTML = '<div class="hint-txt">' + esc(T('cg.semSetores')) + '</div>'; return; }
+  const mapa = estado.setores || {};
+  $('cu-setores').innerHTML = chaves.map(function (k) {
+    const temEscolha = Object.prototype.hasOwnProperty.call(mapa, k);
+    const auto = temEscolha ? null : Carga.maquinaDoSetor(vistos[k], ativas, null);
+    const atual = temEscolha ? (mapa[k] === '' ? '' : mapa[k]) : '__auto';
+    const nomeDe = function (id) { const m = ativas.find(function (x) { return x.id === id; }); return m ? m.nome : '—'; };
+    const resolvido = temEscolha || !!auto;
+    if (!editar) {
+      const txt = temEscolha ? (mapa[k] ? nomeDe(mapa[k]) : T('cg.naoMaquina')) : (auto ? nomeDe(auto) + ' (' + T('cg.auto') + ')' : T('cg.semEscolha'));
+      return '<div class="carga-setor' + (resolvido ? '' : ' pendente') + '"><b>' + esc(vistos[k]) + '</b><span class="hint-txt">' + esc(txt) + '</span></div>';
+    }
+    const opcoes = '<option value="__auto"' + (atual === '__auto' ? ' selected' : '') + '>' + esc(auto ? T('cg.autoCom', nomeDe(auto)) : T('cg.semEscolha')) + '</option>' +
+      '<option value=""' + (atual === '' ? ' selected' : '') + '>' + esc(T('cg.naoMaquina')) + '</option>' +
+      ativas.map(function (m) { return '<option value="' + esc(m.id) + '"' + (atual === m.id ? ' selected' : '') + '>' + esc(m.nome) + '</option>'; }).join('');
+    return '<div class="carga-setor' + (resolvido ? '' : ' pendente') + '"><b>' + esc(vistos[k]) + '</b>' +
+      '<select data-change="escolherSetor" data-arg="' + esc(k) + '" aria-label="' + esc(T('cg.maquinaDoSetor', vistos[k])) + '">' + opcoes + '</select></div>';
+  }).join('');
 }
 
 function renderUsinagem() {
@@ -101,7 +147,9 @@ function renderUsinagem() {
   // OPs para programar
   const editar = podeEditar('usinagem');
   const todas = opsUsinagemAbertas();
-  const lista = filtroOps === 'pendentes' ? todas.filter(function (o) { return !o.maquinaId || !(Number(o.horasPrevistas) > 0); }) : todas;
+  const ativasMaq = (estado.maquinas || []).filter(function (m) { return m.ativa !== false; });
+  const programada = function (o) { return Object.keys(Carga.horasPorMaquina(o, ativasMaq, estado.setores).porMaquina).length > 0; };
+  const lista = filtroOps === 'pendentes' ? todas.filter(function (o) { return !programada(o); }) : todas;
   $('cu-filtro').value = filtroOps;
   const ativas = (estado.maquinas || []).filter(function (m) { return m.ativa !== false; });
   const opcoes = function (sel) {
@@ -111,6 +159,7 @@ function renderUsinagem() {
   };
   $('cu-ops').innerHTML = lista.length ? '<div class="carga-ops">' + lista.slice(0, 300).map(function (o) {
     const nomeMaq = (ativas.find(function (m) { return m.id === o.maquinaId; }) || {}).nome;
+    if (Array.isArray(o.operacoes) && o.operacoes.length) return opDoPdf(o, ativas);
     return '<div class="carga-op">' +
       '<div class="carga-op-info"><b class="mono">OP ' + esc(o.numero) + '</b> <span class="hint-inline">' + esc(o.commessa) + '</span>' +
         '<div class="hint-txt">' + esc(T('rnc.peca', o.desenho, o.posicao || '—')) + (o.descricao ? ' · ' + esc(o.descricao) : '') + ' · ' + esc(T('cg.qtd', fmtNum(o.qtd))) + '</div></div>' +
@@ -125,6 +174,7 @@ function renderUsinagem() {
 
   // máquinas
   $('cu-maq-form').style.display = editar ? '' : 'none';
+  renderSetores(editar);
   $('cu-maquinas').innerHTML = (estado.maquinas || []).length ? (estado.maquinas || []).map(function (m) {
     if (!editar) return '<div class="carga-maq-linha"><b>' + esc(m.nome) + '</b><span class="hint-txt">' + esc(T('cg.capDia', fmtNum(m.horasDia, 1))) + (m.ativa === false ? ' · ' + esc(T('cg.inativa')) : '') + '</span></div>';
     return '<div class="carga-maq-linha' + (m.ativa === false ? ' inativa' : '') + '">' +
@@ -204,6 +254,9 @@ function salvarMaq(m, mudanca) {
 }
 
 registrarAcoes({
+  escolherSetor: function (v, _b, el) {
+    DadosCarga.salvarSetor(el.dataset.arg, v === '__auto' ? null : v).catch(function (e) { avisoErro(e); renderCarga(); });
+  },
   abaCarga: function (a) { abaCarga = a; renderCarga(); },
   filtrarOpsCarga: function (v) { filtroOps = v === 'todas' ? 'todas' : 'pendentes'; renderCarga(); },
   programarMaquina: function (v, _b, el) {

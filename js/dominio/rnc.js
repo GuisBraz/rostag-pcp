@@ -33,11 +33,23 @@ export function rascunho(op, hojeIso, nomeInspetor) {
 
 // O que falta para gravar. Abrir RNC exige nº, descrição e inspetor; a
 // reinspeção, quando marcada, exige inspetor e data.
-export function validar(r) {
+// A quantidade não conforme é obrigatória: um número inteiro de 1 até a
+// quantidade da OP (qtdMax; sem quantidade na OP, qualquer inteiro ≥ 1).
+export function qtdNcValida(v, qtdMax) {
+  const s = String(v == null ? '' : v).trim().replace(',', '.');
+  if (!/^\d+(\.0+)?$/.test(s)) return null;
+  const n = Number(s);
+  if (n < 1) return null;
+  if (Number(qtdMax) > 0 && n > Number(qtdMax)) return null;
+  return n;
+}
+
+export function validar(r, qtdMax) {
   const faltando = [];
   if (!String(r.numero || '').trim()) faltando.push('numero');
   if (!String(r.descricao || '').trim()) faltando.push('descricao');
   if (!String(r.inspetor || '').trim()) faltando.push('inspetor');
+  if (qtdNcValida(r.qtdNc, qtdMax) == null) faltando.push('qtdNc');
   if (r.reResultado && r.reResultado !== 'retrabalho') {
     if (!String(r.reInspetor || '').trim()) faltando.push('reInspetor');
     if (!r.reData) faltando.push('reData');
@@ -93,11 +105,12 @@ export function meses(mesFinal, n) {
  *  finalizadas: aprovadas + desvio no mês · mortas: peças mortas no mês
  *  emAberto: OPs que estavam abertas (ou em retrabalho) no fim do mês
  *  retrabalho: OPs em retrabalho no fim do mês
+ *  pecasReprovadas: soma da quantidade não conforme das RNCs abertas no mês
  */
 export function indicadoresMes(ops, rncs, mes, agoraIso) {
   const fimMes = mes + '-31T23:59:59.999Z';
   const corte = agoraIso && agoraIso < fimMes ? agoraIso : fimMes;
-  const r = { mes: mes, aprovadas: 0, desvio: 0, rncs: 0, finalizadas: 0, mortas: 0, emAberto: 0, retrabalho: 0 };
+  const r = { mes: mes, aprovadas: 0, desvio: 0, rncs: 0, finalizadas: 0, mortas: 0, emAberto: 0, retrabalho: 0, pecasReprovadas: 0 };
   (ops || []).forEach(function (o) {
     const s = statusOp(o);
     const fim = o.finalizadoEm || null;
@@ -114,7 +127,11 @@ export function indicadoresMes(ops, rncs, mes, agoraIso) {
       if (o.retrabalhoDesde && o.retrabalhoDesde <= corte && (s === 'retrabalho' || (saiu && saiu > corte))) r.retrabalho++;
     }
   });
-  (rncs || []).forEach(function (x) { if (mesDe(x.criadoEm) === mes) r.rncs++; });
+  (rncs || []).forEach(function (x) {
+    if (mesDe(x.criadoEm) !== mes) return;
+    r.rncs++;
+    r.pecasReprovadas += qtdNcValida(x.qtdNc) || 0;
+  });
   return r;
 }
 

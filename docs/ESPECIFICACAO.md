@@ -89,13 +89,31 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 
 ## 4. Fábrica (OPs)
 
-- O técnico sobe a **planilha de controle de avanço** (.xls, .xlsx ou .csv).
-  Cada linha com "N° OP CALD" vira uma OP de caldeiraria; cada linha com
-  "N° OP USINAGEM" vira uma OP de usinagem. Pintura, serviço externo e TTAT
-  ficam fora.
+- O técnico sobe a **planilha de avanço pronta** (.xls, .xlsx ou .csv), quando
+  o PCP está pronto (OPs, produtos e serviços já definidos).
+  - A **lista inteira** fica guardada no projeto (`avanco/{projetoId}`):
+    peças, conjuntos e itens comerciais, para todos verem em **Lista de avanço**.
+  - Cada linha com "N° OP CALD" vira uma OP de caldeiraria; com
+    "N° OP USINAGEM", uma OP de usinagem. A OP leva também o **N° Produto**, a
+    **observação** e as marcas de **pintura, serviço externo, TTAT e oxidação**.
 - Uma peça (desenho + posição) tem **no máximo uma OP por área**.
 - Campos da OP: nº, área, commessa, desenho, posição, rev., descrição,
-  quantidade, peso unitário e peso total.
+  quantidade, peso unitário, peso total, produto, observação e marcas.
+- **PDF da OP** (Fábrica → ＋ Adicionar OPs → PDF da OP): um ou vários PDFs
+  gerados pelo sistema da empresa. A OP é achada pelo número e recebe as
+  **operações** (setor, horas, etapa). Os dados da peça continuam os da
+  planilha; o que não bater aparece como aviso. PDF impresso (só imagem) não
+  é lido.
+- **Carga máquina:** OP com PDF entra pelas operações — cada setor vai para a
+  máquina de mesmo nome ou para a escolhida em Carga → Setores do PDF da OP
+  (ou "não é máquina"). OP sem PDF continua com máquina e horas à mão.
+- **Avanço por peças:** aprovada (ou com desvio) = todas as peças feitas; com
+  RNC = as boas feitas e as reprovadas (Qtde. N/C, obrigatória) em RNC; peça
+  morta passa as reprovadas para a OP de retrabalho, que nasce com essa
+  quantidade.
+- **Baixar planilha de avanço:** devolve a aba no mesmo layout com MONT, SOLD,
+  ACAB e PINTURA (caldeiraria) e AVANÇO TOTAL / Avanço Usi (usinagem) em peças
+  feitas, e o resumo do topo com fórmulas corrigidas.
 - **Reenvio da planilha:** OPs novas entram; as que já existem são
   atualizadas sem perder a finalização do CQ.
 - Situações da OP: *Aberta* → *Em retrabalho* (com RNC) → *Aprovada*,
@@ -174,7 +192,16 @@ Sistema (quando apareceu, quando foi lido) fica em
   Situação em `status`: `aberta`, `retrabalho` (legado `rnc`), `aprovada`,
   `desvio`, `morta`; mais `rncAtualId`/`rncNumero`, `retrabalhoDesde`,
   `finalizadoEm`, `mortaEm`, `opNovaId` e, na OP de retrabalho,
-  `origemOpId`/`origemRncId`.
+  `origemOpId`/`origemRncId`. Da planilha: `produto`, `obs`, `marcas`
+  (`pintura`, `servicoExterno`, `ttat`, `oxidacao`). Do PDF: `operacoes
+  [{n, setor, horas, etapa}]`, `pdfEm`, `pdfPorUid`. Da RNC: `qtdNc` (peças
+  reprovadas).
+- `equipes/{id}/avanco/{projetoId}`: a aba da planilha como valores
+  (`linhas [{c: [...]}]`, `merges`, `larguras`), `arquivo`, `aba`,
+  `opPintura`, `enviadoEm/PorUid/PorNome`. Toda a equipe lê; Gerência e o
+  técnico do projeto gravam.
+- `equipes/{id}/config/setores`: `mapa {SETOR: idDaMaquina | ''}`; programador
+  de usinagem e Gerência gravam.
 - `equipes/{id}/rncs/{id}`: os campos do R02, `opId`, `projetoId`, `area`,
   `gpUid`, `tecnicoUid`, `situacao` (`aberta`/`encerrada`). Só o CQ grava;
   ninguém apaga.

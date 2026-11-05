@@ -10,6 +10,7 @@ import { agoraIso } from '../nucleo/fmt.js';
 import { db } from './firebase.js';
 import * as Auth from './auth.js';
 import * as Rnc from '../dominio/rnc.js';
+import * as Producao from '../dominio/producao.js';
 
 let parar = null;
 
@@ -56,7 +57,8 @@ export function abrir(op, form) {
     opId: op.id, projetoId: op.projetoId, area: op.area, gpUid: op.gpUid || null, tecnicoUid: op.tecnicoUid || null,
     situacao: 'aberta', criadoPorUid: Auth.uid(), criadoPorNome: Auth.nomeExibicao(), criadoEm: agora, atualizadoEm: agora
   }));
-  const dadosOp = { status: 'retrabalho', rncAtualId: ref.id, rncNumero: String(form.numero || '').slice(0, 30) };
+  const dadosOp = { status: 'retrabalho', rncAtualId: ref.id, rncNumero: String(form.numero || '').slice(0, 30),
+    qtdNc: Rnc.qtdNcValida(form.qtdNc, op.qtd) || Producao.qtdPecas(op) };
   if (!op.retrabalhoDesde) dadosOp.retrabalhoDesde = agora;
   lote.update(colEquipe('ops').doc(op.id), dadosOp);
   return lote.commit().then(function () { return ref.id; });
@@ -78,18 +80,24 @@ export function salvar(rnc, form, op) {
   const opAtiva = op && (op.status === 'retrabalho' || op.status === 'rnc') && op.rncAtualId === rnc.id;
   if (opAtiva) {
     const refOp = colEquipe('ops').doc(op.id);
+    // a quantidade reprovada pode ser corrigida no formulário
+    const nc = Rnc.qtdNcValida(form.qtdNc, op.qtd) || Producao.qtdReprovada(op);
     if (efeito.opStatus === 'morta') {
       novaId = op.id + '__rt' + Date.now().toString(36);
+      const pesoTotal = op.pesoUnit == null ? null : Math.round(op.pesoUnit * nc * 100) / 100;
       lote.set(colEquipe('ops').doc(novaId), {
         projetoId: op.projetoId, commessa: op.commessa || '', cliente: op.cliente || '', descricaoProjeto: op.descricaoProjeto || '',
         gpUid: op.gpUid || null, tecnicoUid: op.tecnicoUid || null, area: op.area, numero: efeito.criarOp.slice(0, 40),
         desenho: op.desenho || '', posicao: op.posicao || '', rev: op.rev || '', descricao: op.descricao || '',
-        qtd: op.qtd == null ? null : op.qtd, pesoUnit: op.pesoUnit == null ? null : op.pesoUnit, pesoTotal: op.pesoTotal == null ? null : op.pesoTotal,
+        qtd: nc, pesoUnit: op.pesoUnit == null ? null : op.pesoUnit, pesoTotal: pesoTotal,
+        produto: op.produto || '', obs: op.obs || '', marcas: op.marcas || {},
         status: 'aberta', criadoEm: agora, criadoPorUid: Auth.uid(), atualizadoEm: agora, origemOpId: op.id, origemRncId: rnc.id
       });
-      lote.update(refOp, { status: 'morta', mortaEm: agora, opNovaId: novaId, opNovaNumero: efeito.criarOp.slice(0, 40) });
+      lote.update(refOp, { status: 'morta', mortaEm: agora, opNovaId: novaId, opNovaNumero: efeito.criarOp.slice(0, 40), qtdNc: nc });
     } else if (efeito.opStatus === 'aprovada' || efeito.opStatus === 'desvio') {
       lote.update(refOp, { status: efeito.opStatus, finalizadoPorUid: Auth.uid(), finalizadoPorNome: Auth.nomeExibicao(), finalizadoEm: agora });
+    } else if (nc !== op.qtdNc) {
+      lote.update(refOp, { qtdNc: nc });
     }
   }
   return lote.commit().then(function () { return { efeito: opAtiva ? efeito : null, novaId: novaId }; });

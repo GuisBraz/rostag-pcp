@@ -8,11 +8,11 @@ import { agoraIso } from '../nucleo/fmt.js';
 import { db } from './firebase.js';
 import * as Auth from './auth.js';
 
-let pararMaquinas = null, pararConfig = null;
+let pararMaquinas = null, pararConfig = null, pararSetores = null;
 
 function equipe() { return db().collection('equipes').doc(Auth.equipeAtualId()); }
 
-export function escutar(aoMaquinas, aoConfig) {
+export function escutar(aoMaquinas, aoConfig, aoSetores) {
   pararEscuta();
   pararMaquinas = equipe().collection('maquinas').onSnapshot(function (qs) {
     const lista = [];
@@ -23,10 +23,17 @@ export function escutar(aoMaquinas, aoConfig) {
   pararConfig = equipe().collection('config').doc('fabrica').onSnapshot(function (snap) {
     aoConfig(snap.exists ? snap.data() : {});
   }, function (e) { console.warn('configuração da fábrica indisponível:', e && e.code); aoConfig({}); });
+  // setor do PDF da OP → máquina (config/setores)
+  if (aoSetores) {
+    pararSetores = equipe().collection('config').doc('setores').onSnapshot(function (snap) {
+      aoSetores(snap.exists ? (snap.data().mapa || {}) : {});
+    }, function (e) { console.warn('setores indisponíveis:', e && e.code); aoSetores({}); });
+  }
 }
 export function pararEscuta() {
   if (pararMaquinas) { pararMaquinas(); pararMaquinas = null; }
   if (pararConfig) { pararConfig(); pararConfig = null; }
+  if (pararSetores) { pararSetores(); pararSetores = null; }
 }
 
 export function salvarMaquina(m) {
@@ -41,6 +48,14 @@ export function salvarCapacidade(kg) {
   return equipe().collection('config').doc('fabrica').set({
     capacidadeKgSemana: Number(kg), atualizadoEm: agoraIso(), atualizadoPorUid: Auth.uid()
   });
+}
+
+// Setor do PDF → máquina (id) ou '' = não é máquina; null tira a escolha.
+export function salvarSetor(chaveSetor, maquinaId) {
+  const valor = maquinaId == null ? window.firebase.firestore.FieldValue.delete() : String(maquinaId);
+  return equipe().collection('config').doc('setores').set({
+    mapa: { [chaveSetor]: valor }, atualizadoEm: agoraIso(), atualizadoPorUid: Auth.uid()
+  }, { merge: true });
 }
 
 // Máquina e horas previstas de uma OP de usinagem (null limpa).

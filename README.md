@@ -28,7 +28,8 @@ equipe, e o app pode ser instalado no PC e no celular (funciona offline).
     o GP deles), designa o técnico e define o **cronograma macro** (PCP e
     produção).
   - **Técnico de processo** — recebe o projeto quando o cronograma é
-    definido, marca o checklist do PCP e sobe a **planilha de OPs**.
+    definido, marca o checklist do PCP, sobe a **planilha de avanço** (a lista
+    inteira do projeto + as OPs) e os **PDFs das OPs** (operações e horas).
   - **Programador de usinagem / de caldeiraria** — consulta as OPs da área
     dele na aba Fábrica.
   - **Controle de qualidade (CQ)** — dá baixa em cada OP: *Aprovar* ou abrir
@@ -146,7 +147,8 @@ js/dados/             Firebase: conta e equipes (auth.js), projetos (store.js), 
 js/ui/                uma tela ou componente por arquivo — acesso.js (login),
                       minhasEquipes.js (entrar/criar/trocar equipe), fabrica.js,
                       qualidade.js (baixa e RNC), gerencia.js, pedidos.js…
-vendor/               Chart.js, SheetJS (planilhas) e jsPDF (PDF da RNC), sem CDN
+vendor/               Chart.js, SheetJS (planilhas), jsPDF (PDF da RNC) e PDF.js
+                      (ler o PDF da OP), sem CDN — carregados só quando usados
 scripts/              verificar.mjs (npm run check) e semear-emulador.mjs (dados de teste)
 docs/                 especificação do sistema integrado
 sw.js                 service worker: abre o app instalado sem internet

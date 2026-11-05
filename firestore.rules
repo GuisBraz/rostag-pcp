@@ -292,11 +292,19 @@ service cloud.firestore {
         function camposOp() {
           return ['projetoId', 'commessa', 'cliente', 'descricaoProjeto', 'gpUid', 'tecnicoUid', 'area', 'numero',
                   'desenho', 'posicao', 'rev', 'descricao', 'qtd', 'pesoUnit', 'pesoTotal', 'status',
-                  'criadoEm', 'criadoPorUid', 'atualizadoEm'];
+                  'criadoEm', 'criadoPorUid', 'atualizadoEm', 'produto', 'obs', 'marcas'];
         }
+        // da planilha (produto, observação, marcas) e do PDF da OP (operações)
         function camposDados() {
           return ['numero', 'desenho', 'posicao', 'rev', 'descricao', 'qtd', 'pesoUnit', 'pesoTotal',
-                  'commessa', 'cliente', 'descricaoProjeto', 'gpUid', 'tecnicoUid', 'atualizadoEm'];
+                  'commessa', 'cliente', 'descricaoProjeto', 'gpUid', 'tecnicoUid', 'atualizadoEm',
+                  'produto', 'obs', 'marcas', 'operacoes', 'pdfEm', 'pdfPorUid'];
+        }
+        function extrasOk(d) {
+          return (d.get('produto', '') is string && d.get('produto', '').size() <= 40)
+            && (d.get('obs', '') is string && d.get('obs', '').size() <= 300)
+            && (d.get('marcas', {}) is map && d.get('marcas', {}).size() <= 8)
+            && (d.get('operacoes', []) is list && d.get('operacoes', []).size() <= 60);
         }
         function souTecnicoDoProjeto(p) {
           return souTecnicoDe(equipeId) && p.get('responsavelUid', null) == request.auth.uid;
@@ -318,6 +326,7 @@ service cloud.firestore {
           && request.resource.data.numero is string
           && request.resource.data.numero.size() > 0 && request.resource.data.numero.size() <= 40
           && request.resource.data.criadoPorUid == request.auth.uid
+          && extrasOk(request.resource.data)
           && (
             ((souGerenteDe(equipeId) || souTecnicoDoProjeto(projeto(equipeId, request.resource.data.projetoId)))
               && request.resource.data.keys().hasOnly(camposOp())
@@ -336,6 +345,7 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
                  (souPapel(equipeId, 'gp') ? ['gpUid', 'tecnicoUid'] : camposDados()))
             && designacaoConfere(request.resource.data, projeto(equipeId, resource.data.projetoId))
+            && extrasOk(request.resource.data)
             && request.resource.data.numero is string
             && request.resource.data.numero.size() > 0 && request.resource.data.numero.size() <= 40
           ) || (
@@ -359,7 +369,11 @@ service cloud.firestore {
             souPapel(equipeId, 'cq') && resource.data.status in ['aberta', 'retrabalho', 'rnc']
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['status', 'finalizadoPorUid', 'finalizadoPorNome', 'finalizadoEm',
-                           'rncAtualId', 'rncNumero', 'retrabalhoDesde', 'mortaEm', 'opNovaId', 'opNovaNumero'])
+                           'rncAtualId', 'rncNumero', 'retrabalhoDesde', 'mortaEm', 'opNovaId', 'opNovaNumero', 'qtdNc'])
+            // peças reprovadas na RNC: inteiro de 1 até a quantidade da OP
+            && (request.resource.data.get('qtdNc', 1) is int && request.resource.data.get('qtdNc', 1) >= 1
+              && (!(resource.data.get('qtd', null) is number) || resource.data.qtd <= 0
+                || request.resource.data.get('qtdNc', 1) <= resource.data.qtd))
             && (
               (request.resource.data.status == 'aprovada'
                 || (request.resource.data.status == 'desvio' && resource.data.status in ['retrabalho', 'rnc']))
@@ -429,6 +443,24 @@ service cloud.firestore {
         allow delete: if souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId);
       }
 
+      // Lista de avanço do projeto: a planilha inteira, como valores. Toda a
+      // equipe lê; grava quem sobe a planilha (Gerência ou técnico do projeto).
+      match /avanco/{projetoId} {
+        allow read: if membroDe(equipeId);
+        allow create, update: if (souGerenteDe(equipeId)
+            || (souTecnicoDe(equipeId) && projeto(equipeId, projetoId).get('responsavelUid', null) == request.auth.uid))
+          && request.resource.data.keys().hasOnly(['projetoId', 'commessa', 'arquivo', 'aba', 'opPintura', 'linhas', 'merges',
+               'larguras', 'enviadoEm', 'enviadoPorUid', 'enviadoPorNome'])
+          && request.resource.data.projetoId == projetoId
+          && request.resource.data.enviadoPorUid == request.auth.uid
+          && request.resource.data.linhas is list && request.resource.data.linhas.size() <= 1500
+          && request.resource.data.merges is list && request.resource.data.merges.size() <= 400
+          && request.resource.data.larguras is list && request.resource.data.larguras.size() <= 60
+          && request.resource.data.arquivo is string && request.resource.data.arquivo.size() <= 160
+          && request.resource.data.opPintura is string && request.resource.data.opPintura.size() <= 40;
+        allow delete: if souGerenteDe(equipeId);
+      }
+
       // Configuração da fábrica (carga fábrica): capacidade da caldeiraria em
       // kg por semana. Toda a equipe lê; programador de caldeiraria e gerente gravam.
       match /config/{doc} {
@@ -441,6 +473,12 @@ service cloud.firestore {
           && request.resource.data.itens.size() > 0 && request.resource.data.itens.size() <= 60
           && request.resource.data.porUid == request.auth.uid
           && request.resource.data.atualizadoEm is string;
+        // setor do PDF da OP → máquina (carga máquina): programador de usinagem e gerente
+        allow create, update: if doc == 'setores'
+          && (souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId))
+          && request.resource.data.keys().hasOnly(['mapa', 'atualizadoEm', 'atualizadoPorUid'])
+          && request.resource.data.mapa is map && request.resource.data.mapa.size() <= 200
+          && request.resource.data.atualizadoPorUid == request.auth.uid;
         allow create, update: if doc == 'fabrica'
           && (souPapel(equipeId, 'prog_caldeiraria') || souGerenteDe(equipeId))
           && request.resource.data.keys().hasOnly(['capacidadeKgSemana', 'atualizadoEm', 'atualizadoPorUid'])

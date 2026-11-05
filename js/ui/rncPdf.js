@@ -8,6 +8,7 @@
    1194 × 1974); px() e py() convertem para pontos numa A4 em pé.
 --------------------------------------------------------------------------- */
 import { br } from '../nucleo/fmt.js';
+import { garantirJsPdf } from './bibliotecas.js';
 
 const LARG = 1194, ALT = 1974;
 const A4 = { w: 595.28, h: 841.89 };
@@ -19,20 +20,7 @@ const tam = function (ptExcel) { return ptExcel * 1.669 * ESC; };   // corpo da 
 const AZUL = [218, 233, 248];
 const RODAPE = 'R02 - Registro de não conformidade - rev.: 01 data 08/10/2024';
 
-let carregando = null, logoUrl = null;
-function garantirJsPdf() {
-  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
-  if (!carregando) {
-    carregando = new Promise(function (resolve, reject) {
-      const s = document.createElement('script');
-      s.src = 'vendor/jspdf.umd.min.js';
-      s.onload = function () { resolve(window.jspdf.jsPDF); };
-      s.onerror = function () { carregando = null; reject(new Error('pdf-indisponivel')); };
-      document.head.appendChild(s);
-    });
-  }
-  return carregando;
-}
+let logoUrl = null;
 function garantirLogo() {
   if (logoUrl) return Promise.resolve(logoUrl);
   return fetch('img/logo-sofir.png').then(function (r) { return r.blob(); }).then(function (b) {

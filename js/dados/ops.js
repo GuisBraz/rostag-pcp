@@ -52,6 +52,7 @@ export function gravarPlanilha(projeto, comparacao) {
       lote.set(col.doc(o.id), Object.assign({}, base, {
         area: o.area, numero: o.numero, desenho: o.desenho, posicao: o.posicao, rev: o.rev, descricao: o.descricao,
         qtd: o.qtd, pesoUnit: o.pesoUnit, pesoTotal: o.pesoTotal, status: 'aberta',
+        produto: o.produto || '', obs: o.obs || '', marcas: o.marcas || {},
         criadoEm: agora, criadoPorUid: Auth.uid(), atualizadoEm: agora
       }));
     });
@@ -71,6 +72,17 @@ export function gravarPlanilha(projeto, comparacao) {
     envios.push(lote.commit());
   }
   return Promise.all(envios).then(function () { return escritas.length; });
+}
+
+// Operações lidas do PDF da OP (setor, horas, etapa). Os dados da peça
+// continuam os da planilha; o PDF só acrescenta o roteiro.
+export function gravarPdf(opId, pdf) {
+  return colOps().doc(opId).update({
+    operacoes: pdf.operacoes.map(function (o) {
+      return { n: String(o.n || '').slice(0, 6), setor: String(o.setor || '').slice(0, 60), horas: Number(o.horas) || 0, etapa: String(o.etapa || '').slice(0, 40) };
+    }).slice(0, 60),
+    pdfEm: agoraIso(), pdfPorUid: Auth.uid(), atualizadoEm: agoraIso()
+  });
 }
 
 export function idOp(projetoId, area, desenho, posicao) { return Planilha.idOp(projetoId, area, desenho, posicao); }

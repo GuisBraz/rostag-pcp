@@ -7,6 +7,8 @@ import { esc, br, dataDoInstante, dataHora, compararNatural, numeroBr } from '..
 import { T } from '../i18n/index.js';
 import * as Papeis from '../dominio/papeis.js';
 import * as Planilha from '../dominio/planilha.js';
+import * as Avanco from '../dominio/avanco.js';
+import * as DadosAvanco from '../dados/avanco.js';
 import * as Producao from '../dominio/producao.js';
 import * as Projeto from '../dominio/projeto.js';
 import * as Auth from '../dados/auth.js';
@@ -18,6 +20,9 @@ import { avisoErro } from './app.js';
 export { renderRnc } from './qualidade.js';
 import { configurar as configurarOpManual } from './opManual.js';
 import { alternarPopup } from './app.js';
+import { garantirXlsx } from './bibliotecas.js';
+import './opPdf.js';
+import './avanco.js';
 
 const MAX_LINHAS = 600;   // a tabela fica pesada acima disso; os filtros resolvem
 
@@ -29,6 +34,26 @@ function parado(o) {
 }
 function pillOp(o) { const st = Producao.statusOp(o); return '<span class="pill-op op-' + esc(st) + '">' + esc(T('op.' + st)) + '</span>'; }
 function pillArea(area) { return '<span class="pill-area area-' + esc(area) + '">' + esc(T('area.' + area)) + '</span>'; }
+
+// Embaixo da descrição: o que a planilha marcou, a observação e o roteiro do PDF.
+const ICONE_MARCA = { pintura: '🎨', servicoExterno: '🚚', ttat: '🔥', oxidacao: '⚫' };
+function detalhesOp(o) {
+  const partes = [];
+  const marcas = Object.keys(ICONE_MARCA).filter(function (k) { return o.marcas && o.marcas[k]; });
+  if (marcas.length) partes.push(marcas.map(function (k) { return '<span title="' + esc(T('av.marca.' + k)) + '">' + ICONE_MARCA[k] + ' ' + esc(T('av.marca.' + k)) + '</span>'; }).join(' · '));
+  if (Array.isArray(o.operacoes) && o.operacoes.length) {
+    const horas = o.operacoes.reduce(function (t, x) { return t + (Number(x.horas) || 0); }, 0);
+    const roteiro = o.operacoes.map(function (x) { return x.n + ' ' + x.setor + ' — ' + numeroBr(x.horas) + ' h'; }).join('\n');
+    partes.push('<span class="op-roteiro" title="' + esc(roteiro) + '">⏱ ' + esc(T('fab.roteiro', o.operacoes.length, numeroBr(Math.round(horas * 100) / 100))) + '</span>');
+  }
+  if (o.obs) partes.push('<span class="op-obs">' + esc(o.obs) + '</span>');
+  return partes.length ? '<div class="hint-txt op-detalhes">' + partes.join('<br>') + '</div>' : '';
+}
+// OP em retrabalho: quantas das peças estão na RNC.
+function pecasRnc(o) {
+  if (Producao.statusOp(o) !== 'retrabalho') return '';
+  return '<div class="op-pecas-rnc">' + esc(T('fab.qtdRnc', numeroBr(Producao.qtdReprovada(o)))) + '</div>';
+}
 
 /* ------------------------------------------------------------- fábrica */
 // Visões (abas) da lista: o CQ começa nas em aberto, os outros em todas.
@@ -94,7 +119,7 @@ function preencherFiltroProjetos() {
 function barra(rot, s) {
   return '<div class="av-linha"><span class="av-rot">' + esc(rot) + '</span>' +
     '<div class="bar"><div style="width:' + s.pct + '%"></div></div>' +
-    '<span class="av-pct">' + s.pct + '%</span><span class="av-n">' + esc(T('fab.deN', s.aprovadas, s.total)) + '</span></div>';
+    '<span class="av-pct">' + s.pct + '%</span><span class="av-n">' + esc(T('fab.pecasDeN', numeroBr(s.pecasFeitas), numeroBr(s.pecas))) + '</span></div>';
 }
 
 function renderAvanco(lista) {
@@ -112,7 +137,8 @@ function renderAvanco(lista) {
       '<div class="hint-txt av-desc">' + esc(o.descricaoProjeto || o.cliente || '') + '</div>' +
       (area ? barra(T('area.' + area), s[area]) :
         barra(T('fab.geral'), s) + barra(T('area.caldeiraria'), s.caldeiraria) + barra(T('area.usinagem'), s.usinagem)) +
-      (s.retrabalho ? '<div class="av-rnc">' + esc(T('fab.emRetrabalho', s.retrabalho)) + '</div>' : '') +
+      (s.pecasRnc ? '<div class="av-rnc">' + esc(T('fab.pecasRnc', numeroBr(s.pecasRnc))) + '</div>' : '') +
+      '<button type="button" class="link-btn av-lista" data-acao="abrirAvanco" data-arg="' + esc(id) + '">' + esc(T('av.abrir')) + ' →</button>' +
       '</div>';
   }).join('');
 }
@@ -173,7 +199,7 @@ export function renderFabrica() {
       '<td class="mono">' + esc(o.numero) + (o.origemOpId ? '<span class="op-origem">' + esc(T('fab.origem', origem ? origem.numero : '—')) + '</span>' : '') + '</td>' +
       '<td>' + pillArea(o.area) + '</td><td class="mono">' + esc(o.commessa) + parado(o) + '</td>' +
       '<td class="mono">' + esc(o.desenho) + '</td><td>' + esc(o.posicao || '—') + '</td><td>' + esc(o.rev || '—') + '</td>' +
-      '<td>' + esc(o.descricao || '—') + '</td><td class="num">' + numeroBr(o.qtd) + '</td><td class="num">' + numeroBr(o.pesoTotal) + '</td>' +
+      '<td>' + esc(o.descricao || '—') + detalhesOp(o) + '</td><td class="num">' + numeroBr(o.qtd) + pecasRnc(o) + '</td><td class="num">' + numeroBr(o.pesoTotal) + '</td>' +
       '<td>' + pillOp(o) + '</td>' + (cq ? '' : celFim) + '</tr>';
   }).join('') + (lista.length > MAX_LINHAS
     ? '<tr><td colspan="' + colunas.length + '" class="hint-txt">' + esc(T('fab.maisLinhas', lista.length - MAX_LINHAS)) + '</td></tr>' : '');
@@ -211,26 +237,30 @@ function abrirPlanilha() {
   abrirModal('modal-planilha', { foco: 'planilha-projeto', aoFechar: function () { lida = null; } });
 }
 
-let carregandoXlsx = null;
-function garantirXlsx() {
-  if (window.XLSX) return Promise.resolve(window.XLSX);
-  if (!carregandoXlsx) {
-    carregandoXlsx = new Promise(function (resolve, reject) {
-      const s = document.createElement('script');
-      s.src = 'vendor/xlsx.full.min.js';
-      s.onload = function () { resolve(window.XLSX); };
-      s.onerror = function () { carregandoXlsx = null; reject(new Error('xlsx-indisponivel')); };
-      document.head.appendChild(s);
-    });
+
+// A aba como matriz de valores (número, texto ou null), do A1 até o fim.
+function matrizDaAba(XLSX, ws) {
+  if (!ws || !ws['!ref']) return [];
+  const r = XLSX.utils.decode_range(ws['!ref']);
+  const ate = Math.min(r.e.r, 20000), colunas = Math.min(r.e.c, Avanco.MAX_COLUNAS - 1);
+  const m = [];
+  for (let i = 0; i <= ate; i++) {
+    const l = [];
+    for (let j = 0; j <= colunas; j++) l.push(Avanco.valorCelula(ws[XLSX.utils.encode_cell({ r: i, c: j })]));
+    m.push(l);
   }
-  return carregandoXlsx;
+  return Avanco.enxugar(m);
 }
 
-// Primeira aba em que o cabeçalho das OPs aparece.
-function linhasDaPlanilha(XLSX, wb) {
+// Primeira aba em que o cabeçalho das OPs aparece: a lista de avanço.
+function listaDaPlanilha(XLSX, wb) {
   for (const nome of wb.SheetNames) {
-    const linhas = XLSX.utils.sheet_to_json(wb.Sheets[nome], { header: 1, raw: false, defval: '', blankrows: true });
-    if (Planilha.acharCabecalho(linhas)) return linhas;
+    const ws = wb.Sheets[nome];
+    const matriz = matrizDaAba(XLSX, ws);
+    if (!Planilha.acharCabecalho(matriz)) continue;
+    const merges = (ws['!merges'] || []).filter(function (x) { return x.s.r < matriz.length && x.s.c < Avanco.MAX_COLUNAS; });
+    const larguras = (ws['!cols'] || []).slice(0, Avanco.MAX_COLUNAS).map(function (c) { return c ? (c.wch || (c.wpx ? Math.round(c.wpx / 7) : null)) : null; });
+    return { aba: nome, matriz: matriz, merges: merges, larguras: larguras };
   }
   return null;
 }
@@ -247,10 +277,13 @@ function lerPlanilha(ev) {
   Promise.all([garantirXlsx(), arquivo.arrayBuffer()]).then(function (r) {
     const XLSX = r[0];
     const wb = XLSX.read(new Uint8Array(r[1]), { type: 'array' });
-    const linhas = linhasDaPlanilha(XLSX, wb);
-    const res = linhas ? Planilha.lerOps(linhas) : { ok: false };
+    const lista = listaDaPlanilha(XLSX, wb);
+    const res = lista ? Planilha.lerOps(lista.matriz) : { ok: false };
     if (!res.ok) { $('planilha-resumo').innerHTML = ''; $('planilha-erro').textContent = T('fab.erroCabecalho'); return; }
-    lida = Object.assign({ arquivo: arquivo.name }, res);
+    const itens = Avanco.itens(lista.matriz);
+    lista.arquivo = arquivo.name;
+    lista.opPintura = Avanco.opPintura(lista.matriz, itens && itens.cabecalho);
+    lida = Object.assign({ arquivo: arquivo.name, lista: lista, itens: itens ? itens.itens : [] }, res);
     mostrarResumo();
   }).catch(function (e) {
     console.warn(e);
@@ -279,6 +312,8 @@ function mostrarResumo() {
     T('fab.rIguais', c.iguais.length)
   ];
   if (lida.ignoradas) itens.push(T('fab.rIgnoradas', lida.ignoradas));
+  const comerciais = lida.itens.filter(function (i) { return i.comercial; }).length;
+  itens.unshift(T('fab.rLista', lida.itens.length, comerciais) + (lida.lista.opPintura ? ' · ' + T('fab.rPintura', lida.lista.opPintura) : ''));
   let html = '<ul>' + itens.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
   if (lida.erros.length) {
     html += '<div class="planilha-erros"><b>' + esc(T('fab.rErros', lida.erros.length)) + '</b><ul>' +
@@ -291,7 +326,8 @@ function mostrarResumo() {
       '</ul></div>';
   }
   $('planilha-resumo').innerHTML = html;
-  $('planilha-enviar').disabled = !(c.novas.length || c.atualizadas.length);
+  // a lista de avanço é gravada sempre (mesmo sem OP nova)
+  $('planilha-enviar').disabled = false;
 }
 
 function enviarPlanilha(_a, _b, btn) {
@@ -299,14 +335,19 @@ function enviarPlanilha(_a, _b, btn) {
   const p = buscarProjeto($('planilha-projeto').value);
   if (!p) return;
   const c = comparacaoAtual();
-  if (!c.novas.length && !c.atualizadas.length) return;
+  const mudouOps = c.novas.length || c.atualizadas.length;
   comBotaoOcupado(btn, Ops.gravarPlanilha(p, c).then(function () {
+    return DadosAvanco.salvar(p, lida.lista).catch(function (e) { e.listaFalhou = true; throw e; });
+  }).then(function () {
     fecharModal('modal-planilha');
     toast(T('fab.gravadas', c.novas.length, c.atualizadas.length));
     estado.filtroFab.projeto = p.id;
-    if (p.gpUid) Auth.criarNotificacao(p.gpUid, 'planilhaOps', T('notif.planilha', p.commessa, c.novas.length, c.atualizadas.length), p.id);
+    if (p.gpUid && mudouOps) Auth.criarNotificacao(p.gpUid, 'planilhaOps', T('notif.planilha', p.commessa, c.novas.length, c.atualizadas.length), p.id);
     renderFabrica();
-  }).catch(function (e) { avisoErro(e, 'fab.erroGravar'); }));
+  }).catch(function (e) {
+    if (e && e.message === 'avanco-grande') { $('planilha-erro').textContent = T('fab.erroListaGrande'); return; }
+    avisoErro(e, e && e.listaFalhou ? 'fab.erroLista' : 'fab.erroGravar');
+  }));
 }
 
 /* -------------------------------------------------------------- filtros */
@@ -331,7 +372,6 @@ document.addEventListener('click', function (e) {
 
 registrarAcoes({
   toggleAddOps: function (_a, _b, el) { alternarPopup('addops-panel', el); },
-  addOpsPdf: function () { toast(T('opm.pdfEmBreve')); },
   filtrarFabrica: filtrarFabrica,
   abrirPlanilha: abrirPlanilha,
   lerPlanilha: lerPlanilha,

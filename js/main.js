@@ -106,9 +106,9 @@ function escutarEquipe() {
   estado.checklistPadrao = null;
   if (Papeis.gereProjetos(papelCarregado)) DadosChecklist.escutar(function (c) { estado.checklistPadrao = c; renderChecklistInfo(); });
   else DadosChecklist.pararEscuta();
-  estado.maquinas = []; estado.cfgFabrica = {};
+  estado.maquinas = []; estado.cfgFabrica = {}; estado.setores = {};
   if (Papeis.veCarga(papelCarregado)) {
-    DadosCarga.escutar(function (m) { estado.maquinas = m; redesenhar(); }, function (c) { estado.cfgFabrica = c; redesenhar(); });
+    DadosCarga.escutar(function (m) { estado.maquinas = m; redesenhar(); }, function (c) { estado.cfgFabrica = c; redesenhar(); }, function (s) { estado.setores = s; redesenhar(); });
   } else {
     DadosCarga.pararEscuta();
   }

@@ -43,6 +43,24 @@ test('carga máquina: horas da OP aberta na máquina escolhida x capacidade hora
   assert.equal(r.resumo.semHoras, 1);
 });
 
+test('carga máquina pelas operações do PDF: setor acha a máquina pelo nome ou pelo mapa', () => {
+  const maquinas = [{ id: 'm1', nome: 'Mandrilhadora Forest', horasDia: 8 }, { id: 'm2', nome: 'Torno CNC', horasDia: 8 }];
+  const op = { area: 'usinagem', projetoId: 'p1', status: 'aberta', maquinaId: 'm2', horasPrevistas: 99, operacoes: [
+    { setor: 'MANDRILHADORA FOREST', horas: 8 }, { setor: 'MANDRILHADORA FOREST', horas: 12 },
+    { setor: 'AJUSTADOR', horas: 1 }, { setor: 'TORNO GRANDE', horas: 4 }, { setor: 'CONTROLE DE QUALIDAD', horas: 0.15 }] };
+  // sem mapa: só a mandrilhadora é achada; ajustador, torno grande e CQ ficam pendentes
+  let r = Carga.cargaMaquinas([op], [proj()], maquinas, sems, H);
+  assert.equal(r.linhas[0].horas, 20);
+  assert.equal(r.linhas[1].horas, 0);
+  assert.deepEqual(r.resumo.setoresSemMaquina, ['AJUSTADOR', 'TORNO GRANDE', 'CONTROLE DE QUALIDAD']);
+  // com mapa: torno grande → m2; ajustador e CQ não são máquina
+  const mapa = { TORNOGRANDE: 'm2', AJUSTADOR: '', CONTROLEDEQUALIDAD: '' };
+  r = Carga.cargaMaquinas([op], [proj()], maquinas, sems, H, mapa);
+  assert.equal(r.linhas[1].horas, 4);
+  assert.deepEqual(r.resumo.setoresSemMaquina, []);
+  assert.equal(Carga.maquinaDoSetor('mandrilhadora forest', maquinas), 'm1');
+});
+
 test('carga fábrica: kg de caldeiraria aberta; projeto parado não conta', () => {
   const ops = [
     { area: 'caldeiraria', projetoId: 'p1', status: 'aberta', pesoTotal: 1000 },

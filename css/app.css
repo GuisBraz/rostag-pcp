@@ -545,12 +545,12 @@ td.num { text-align: right; font-family: var(--mono); font-size: 11.5px; white-s
 .av-card { padding: 12px 14px; }
 .av-head { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; }
 .av-desc { margin: 2px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.av-linha { display: grid; grid-template-columns: 78px 1fr 36px 46px; align-items: center; gap: 6px; font-size: 11px; margin-top: 4px; }
+.av-linha { display: grid; grid-template-columns: 78px 1fr 36px auto; align-items: center; gap: 6px; font-size: 11px; margin-top: 4px; }
 .av-linha .bar { background: var(--line-soft); border-radius: 6px; height: 7px; overflow: hidden; }
 .av-linha .bar > div { height: 100%; background: var(--green); }
 .av-rot { color: var(--ink-dim); }
 .av-pct { font-family: var(--mono); font-weight: 700; text-align: right; }
-.av-n { font-family: var(--mono); color: var(--ink-faint); text-align: right; }
+.av-n { font-family: var(--mono); color: var(--ink-faint); text-align: right; white-space: nowrap; }
 .av-rnc { margin-top: 6px; font-size: 11px; font-weight: 700; color: var(--rust); }
 #fab-tbody tr { cursor: default; }
 #fab-tbody tr.linha-rnc td { background: var(--rust-bg); }
@@ -924,3 +924,50 @@ body.sem-equipe #save-chip, body.sem-equipe #stab-equipe > .card ~ .card, body.s
 .btn-entrar-equipe { padding: 8px 14px; }
 .eqm-migracao { margin-top: 16px; padding: 12px; border-radius: 9px; background: var(--bg-panel-alt); border: 1px solid var(--line); }
 @media print { .rodape-autor { display: none; } }
+
+/* ---- lista de avanço do projeto, PDF da OP e setores da carga ---- */
+.modal-box.modal-largo { width: 1100px; }
+.av-lista { margin-top: 8px; font-size: 12px; }
+.prod-avanco .btn-mini { margin-left: auto; }
+.plan-lista { margin: 12px 0; }
+.av-barra { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 12px 0 8px; }
+.av-barra .fab-visoes { margin-bottom: 0; }
+.av-busca { min-width: 220px; flex: 0 1 280px; }
+.av-tabela { max-height: 58vh; overflow: auto; border: 1px solid var(--line-soft); border-radius: 8px; }
+.av-tabela table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.av-tabela th { position: sticky; top: 0; z-index: 1; background: var(--bg-panel-alt); text-align: left; font-size: 10.5px; font-weight: 700;
+  color: var(--ink-faint); padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.av-tabela td { padding: 7px 8px; border-bottom: 1px solid var(--line-soft); color: var(--ink); vertical-align: top; }
+.av-tabela td.num { text-align: right; font-family: var(--mono); }
+.av-tabela tr.av-comercial td { color: var(--ink-dim); }
+.av-pos { font-family: var(--mono); white-space: nowrap; }
+.av-marcas { white-space: nowrap; font-size: 14px; }
+.av-obs { max-width: 240px; font-size: 11.5px; color: var(--amber-ink); }
+.av-rnc-txt { color: var(--rust); font-weight: 700; }
+.av-pill-com { background: var(--bg-panel-alt); color: var(--ink-dim); border: 1px solid var(--line); }
+.av-footer { justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.op-detalhes { margin-top: 3px; line-height: 1.5; }
+.op-roteiro { cursor: help; }
+.op-obs { color: var(--amber-ink); }
+.op-pecas-rnc { font-size: 10.5px; font-weight: 700; color: var(--rust); white-space: nowrap; }
+.oppdf-resumo { margin: 10px 0 6px; }
+.oppdf-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.oppdf-tab th { text-align: left; font-size: 10.5px; font-weight: 700; color: var(--ink-faint); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.oppdf-tab td { padding: 8px; border-bottom: 1px solid var(--line-soft); vertical-align: top; color: var(--ink); }
+.oppdf-tab ul { margin: 4px 0 0 16px; padding: 0; }
+.oppdf-arq { max-width: 220px; word-break: break-word; font-size: 11.5px; color: var(--ink-dim); }
+.oppdf-tab tr.oppdf-ruim td { background: var(--rust-bg); }
+.oppdf-tab tr.oppdf-aviso td { background: var(--amber-bg); }
+.carga-op-pdf { grid-column: span 2; font-size: 12px; color: var(--ink); }
+.carga-pendente { color: var(--amber-ink); }
+.carga-setores-tit { margin-top: 18px; }
+.carga-setor { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 8px; align-items: center; padding: 6px 0;
+  border-bottom: 1px solid var(--line-soft); font-size: 12.5px; }
+.carga-setor.pendente b { color: var(--amber-ink); }
+.carga-setor select { width: 100%; }
+@media (max-width: 720px) {
+  .carga-setor { grid-template-columns: 1fr; }
+  .av-busca { flex: 1 1 100%; }
+  .carga-op-pdf { grid-column: auto; }
+}
+.ano-kpi .val .hint-inline { font-size: 12px; font-weight: 500; }

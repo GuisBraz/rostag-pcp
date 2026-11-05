@@ -18,12 +18,25 @@ test('rascunho preenche o que a OP já tem e marca o setor da área', () => {
 
 test('validar exige nº, descrição e inspetor; reinspeção exige inspetor e data', () => {
   const r = Rnc.rascunho(op, '2026-10-20', '');
-  assert.deepEqual(Rnc.validar(r).faltando, ['numero', 'descricao', 'inspetor']);
-  Object.assign(r, { numero: '001', descricao: 'furo fora', inspetor: 'Ana', reResultado: 'conforme' });
-  assert.deepEqual(Rnc.validar(r).faltando, ['reInspetor', 'reData']);
+  assert.deepEqual(Rnc.validar(r, 2).faltando, ['numero', 'descricao', 'inspetor', 'qtdNc']);
+  Object.assign(r, { numero: '001', descricao: 'furo fora', inspetor: 'Ana', qtdNc: '1', reResultado: 'conforme' });
+  assert.deepEqual(Rnc.validar(r, 2).faltando, ['reInspetor', 'reData']);
   Object.assign(r, { reInspetor: 'Bia', reData: '2026-10-22' });
-  assert.equal(Rnc.validar(r).ok, true);
-  assert.equal(Rnc.validar(Object.assign({}, r, { numero: 'x'.repeat(31) })).ok, false);
+  assert.equal(Rnc.validar(r, 2).ok, true);
+  assert.equal(Rnc.validar(Object.assign({}, r, { numero: 'x'.repeat(31) }), 2).ok, false);
+});
+
+test('quantidade não conforme: inteiro de 1 até a quantidade da OP', () => {
+  assert.equal(Rnc.qtdNcValida('3', 5), 3);
+  assert.equal(Rnc.qtdNcValida('5', 5), 5);
+  assert.equal(Rnc.qtdNcValida('6', 5), null);
+  assert.equal(Rnc.qtdNcValida('0', 5), null);
+  assert.equal(Rnc.qtdNcValida('1,5', 5), null);
+  assert.equal(Rnc.qtdNcValida('', 5), null);
+  assert.equal(Rnc.qtdNcValida('12', null), 12);
+  const ind = Rnc.indicadoresMes([], [{ criadoEm: '2026-10-03T10:00:00Z', qtdNc: '3' }, { criadoEm: '2026-10-09T10:00:00Z', qtdNc: '' }], '2026-10');
+  assert.equal(ind.rncs, 2);
+  assert.equal(ind.pecasReprovadas, 3);
 });
 
 test('efeito da reinspeção no destino da OP', () => {
@@ -58,7 +71,7 @@ test('indicadores do mês: finalizadas, RNCs, em aberto, retrabalho e mortas', (
   ];
   const rncs = [{ criadoEm: '2026-10-02T10:00:00Z' }, { criadoEm: '2026-10-03T10:00:00Z' }, { criadoEm: '2026-09-20T10:00:00Z' }];
   const out = Rnc.indicadoresMes(ops, rncs, '2026-10', '2026-12-01T00:00:00Z');
-  assert.deepEqual(out, { mes: '2026-10', aprovadas: 1, desvio: 1, rncs: 2, finalizadas: 2, mortas: 1, emAberto: 3, retrabalho: 2 });
+  assert.deepEqual(out, { mes: '2026-10', aprovadas: 1, desvio: 1, rncs: 2, finalizadas: 2, mortas: 1, emAberto: 3, retrabalho: 2, pecasReprovadas: 0 });
   // setembro: as três criadas em setembro estavam abertas; a futura morta já estava em retrabalho
   const set = Rnc.indicadoresMes(ops, rncs, '2026-09', '2026-12-01T00:00:00Z');
   assert.equal(set.emAberto, 3);

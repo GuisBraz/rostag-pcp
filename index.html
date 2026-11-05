@@ -415,6 +415,9 @@
           <input id="cu-maq-horas" type="number" min="0.5" max="24" step="0.5" value="8" data-i18n-title="cg.horasDia" title="Horas por dia">
           <button type="button" class="btn btn-outline" data-acao="adicionarMaquina" data-i18n="cg.adicionar">+ Adicionar</button>
         </div>
+        <div class="panel-title carga-setores-tit" data-i18n="cg.setoresTit">Setores do PDF da OP</div>
+        <div class="panel-note" data-i18n="cg.setoresNota">Cada operação do PDF vem com um setor. Diga em qual máquina ele roda — ou que não é máquina (ajustador, CQ...). Setor com o mesmo nome de uma máquina já é ligado sozinho.</div>
+        <div id="cu-setores"></div>
       </div>
     </div>
   </div>
@@ -451,7 +454,7 @@
         <div class="filter-panel menu-add-painel" id="addops-panel" role="menu">
           <button type="button" class="menu-add-item" role="menuitem" data-acao="abrirOpManual"><b data-i18n="opm.mManual">✎ Manual</b><span data-i18n="opm.mManualNota">Cadastrar uma OP por vez</span></button>
           <button type="button" class="menu-add-item" role="menuitem" data-acao="abrirPlanilha"><b data-i18n="opm.mPlanilha">⭱ Planilha</b><span data-i18n="opm.mPlanilhaNota">Várias OPs de um projeto (.xls, .xlsx, .csv)</span></button>
-          <button type="button" class="menu-add-item" role="menuitem" data-acao="addOpsPdf"><b data-i18n="opm.mPdf">⭱ PDF</b><span data-i18n="opm.mPdfNota">Em breve — leitura dos PDFs das OPs</span></button>
+          <button type="button" class="menu-add-item" role="menuitem" data-acao="addOpsPdf"><b data-i18n="opm.mPdf">⭱ PDF da OP</b><span data-i18n="opm.mPdfNota">Operações e horas de cada OP (PDF do sistema)</span></button>
         </div>
       </div>
     </div>
@@ -760,11 +763,11 @@
 <div class="modal-overlay" id="modal-planilha" role="dialog" aria-modal="true" aria-labelledby="modal-planilha-title">
   <div class="modal-box">
     <div class="modal-header">
-      <h2 id="modal-planilha-title" data-i18n="fab.subirTit">Subir planilha de OPs</h2>
+      <h2 id="modal-planilha-title" data-i18n="fab.subirTit">Subir planilha de avanço</h2>
       <button type="button" class="modal-close" data-acao="fecharModal" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
-      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="fab.subirNota">Use a planilha de controle de avanço (.xls, .xlsx ou .csv). Cada linha com "N° OP CALD" vira uma OP de caldeiraria e cada linha com "N° OP USINAGEM", uma de usinagem. Enviar de novo atualiza as OPs sem perder o que o CQ já finalizou.</div>
+      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="fab.subirNota">Suba a planilha de avanço pronta (.xls, .xlsx ou .csv). A lista inteira fica no projeto para todos verem; cada linha com "N° OP CALD" vira uma OP de caldeiraria e cada linha com "N° OP USINAGEM", uma de usinagem. Enviar de novo atualiza sem perder o que o CQ já deu baixa.</div>
       <div class="field"><label data-i18n="fab.projeto">PROJETO</label><select id="planilha-projeto"></select></div>
       <div class="field"><label data-i18n="fab.arquivo">ARQUIVO</label><input type="file" id="planilha-arquivo" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" data-change="lerPlanilha"></div>
       <div id="planilha-resumo" class="planilha-resumo"></div>
@@ -772,7 +775,49 @@
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-outline" data-acao="fecharModal" data-i18n="btn.cancelar">Cancelar</button>
-      <button type="button" class="btn btn-primary" id="planilha-enviar" data-acao="enviarPlanilha" disabled data-i18n="fab.enviar">Gravar OPs</button>
+      <button type="button" class="btn btn-primary" id="planilha-enviar" data-acao="enviarPlanilha" disabled data-i18n="fab.enviar">Gravar lista e OPs</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PDF DA OP ==================== -->
+<div class="modal-overlay" id="modal-oppdf" role="dialog" aria-modal="true" aria-labelledby="oppdf-titulo">
+  <div class="modal-box modal-largo">
+    <div class="modal-header">
+      <h2 id="oppdf-titulo" data-i18n="pdf.titulo">Importar PDF da OP</h2>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-oppdf" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="pdf.nota">Escolha um ou vários PDFs gerados pelo sistema da empresa. Cada um é ligado à OP pelo número (a OP já precisa ter vindo da planilha de avanço) e traz as operações com setor e horas, que alimentam a carga máquina. PDF "impresso" (só imagem) não dá para ler: gere de novo pelo sistema.</div>
+      <div class="field"><label for="oppdf-arquivo" data-i18n="pdf.arquivos">ARQUIVOS PDF</label><input type="file" id="oppdf-arquivo" accept=".pdf,application/pdf" multiple data-change="lerPdfsOp"></div>
+      <div id="oppdf-lista" class="oppdf-lista"></div>
+      <div class="form-error" id="oppdf-erro"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-oppdf" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="oppdf-gravar" data-acao="gravarPdfsOp" disabled data-i18n="pdf.gravar0">Gravar operações</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== LISTA DE AVANÇO ==================== -->
+<div class="modal-overlay" id="modal-avanco" role="dialog" aria-modal="true" aria-labelledby="av-titulo">
+  <div class="modal-box modal-largo modal-avanco">
+    <div class="modal-header">
+      <div><h2 id="av-titulo">Lista de avanço</h2><div class="hint-txt" id="av-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-avanco" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="ano-resumo" id="av-kpis"></div>
+      <div class="av-barra">
+        <div class="fab-visoes" id="av-filtros" role="tablist"></div>
+        <input id="av-busca" class="av-busca" data-i18n-ph="av.buscaPh" placeholder="buscar desenho, OP, descrição..." aria-label="Buscar">
+      </div>
+      <div id="av-corpo"></div>
+    </div>
+    <div class="modal-footer av-footer">
+      <span class="hint-txt" id="av-rodape"></span>
+      <button type="button" class="btn btn-primary" id="av-baixar" data-acao="baixarAvanco" disabled data-i18n="av.baixar">⭳ Baixar planilha de avanço</button>
     </div>
   </div>
 </div>
@@ -870,7 +915,7 @@
           <textarea id="rf-descricao" rows="8" class="rf-pautado"></textarea>
           <div class="rf-linha rf-sem-borda">
             <div class="rf-c rf-g2"><label for="rf-inspetor">Inspetor *</label><input id="rf-inspetor"></div>
-            <div class="rf-c"><label for="rf-qtdNc">Qtde. N/C</label><input id="rf-qtdNc"></div>
+            <div class="rf-c"><label for="rf-qtdNc">Qtde. N/C *</label><input id="rf-qtdNc" inputmode="numeric" autocomplete="off"></div>
             <div class="rf-c"><label for="rf-data">Data</label><input id="rf-data" type="date"></div>
           </div>
         </div>

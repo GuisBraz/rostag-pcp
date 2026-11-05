@@ -749,3 +749,64 @@ describe('criar equipe (limite de 3)', () => {
     await assertFails(criar(X, 'N1', { extra: { coordenadorUid: Y } }));
   });
 });
+
+describe('planilha de avanço completa, PDF da OP e RNC por peças', () => {
+  const lista = (extra) => ({ projetoId: 'doP', commessa: '2026-001', arquivo: 'AVANCO.xls', aba: 'AVANÇO', opPintura: '8000000099',
+    linhas: [{ c: ['N°', 'DESENHO'] }, { c: [1, '1609568'] }], merges: [], larguras: [6, 12],
+    enviadoEm: 'x', enviadoPorUid: P, enviadoPorNome: 'P', ...extra });
+
+  test('lista de avanço: técnico do projeto e gerente gravam; toda a equipe lê', async () => {
+    await assertSucceeds(como(P).doc('equipes/E1/avanco/doP').set(lista()));
+    await assertSucceeds(como(M).doc('equipes/E1/avanco/doT').set(lista({ projetoId: 'doT', enviadoPorUid: M })));
+    for (const uid of [C, M, G, P, T, U, K, Q]) await assertSucceeds(como(uid).doc('equipes/E1/avanco/doP').get());
+    await assertFails(como(Y).doc('equipes/E1/avanco/doP').get());
+  });
+  test('lista de avanço: outro técnico, GP e programador não gravam; formato é conferido', async () => {
+    await assertFails(como(T).doc('equipes/E1/avanco/doP').set(lista({ enviadoPorUid: T })));
+    for (const uid of [G, U, Q]) await assertFails(como(uid).doc('equipes/E1/avanco/doP').set(lista({ enviadoPorUid: uid })));
+    await assertFails(como(P).doc('equipes/E1/avanco/doP').set(lista({ projetoId: 'doT' })));
+    await assertFails(como(P).doc('equipes/E1/avanco/doP').set(lista({ enviadoPorUid: M })));
+    await assertFails(como(P).doc('equipes/E1/avanco/doP').set(lista({ campoEstranho: 1 })));
+    await assertFails(como(P).doc('equipes/E1/avanco/doP').set(lista({ linhas: 'x' })));
+    await semear('equipes/E1/avanco/doP', lista());
+    await assertFails(como(P).doc('equipes/E1/avanco/doP').delete());
+    await assertSucceeds(como(M).doc('equipes/E1/avanco/doP').delete());
+  });
+  test('OP da planilha leva produto, observação e marcas; o PDF grava as operações', async () => {
+    await assertSucceeds(como(P).doc('equipes/E1/ops/op9').set(op({ numero: '02052501009', produto: '8000015633', obs: 'VER CROQUI', marcas: { pintura: true, ttat: true } })));
+    await assertFails(como(P).doc('equipes/E1/ops/op8').set(op({ numero: '02052501008', obs: 'x'.repeat(301) })));
+    const operacoes = [{ n: '01', setor: 'MANDRILHADORA', horas: 8, etapa: 'PRIMEIRA ETAPA' }];
+    await assertSucceeds(como(P).doc('equipes/E1/ops/op1').update({ operacoes, pdfEm: 'x', pdfPorUid: P, atualizadoEm: 'y' }));
+    await assertSucceeds(como(M).doc('equipes/E1/ops/op2').update({ operacoes, pdfEm: 'x', pdfPorUid: M, atualizadoEm: 'y' }));
+    await assertFails(como(T).doc('equipes/E1/ops/op1').update({ operacoes, pdfEm: 'x' }));
+    await assertFails(como(U).doc('equipes/E1/ops/op1').update({ operacoes, pdfEm: 'x' }));
+    await assertFails(como(P).doc('equipes/E1/ops/op1').update({ operacoes: 'x', pdfEm: 'x' }));
+  });
+  test('RNC por peças: qtdNc inteiro de 1 até a quantidade da OP', async () => {
+    const db = como(Q);
+    async function abrirCom(id, qtdNc) {
+      const lote = db.batch();
+      lote.set(db.doc('equipes/E1/rncs/' + id), { numero: id, produto: '', desenho: '', rev: '', commessa: '', op: '', qtd: '2', tag: '', item: '',
+        setor: {}, setorOutros: '', procedencia: '', descricao: 'x', inspetor: 'Q', qtdNc: String(qtdNc), data: '', disposicao: '', dispResponsavel: '',
+        dispData: '', reOp: '', reInspetor: '', reData: '', reResultado: '', reResponsavel: '', observacoes: '', situacao: 'aberta', atualizadoEm: 'x',
+        opId: 'op1', projetoId: 'doP', area: 'usinagem', gpUid: G, tecnicoUid: P, criadoPorUid: Q, criadoPorNome: 'Q', criadoEm: 'x' });
+      lote.update(db.doc('equipes/E1/ops/op1'), { status: 'retrabalho', rncAtualId: id, rncNumero: id, retrabalhoDesde: 'x', qtdNc: qtdNc });
+      return lote.commit();
+    }
+    await assertFails(abrirCom('r0', 0));
+    await assertFails(abrirCom('r3', 3));       // a OP tem 2 peças
+    await assertFails(abrirCom('rx', 1.5));
+    await assertSucceeds(abrirCom('r1', 1));
+    await assertSucceeds(como(Q).doc('equipes/E1/ops/op1').update({ qtdNc: 2 }));
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update({ qtdNc: 5 }));
+    await assertFails(como(P).doc('equipes/E1/ops/op1').update({ qtdNc: 1 }));
+  });
+  test('setores do PDF → máquina: programador de usinagem e gerente', async () => {
+    const cfg = (uid) => ({ mapa: { MANDRILHADORAFOREST: 'm1', AJUSTADOR: '' }, atualizadoEm: 'x', atualizadoPorUid: uid });
+    await assertSucceeds(como(U).doc('equipes/E1/config/setores').set(cfg(U)));
+    await assertSucceeds(como(M).doc('equipes/E1/config/setores').set(cfg(M)));
+    for (const uid of [K, T, Q, G]) await assertFails(como(uid).doc('equipes/E1/config/setores').set(cfg(uid)));
+    await assertFails(como(U).doc('equipes/E1/config/setores').set({ ...cfg(U), extra: 1 }));
+    await assertSucceeds(como(Q).doc('equipes/E1/config/setores').get());
+  });
+});

@@ -6,7 +6,7 @@
 --------------------------------------------------------------------------- */
 import { estado, opsDoProjeto } from '../estado.js';
 import { prefs } from '../nucleo/prefs.js';
-import { esc, br, brCurto, hoje, difDias } from '../nucleo/fmt.js';
+import { esc, br, brCurto, hoje, difDias, numeroBr } from '../nucleo/fmt.js';
 import { T, plural, codigoIdioma, SIT_LABEL } from '../i18n/index.js';
 import * as Cronograma from '../dominio/cronograma.js';
 import * as Projeto from '../dominio/projeto.js';
@@ -404,7 +404,7 @@ export function renderAreasProjeto(p) {
       !c ? '--ink-faint' : (atrasadas ? '--rust' : '--teal')) +
     cartaoArea('planejamento', T('ar.planejamento'),
       st.total ? st.pct + '<small>%</small>' : '—',
-      st.total ? T('ar.planDet', st.aprovadas, st.total) : T('d.semOps'), st.total ? '--violet' : '--ink-faint') +
+      st.total ? T('ar.planDetP', numeroBr(st.pecasFeitas), numeroBr(st.pecas)) : T('d.semOps'), st.total ? '--violet' : '--ink-faint') +
     cartaoArea('qualidade', T('ar.qualidade'),
       String(st.rnc), T('ar.cqDet', plural(st.rnc, 'ar.rnc', 'ar.rncs'), st.abertas), st.rnc ? '--rust' : '--green');
   AREAS_PROJETO.forEach(function (a) { $('area-' + a).hidden = a !== areaAtual; });
@@ -416,7 +416,7 @@ export function renderAreasProjeto(p) {
 function barraArea(rotulo, a) {
   return '<div class="plan-area"><div class="plan-area-topo"><b>' + esc(rotulo) + '</b><span>' + a.pct + '%</span></div>' +
     '<div class="ac-barra"><div style="width:' + a.pct + '%; background:var(--violet)"></div></div>' +
-    '<div class="hint-txt">' + esc(T('ar.planArea', a.aprovadas, a.total, a.abertas, a.rnc)) + '</div></div>';
+    '<div class="hint-txt">' + esc(T('ar.planAreaP', numeroBr(a.pecasFeitas), numeroBr(a.pecas), numeroBr(a.pecasRnc), a.abertas)) + '</div></div>';
 }
 
 function renderPlanejamento(p, st) {
@@ -430,6 +430,7 @@ function renderPlanejamento(p, st) {
     '</div>' +
     (st.total ? barraArea(T('fab.geral'), st) + barraArea(T('area.caldeiraria'), st.caldeiraria) + barraArea(T('area.usinagem'), st.usinagem)
       : '<div class="empty-state">' + esc(T('d.semOps')) + '</div>') +
+    '<div class="plan-lista"><button type="button" class="btn btn-outline" data-acao="abrirAvanco" data-arg="' + esc(p.id) + '">' + esc(T('av.abrir')) + '</button></div>' +
     '<div class="plan-embreve">' +
       '<div class="plan-embreve-item"><b>' + esc(T('ar.cargaMaquina')) + '</b><span>' + esc(T('ar.emBreve')) + '</span></div>' +
       '<div class="plan-embreve-item"><b>' + esc(T('ar.cargaFabrica')) + '</b><span>' + esc(T('ar.emBreve')) + '</span></div>' +

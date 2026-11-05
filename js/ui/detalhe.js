@@ -6,7 +6,7 @@ import { estado, buscarProjeto, projetoAtual, opsDoProjeto } from '../estado.js'
 import * as Producao from '../dominio/producao.js';
 import { abrirEditarProjeto } from './formulario.js';
 import { prefs } from '../nucleo/prefs.js';
-import { esc, br, hoje, difDias, dataDoInstante, horaDoInstante } from '../nucleo/fmt.js';
+import { esc, br, hoje, difDias, dataDoInstante, horaDoInstante, numeroBr } from '../nucleo/fmt.js';
 import { T, plural, STATUS_LABEL, SIT_LABEL } from '../i18n/index.js';
 import { DIAS_MAX_TAREFA } from '../dominio/constantes.js';
 import * as Projeto from '../dominio/projeto.js';
@@ -63,7 +63,7 @@ export function renderDetalhe() {
       br(p.pcpInicio) + ' → ' + br(p.pcpFim), obsPcp, corPcp);
   }
 
-  // --- janela da produção (começa no fim do PCP; avanço pelas OPs aprovadas) ---
+  // --- janela da produção (começa no fim do PCP; avanço pelas peças aprovadas) ---
   const stOps = Producao.estatisticas(opsDoProjeto(p.id));
   const sitProd = Producao.situacao(p, stOps, h);
   const corProd = { atrasada: 'var(--rust)', concluida: 'var(--green)', andamento: 'var(--violet)', parada: 'var(--amber-ink)' }[sitProd] || 'var(--ink-dim)';
@@ -72,9 +72,10 @@ export function renderDetalhe() {
   if (p.prodFim && p.entrega && p.prodFim > p.entrega) obsProd += ' · ' + T('d.prodDepoisEntrega', plural(difDias(p.entrega, p.prodFim), 'x.dia', 'x.dias'));
   const avanco = stOps.total
     ? '<div class="prod-avanco">' + [['fab.geral', stOps], ['area.caldeiraria', stOps.caldeiraria], ['area.usinagem', stOps.usinagem]].map(function (x) {
-      return '<span><b>' + x[1].pct + '%</b> ' + esc(T(x[0])) + ' <span class="hint-inline">(' + x[1].aprovadas + '/' + x[1].total + ')</span></span>';
-    }).join('') + (stOps.rnc ? '<span class="prod-rnc">' + esc(T('fab.comRnc', stOps.rnc)) + '</span>' : '') + '</div>'
-    : '<div class="hint-inline">' + esc(T('d.semOps')) + '</div>';
+      return '<span><b>' + x[1].pct + '%</b> ' + esc(T(x[0])) + ' <span class="hint-inline">(' + esc(T('fab.pecasDeN', numeroBr(x[1].pecasFeitas), numeroBr(x[1].pecas))) + ')</span></span>';
+    }).join('') + (stOps.pecasRnc ? '<span class="prod-rnc">' + esc(T('fab.pecasRnc', numeroBr(stOps.pecasRnc))) + '</span>' : '') +
+      '<button type="button" class="btn btn-outline btn-mini" data-acao="abrirAvanco" data-arg="' + esc(p.id) + '">' + esc(T('av.abrir')) + '</button></div>'
+    : '<div class="hint-inline">' + esc(T('d.semOps')) + ' <button type="button" class="link-btn" data-acao="abrirAvanco" data-arg="' + esc(p.id) + '">' + esc(T('av.abrir')) + '</button></div>';
   $('janela-producao').innerHTML = janela(esc(T('d.janelaProd')) + ' <span class="pill-prod prod-' + sitProd + '">' + esc(T('prod.' + sitProd)) + '</span>',
     p.pcpFim ? br(p.pcpFim) + ' → ' + br(p.prodFim) : '—', obsProd, corProd) + avanco;
 

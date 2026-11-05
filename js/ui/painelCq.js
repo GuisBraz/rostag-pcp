@@ -46,7 +46,7 @@ export function renderPainelCq() {
   const taxa = Rnc.taxaAprovacao(ind);
 
   $('ger-cards').innerHTML =
-    cartao('cqVerRetrabalho', T('cqp.retrabalho'), '<div class="value" style="color:var(--rust)">' + st.retrabalho + '</div>', T('cqp.retrabalhoDet')) +
+    cartao('cqVerRetrabalho', T('cqp.retrabalho'), '<div class="value" style="color:var(--rust)">' + st.retrabalho + '</div>', T('cqp.retrabalhoPecas', st.pecasRnc, ind.pecasReprovadas)) +
     cartao('cqVerMortas', T('cqp.mortas'), '<div class="value">' + ind.mortas + '</div>', T('cqp.mortasDet', st.mortas)) +
     cartao('cqVerDesvio', T('cqp.desvio').toUpperCase(), '<div class="value" style="color:var(--terracotta)">' + ind.desvio + '</div>', T('cqp.desvioDet', st.desvio)) +
     cartao('cqVerAbertas', T('cqp.paraInspecionar'), '<div class="value">' + st.abertas + '</div>', T('cqp.paraInspecionarDet'));

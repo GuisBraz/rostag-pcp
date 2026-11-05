@@ -122,8 +122,9 @@ function cqReinspecionar() {
 function salvarFormRnc(_a, _b, btn) {
   if (!form || form.modo === 'ver') return;
   const dados = coletar();
-  const v = Rnc.validar(dados);
-  ['numero', 'descricao', 'inspetor', 'reInspetor', 'reData'].forEach(function (k) { $('rf-' + k).classList.toggle('invalid', v.faltando.indexOf(k) >= 0); });
+  const opDaRnc = form.op || (form.rnc && opPorId(form.rnc.opId));
+  const v = Rnc.validar(dados, opDaRnc ? opDaRnc.qtd : null);
+  ['numero', 'descricao', 'inspetor', 'qtdNc', 'reInspetor', 'reData'].forEach(function (k) { $('rf-' + k).classList.toggle('invalid', v.faltando.indexOf(k) >= 0); });
   if (!v.ok) {
     $('rnc-form-erro').textContent = v.faltando.length ? T('rf.faltou', v.faltando.map(function (k) { return T('rf.campo.' + k); }).join(', ')) : T('fm.errLongo');
     const primeiro = v.faltando[0] && $('rf-' + v.faltando[0]);

@@ -63,8 +63,49 @@ function opConta(o, p) {
   return o.status === 'aberta' && p && Projeto.aberto(p) && Projeto.status(p) !== 'paralisado';
 }
 
+/* Setor do PDF da OP → máquina cadastrada. O mapa (config/setores) guarda o
+   que o programador escolheu: chave do setor → id da máquina, ou '' para
+   "não é máquina" (ajustador, CQ...). Sem escolha, tenta pelo nome: o setor
+   "MANDRILHADORA FOREST" acha a máquina "Mandrilhadora Forest". */
+function chaveSetor(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+export { chaveSetor };
+export function maquinaDoSetor(setor, maquinas, mapa) {
+  const k = chaveSetor(setor);
+  if (!k) return null;
+  if (mapa && Object.prototype.hasOwnProperty.call(mapa, k)) {
+    const id = mapa[k];
+    return id && (maquinas || []).some(function (m) { return m.id === id; }) ? id : null;
+  }
+  const m = (maquinas || []).find(function (x) { return chaveSetor(x.nome) === k; })
+    || (maquinas || []).find(function (x) { const n = chaveSetor(x.nome); return n.length >= 4 && (k.indexOf(n) >= 0 || n.indexOf(k) >= 0); });
+  return m ? m.id : null;
+}
+// Setor já decidido (máquina ou "não é máquina")?
+export function setorResolvido(setor, maquinas, mapa) {
+  const k = chaveSetor(setor);
+  return (mapa && Object.prototype.hasOwnProperty.call(mapa, k)) || !!maquinaDoSetor(setor, maquinas, null);
+}
+
+// Horas da OP em cada máquina: pelas operações do PDF, quando houver;
+// senão pela máquina e horas que o programador escolheu.
+export function horasPorMaquina(o, maquinas, mapa) {
+  const r = {};
+  if (Array.isArray(o.operacoes) && o.operacoes.length) {
+    o.operacoes.forEach(function (op) {
+      const id = maquinaDoSetor(op.setor, maquinas, mapa);
+      const h = Number(op.horas) || 0;
+      if (id && h) r[id] = (r[id] || 0) + h;
+    });
+    return { porMaquina: r, doPdf: true };
+  }
+  if (o.maquinaId && Number(o.horasPrevistas) > 0) r[o.maquinaId] = Number(o.horasPrevistas);
+  return { porMaquina: r, doPdf: false };
+}
+
 // Carga máquina: por máquina, horas por semana x capacidade (horasDia × 5).
-export function cargaMaquinas(ops, projetos, maquinas, sems, h) {
+export function cargaMaquinas(ops, projetos, maquinas, sems, h, mapaSetores) {
   const porId = {};
   (projetos || []).forEach(function (p) { porId[p.id] = p; });
   const linhas = {};
@@ -72,21 +113,36 @@ export function cargaMaquinas(ops, projetos, maquinas, sems, h) {
     linhas[m.id] = { maquina: m, porSemana: sems.map(function () { return 0; }), depois: 0,
       capacidade: (Number(m.horasDia) || 0) * DIAS_UTEIS_SEMANA, ops: 0, horas: 0 };
   });
-  const resumo = { semMaquina: 0, semHoras: 0, semJanela: 0, horasSemJanela: 0 };
+  const resumo = { semMaquina: 0, semHoras: 0, semJanela: 0, horasSemJanela: 0, setoresSemMaquina: [] };
+  const setoresVistos = {};
   (ops || []).forEach(function (o) {
     if (o.area !== 'usinagem') return;
     const p = porId[o.projetoId];
     if (!opConta(o, p)) return;
-    if (!o.maquinaId || !linhas[o.maquinaId]) { resumo.semMaquina++; return; }
-    const horas = Number(o.horasPrevistas) || 0;
-    if (!horas) { resumo.semHoras++; return; }
-    const l = linhas[o.maquinaId];
-    l.ops++; l.horas += horas;
+    if (Array.isArray(o.operacoes)) {
+      o.operacoes.forEach(function (op) {
+        const k = chaveSetor(op.setor);
+        if (k && !setoresVistos[k] && !setorResolvido(op.setor, maquinas, mapaSetores)) { setoresVistos[k] = true; resumo.setoresSemMaquina.push(op.setor); }
+      });
+    }
+    const hm = horasPorMaquina(o, maquinas, mapaSetores);
+    const ids = Object.keys(hm.porMaquina).filter(function (id) { return linhas[id]; });
+    if (!ids.length) {
+      if (!hm.doPdf && o.maquinaId && linhas[o.maquinaId]) resumo.semHoras++;
+      else resumo.semMaquina++;
+      return;
+    }
     const jan = janelaRestante(p, h);
-    if (!jan) { resumo.semJanela++; resumo.horasSemJanela += horas; return; }
-    const d = distribuir(horas, jan, sems);
-    d.porSemana.forEach(function (v, i) { l.porSemana[i] += v; });
-    l.depois += d.depois;
+    let semJanelaContada = false;
+    ids.forEach(function (id) {
+      const horas = hm.porMaquina[id];
+      const l = linhas[id];
+      l.ops++; l.horas += horas;
+      if (!jan) { if (!semJanelaContada) { resumo.semJanela++; semJanelaContada = true; } resumo.horasSemJanela += horas; return; }
+      const d = distribuir(horas, jan, sems);
+      d.porSemana.forEach(function (v, i) { l.porSemana[i] += v; });
+      l.depois += d.depois;
+    });
   });
   return { linhas: (maquinas || []).map(function (m) { return linhas[m.id]; }), resumo: resumo };
 }

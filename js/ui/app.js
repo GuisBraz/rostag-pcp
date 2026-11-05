@@ -16,6 +16,7 @@ import { renderProjetos } from './projetos.js';
 import { refreshOpcoes } from './filtros.js';
 import { renderLinha } from './linha.js';
 import { renderDetalhe } from './detalhe.js';
+import { render as renderAvanco } from './avanco.js';
 import { renderNotificacoes } from './notificacoes.js';
 import { renderCarga } from './carga.js';
 import { renderFabrica, renderRnc, atualizarContadorRnc } from './fabrica.js';
@@ -83,6 +84,7 @@ export function redesenhar() {
   refreshOpcoes();
   renderTudo();
   if (estado.idDetalhe) renderDetalhe();
+  renderAvanco();
 }
 
 export function atualizarInfoArmazenamento() {
