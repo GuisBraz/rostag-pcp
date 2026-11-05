@@ -29,12 +29,6 @@ export function avancar(d, n, pausas) {
   while (i < n && guarda++ < GUARDA) { atual = addDias(atual, 1); if (!morto(atual, pausas)) i++; }
   return atual;
 }
-export function recuar(d, n) {
-  if (contaFimDeSemana()) return addDias(d, -n);
-  let atual = d, i = 0;
-  while (i < n) { atual = addDias(atual, -1); if (!fds(atual)) i++; }
-  return atual;
-}
 export function duracaoUtil(a, b, pausas) {
   let n = 0, d = a, guarda = 0;
   while (d <= b && guarda++ < GUARDA) { if (!morto(d, pausas)) n++; d = addDias(d, 1); }

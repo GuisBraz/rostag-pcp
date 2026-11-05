@@ -1,11 +1,9 @@
 /* ---------------------------------------------------------------------------
-   Tela de acesso (entrar, criar conta, recuperar senha), hub de equipes
-   (criar, entrar por nome + senha, migrar) e seletor de equipe da barra
-   lateral.
+   Tela de acesso (entrar, criar conta, recuperar senha) e ações da conta
+   (sair, encerrar). Equipes do usuário — entrar, criar, trocar, principal —
+   ficam em minhasEquipes.js.
 --------------------------------------------------------------------------- */
 import { T } from '../i18n/index.js';
-import { esc } from '../nucleo/fmt.js';
-import * as Papeis from '../dominio/papeis.js';
 import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
 import { abrirModal, fecharModal, confirmar } from './modal.js';
@@ -21,19 +19,24 @@ export let convitePendente = (function () {
   } catch (e) { return null; }
 })();
 
-const VIEWS = ['entrar', 'cadastro', 'recuperar', 'hub'];
+const VIEWS = ['entrar', 'cadastro', 'recuperar'];
+export const SENHA_MINIMA = 8;   // contas novas; o Firebase aceita 6, mas pedimos mais
+let acabouDeSair = false;
 
 export function mostrarViewAcesso(ver) {
-  VIEWS.forEach(function (v) { $('login-view-' + v).style.display = v === ver ? 'block' : 'none'; });
-  $('acesso-convite-banner-entrar').style.display = (ver === 'entrar' && convitePendente) ? 'block' : 'none';
-  $('acesso-convite-banner-cadastro').style.display = (ver === 'cadastro' && convitePendente) ? 'block' : 'none';
-  if (ver === 'hub') prepararHub();
-  const foco = { entrar: 'login-email', cadastro: 'cadastro-nome', recuperar: 'recuperar-email', hub: 'hub-nome-equipe' }[ver];
+  VIEWS.forEach(function (v) { $('login-view-' + v).hidden = v !== ver; });
+  $('acesso-convite-banner-entrar').hidden = !(ver === 'entrar' && convitePendente);
+  $('acesso-convite-banner-cadastro').hidden = !(ver === 'cadastro' && convitePendente);
+  $('login-sub').textContent = T(acabouDeSair ? 'auth.subSaiu' : 'auth.subLogin');
+  ['login-erro', 'cadastro-erro', 'recuperar-erro'].forEach(function (id) { $(id).textContent = ''; });
+  // senha nunca fica preenchida entre uma tela e outra (nem depois de sair)
+  ['login-senha', 'cadastro-senha', 'cadastro-senha2'].forEach(function (id) { $(id).value = ''; $(id).type = 'password'; });
+  const foco = { entrar: 'login-email', cadastro: 'cadastro-nome', recuperar: 'recuperar-email' }[ver];
   setTimeout(function () { const el = $(foco); if (el && el.offsetParent) el.focus(); }, 30);
 }
 
 export function mostrarTelaAcesso(visivel) {
-  $('tela-acesso').style.display = visivel ? 'flex' : 'none';
+  $('tela-acesso').style.display = visivel ? 'grid' : 'none';
 }
 
 // Consome o convite pendente depois de um login/cadastro bem-sucedido.
@@ -60,8 +63,10 @@ function fazerLogin() {
   const email = $('login-email').value.trim(), senha = $('login-senha').value;
   const erro = $('login-erro');
   erro.textContent = '';
+  if (!email || !senha) { erro.textContent = T('auth.preencha'); return; }
   comBotaoOcupado($('login-submit'), Auth.entrar(email, senha).then(consumirConviteSeHouver).catch(function (e) {
     erro.textContent = mensagemErroAuth(e, 'auth.erroLogin');
+    $('login-senha').select();
     console.warn(e && e.code);
   }));
 }
@@ -72,6 +77,8 @@ function fazerCadastro() {
   const erro = $('cadastro-erro');
   erro.textContent = '';
   if (!nome) { erro.textContent = T('cfg.nomeVazio'); return; }
+  if (!email) { erro.textContent = T('auth.emailInvalido'); return; }
+  if (senha.length < SENHA_MINIMA) { erro.textContent = T('auth.senhaCurta', SENHA_MINIMA); return; }
   if (senha !== senha2) { erro.textContent = T('auth.senhasDiferentes'); return; }
   comBotaoOcupado($('cadastro-submit'), Auth.cadastrar(nome, email, senha).then(consumirConviteSeHouver).catch(function (e) {
     erro.textContent = mensagemErroAuth(e, 'auth.erroCadastro');
@@ -93,7 +100,7 @@ function fazerRecuperarSenha() {
 }
 function doLogout() {
   confirmar(T('auth.confirmarSair'), { titulo: T('btn.sair'), textoOk: T('btn.sair') }).then(function (ok) {
-    if (ok) Auth.sair().then(function () { toast(T('auth.saiu')); });
+    if (ok) { acabouDeSair = true; Auth.sair().then(function () { toast(T('auth.saiu')); }); }
   });
 }
 
@@ -136,133 +143,9 @@ function toggleSenhaVisivel(inputId, _b, btn) {
   btn.setAttribute('aria-pressed', mostrando ? 'false' : 'true');
 }
 
-/* -------------------------------------------------------------------- hub */
-function prepararHub() {
-  ['hub-nome-equipe', 'hub-senha-equipe', 'hub-senha-equipe2', 'hub-entrar-nome', 'hub-entrar-senha'].forEach(function (id) { $(id).value = ''; });
-  $('hub-erro').textContent = '';
-  $('hub-entrar-erro').textContent = '';
-  hubMudarAba('criar');
-  const bloco = $('hub-migracao');
-  bloco.style.display = 'none';
-  Auth.verificarEquipeAntiga().then(function (encontrou) { bloco.style.display = encontrou ? 'block' : 'none'; });
-}
-function hubMudarAba(aba) {
-  $('hub-tab-criar').classList.toggle('active', aba === 'criar');
-  $('hub-tab-entrar').classList.toggle('active', aba === 'entrar');
-  $('hub-tab-criar').setAttribute('aria-selected', aba === 'criar' ? 'true' : 'false');
-  $('hub-tab-entrar').setAttribute('aria-selected', aba === 'entrar' ? 'true' : 'false');
-  $('hub-painel-criar').style.display = aba === 'criar' ? 'block' : 'none';
-  $('hub-painel-entrar').style.display = aba === 'entrar' ? 'block' : 'none';
-  $('hub-criar-submit').style.display = aba === 'criar' ? 'inline-block' : 'none';
-  $('hub-entrar-submit').style.display = aba === 'entrar' ? 'inline-block' : 'none';
-}
-
-// Traduz os erros comuns em uma mensagem que ajuda a agir; o resto mostra o código.
-function mensagemErroEquipe(e) {
-  const mapa = {
-    'limite-equipes': 'hub.erroLimite', 'nome-indisponivel': 'hub.erroNomeIndisponivel',
-    'equipe-nao-encontrada': 'hub.erroEquipeNaoEncontrada', 'senha-incorreta': 'hub.erroSenhaIncorreta',
-    'senha-vazia': 'hub.erroSenhaVazia', 'ja-e-membro': 'hub.erroJaEMembro', 'nome-vazio': 'hub.erroNome'
-  };
-  if (e && mapa[e.message]) return T(mapa[e.message]);
-  return T('hub.erroCriar') + (e && e.code ? ' (' + e.code + ')' : '');
-}
-
-// Valida nome e senha (com confirmação) de uma equipe nova.
-function validarNovaEquipe(nome, senha, senha2) {
-  if (!nome) return T('hub.erroNome');
-  if (nome.length > 60) return T('hub.erroNomeLongo');
-  if (!senha) return T('hub.erroSenhaVazia');
-  if (senha.length < 6) return T('hub.erroSenhaCurta');
-  if (senha !== senha2) return T('auth.senhasDiferentes');
-  return null;
-}
-
-function criarEquipeHub(_a, _b, btn) {
-  const nome = $('hub-nome-equipe').value.trim(), senha = $('hub-senha-equipe').value, senha2 = $('hub-senha-equipe2').value;
-  const erro = $('hub-erro');
-  erro.textContent = validarNovaEquipe(nome, senha, senha2) || '';
-  if (erro.textContent) return;
-  comBotaoOcupado(btn, Auth.criarEquipe(nome, senha).then(function () { toast(T('hub.equipeCriada', nome)); })
-    .catch(function (e) { erro.textContent = mensagemErroEquipe(e); console.warn(e); }));
-}
-function entrarPorNomeSenha(_a, _b, btn) {
-  const nome = $('hub-entrar-nome').value.trim(), senha = $('hub-entrar-senha').value;
-  const erro = $('hub-entrar-erro');
-  erro.textContent = '';
-  if (!nome) { erro.textContent = T('hub.erroNome'); return; }
-  comBotaoOcupado(btn, Auth.entrarPorNomeSenha(nome, senha).then(function () { toast(T('hub.conviteAceito')); })
-    .catch(function (e) { erro.textContent = mensagemErroEquipe(e); console.warn(e); }));
-}
-function migrarEquipeAntiga(_a, _b, btn) {
-  const nome = $('hub-nome-equipe').value.trim() || T('hub.nomeEquipeMigrada');
-  const senha = $('hub-senha-equipe').value, senha2 = $('hub-senha-equipe2').value;
-  const erro = $('hub-erro');
-  erro.textContent = senha ? (validarNovaEquipe(nome, senha, senha2) || '') : T('hub.erroSenhaVaziaMigrar');
-  if (erro.textContent) return;
-  comBotaoOcupado(btn, Auth.migrarEquipeAntiga(nome, senha).then(function (r) {
-    toast(r.erroProjetos ? T('hub.migracaoParcial') : T('hub.migracaoFeita', r.projetosMigrados), r.erroProjetos ? { tipo: 'erro' } : undefined);
-  }).catch(function (e) { erro.textContent = mensagemErroEquipe(e); console.warn(e); }));
-}
-
-/* -------------------------------- minhas equipes (Configurações → Equipe) */
-export function atualizarSeletorEquipe() {
-  const el = $('minhas-equipes-lista');
-  if (!el) return;
-  const atualId = Auth.equipeAtualId();
-  el.innerHTML = Auth.minhasEquipesLista().map(function (e) {
-    const ativa = e.id === atualId;
-    return '<div class="minha-equipe' + (ativa ? ' atual' : '') + '"><div><div class="minha-equipe-nome">' + esc(e.nomeEquipe || '—') + '</div>' +
-      '<div class="hint-txt">' + esc(T('papel.' + Papeis.papelEfetivo(e.papel, false))) + '</div></div>' +
-      (ativa ? '<span class="minha-equipe-aqui">' + esc(T('eq.voceAqui')) + '</span>'
-        : '<button type="button" class="btn btn-outline btn-mini" data-acao="trocarEquipe" data-arg="' + esc(e.id) + '">' + esc(T('eq.trocar')) + '</button>') +
-      '</div>';
-  }).join('') || '<div class="hint-txt">—</div>';
-}
-function entrarOutraEquipe(_a, _b, btn) {
-  const nome = $('outra-equipe-nome').value.trim(), senha = $('outra-equipe-senha').value;
-  const erro = $('outra-equipe-erro');
-  erro.textContent = '';
-  if (!nome) { erro.textContent = T('hub.erroNome'); return; }
-  comBotaoOcupado(btn, Auth.entrarPorNomeSenha(nome, senha).then(function () {
-    fecharModal('modal-entrar-equipe');
-    toast(T('hub.conviteAceito'));
-  }).catch(function (e) { erro.textContent = mensagemErroEquipe(e); console.warn(e); }));
-}
-
-function criarEquipeModal(_a, _b, btn) {
-  const nome = $('nova-equipe-nome').value.trim(), senha = $('nova-equipe-senha').value, senha2 = $('nova-equipe-senha2').value;
-  const erro = $('nova-equipe-erro');
-  erro.textContent = validarNovaEquipe(nome, senha, senha2) || '';
-  if (erro.textContent) return;
-  comBotaoOcupado(btn, Auth.criarEquipe(nome, senha).then(function () {
-    fecharModal('modal-criar-equipe');
-    toast(T('hub.equipeCriada', nome));
-  }).catch(function (e) { erro.textContent = mensagemErroEquipe(e); console.warn(e); }));
-}
-
 registrarAcoes({
   fazerLogin: fazerLogin, fazerCadastro: fazerCadastro, fazerRecuperarSenha: fazerRecuperarSenha,
   doLogout: doLogout, toggleSenhaVisivel: toggleSenhaVisivel,
   abrirEncerrarConta: abrirEncerrarConta, confirmarEncerrarConta: confirmarEncerrarConta,
-  mostrarViewAcesso: function (v) { if (VIEWS.indexOf(v) >= 0) mostrarViewAcesso(v); },
-  hubMudarAba: function (aba) { hubMudarAba(aba === 'entrar' ? 'entrar' : 'criar'); },
-  criarEquipeUI: criarEquipeHub, entrarPorNomeSenhaUI: entrarPorNomeSenha, migrarEquipeAntigaUI: migrarEquipeAntiga,
-  trocarEquipe: function (id) {
-    if (id === Auth.equipeAtualId()) return;
-    Auth.trocarEquipe(id).catch(function (e) { toast(T('hub.trocaErro'), { tipo: 'erro' }); console.warn(e); });
-  },
-  abrirEntrarEquipeModal: function () {
-    $('outra-equipe-nome').value = ''; $('outra-equipe-senha').value = ''; $('outra-equipe-erro').textContent = '';
-    abrirModal('modal-entrar-equipe', { foco: 'outra-equipe-nome' });
-  },
-  entrarOutraEquipeUI: entrarOutraEquipe,
-  abrirCriarEquipeModal: function () {
-    ['nova-equipe-nome', 'nova-equipe-senha', 'nova-equipe-senha2'].forEach(function (id) { $(id).value = ''; });
-    $('nova-equipe-erro').textContent = '';
-    abrirModal('modal-criar-equipe', { foco: 'nova-equipe-nome' });
-  },
-  fecharModalCriarEquipe: function () { fecharModal('modal-criar-equipe'); },
-  criarEquipeMenuUI: criarEquipeModal
+  mostrarViewAcesso: function (v) { if (VIEWS.indexOf(v) >= 0) mostrarViewAcesso(v); }
 });
-

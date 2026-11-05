@@ -17,6 +17,17 @@ Gerente de PCP (ou GP) cria a commessa ─► GP define o cronograma macro ─�
 Situação do projeto enquanto não tem cronograma: **Aguardando cronograma**
 (só Gerente de PCP e GP veem; o técnico ainda não).
 
+## 1.1 Entrada no sistema
+
+1. **Login** (primeira tela) — ou **Criar conta** (nome, e-mail, senha ≥ 8).
+   Sem chave de acesso nem plano.
+2. **Tem equipe** → entra direto na **equipe principal** (`usuarios/{uid}.equipePrincipal`;
+   sem escolha, a primeira em que entrou). "Trocar" vale só na aba atual até sair.
+3. **Não tem equipe** → entra no app com menu reduzido (Painel, Notificações,
+   Configurações) e o botão **"＋ Entrar em uma equipe"**: entrar por nome + senha,
+   por link de convite, ou criar equipe (com "Migrar meus dados" para quem tem o
+   espaço antigo).
+
 ## 2. Cargos
 
 Uma pessoa tem **um** cargo por equipe. Um projeto tem **um** GP e **um** técnico.

@@ -11,6 +11,7 @@ import * as Carga from '../dominio/carga.js';
 import * as Projeto from '../dominio/projeto.js';
 import * as Auth from '../dados/auth.js';
 import * as DadosCarga from '../dados/carga.js';
+import { kpi } from './componentes.js';
 import { $, registrarAcoes } from './dom.js';
 import { confirmar } from './modal.js';
 import { toast } from './toast.js';
@@ -31,7 +32,6 @@ function podeEditar(area) { return areasPermitidas().indexOf(area) >= 0; }
 function fmtNum(n, casas) {
   return Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: casas == null ? 0 : casas, minimumFractionDigits: 0 });
 }
-function kpi(rot, valor) { return '<div class="ano-kpi"><div class="rot">' + esc(rot) + '</div><div class="val">' + valor + '</div></div>'; }
 function rotSemana(s, i) { return i === 0 ? T('cg.estaSemana') : brCurto(s.inicio); }
 
 export function renderCarga() {

@@ -66,6 +66,7 @@
         <div class="sub" id="page-sub">Visão geral dos projetos — ROSTAG</div>
       </div>
       <div class="topbar-right">
+        <button type="button" class="btn btn-primary btn-entrar-equipe" id="btn-entrar-equipe" data-acao="abrirJanelaEquipe" hidden data-i18n="eq.botaoTopo">＋ Entrar em uma equipe</button>
         <div class="save-chip" id="save-chip">…</div>
         <div class="sino-wrap">
           <button type="button" class="sino-btn" id="sino-btn" data-acao="toggleNotificacoes" aria-haspopup="true" aria-expanded="false" data-i18n-title="tt.notificacoes" title="Notificações" aria-label="Notificações">🔔<span class="sino-contador" id="sino-contador" style="display:none">0</span></button>
@@ -84,6 +85,11 @@
 
 <!-- ==================== PAINEL GERAL ==================== -->
 <div class="tabpanel active" id="tab-painel">
+  <div class="card sem-equipe-painel" id="sem-equipe-painel">
+    <h2 id="sem-equipe-ola">Bem-vindo</h2>
+    <p data-i18n="eq.semEquipeTexto">Você ainda não está em nenhuma equipe. Entre numa equipe existente (com o nome e a senha dela, ou um link de convite) ou crie a sua para começar.</p>
+    <button type="button" class="btn btn-primary" data-acao="abrirJanelaEquipe" data-i18n="eq.botaoTopo">＋ Entrar em uma equipe</button>
+  </div>
   <!-- Gerência: saudação, cartões e andamento no lugar dos indicadores gerais -->
   <div class="so-painel-novo ger-ola">
     <h2 id="ger-ola-nome">Bem-vindo</h2>
@@ -551,7 +557,7 @@
         <button type="button" class="btn btn-outline" data-acao="abrirChecklistPadrao" data-i18n="ckp.editar">✎ Editar checklist padrão</button>
       </div>
 
-      <div style="border-top:1px solid var(--line); margin-top:18px; padding-top:16px;">
+      <div id="dados-bloco" style="border-top:1px solid var(--line); margin-top:18px; padding-top:16px;">
         <div style="font-weight:700; font-size:13px; margin-bottom:4px;" data-i18n="cfg.dados">Dados do app</div>
         <div class="hint-txt" id="storage-info" style="margin-bottom:10px;">—</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -589,11 +595,11 @@
   <div class="settings-panel" id="stab-equipe">
     <div class="card panel-pad" style="max-width:680px; margin-bottom:16px;">
       <div class="panel-title" data-i18n="eq.minhas">Minhas equipes</div>
-      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="eq.minhasNota">As equipes em que você está. Trocar de equipe muda os projetos e as OPs que aparecem no app.</div>
+      <div class="hint-txt" style="margin-bottom:12px;" id="minhas-equipes-nota">As equipes em que você está.</div>
       <div id="minhas-equipes-lista"></div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-        <button type="button" class="btn btn-outline" data-acao="abrirCriarEquipeModal" data-i18n="hub.criarOutra">+ Criar outra equipe</button>
-        <button type="button" class="btn btn-outline" data-acao="abrirEntrarEquipeModal" data-i18n="eq.entrarOutra">Entrar em outra equipe</button>
+        <button type="button" class="btn btn-outline" data-acao="abrirJanelaEquipe" data-arg="entrar" data-i18n="eq.entrarOutra">Entrar em outra equipe</button>
+        <button type="button" class="btn btn-outline" data-acao="abrirJanelaEquipe" data-arg="criar" data-i18n="hub.criarOutra">+ Criar outra equipe</button>
       </div>
     </div>
     <div class="card panel-pad" style="max-width:680px;">
@@ -1100,191 +1106,126 @@
   </div>
 </div>
 
-<!-- ==================== ENTRAR EM OUTRA EQUIPE (de dentro do app) ==================== -->
-<div class="modal-overlay" id="modal-entrar-equipe" role="dialog" aria-modal="true" aria-labelledby="modal-entrar-equipe-title">
+<!-- ==================== EQUIPE: ENTRAR OU CRIAR ==================== -->
+<div class="modal-overlay" id="modal-equipe" role="dialog" aria-modal="true" aria-labelledby="modal-equipe-titulo">
   <div class="modal-box estreita">
     <div class="modal-header">
-      <h2 id="modal-entrar-equipe-title" data-i18n="eq.entrarOutra">Entrar em outra equipe</h2>
-      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-entrar-equipe" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+      <div style="min-width:0;">
+        <h2 id="modal-equipe-titulo" data-i18n="eq.janelaTitulo">Entrar em uma equipe</h2>
+        <div class="detail-sub" id="equipe-conta" style="margin-top:2px;">—</div>
+      </div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-equipe" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
-      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="eq.entrarNota">Pelo nome e senha da equipe você entra como Técnico de processo. Recebeu um link de convite? É só abrir o link.</div>
-      <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="outra-equipe-nome" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
-      <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
-        <div class="campo-senha"><input id="outra-equipe-senha" type="password" autocomplete="current-password" data-enter="entrarOutraEquipeUI">
-          <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="outra-equipe-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button></div></div>
-      <div id="outra-equipe-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
-    </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-entrar-equipe" data-i18n="btn.cancelar">Cancelar</button>
-      <button type="button" class="btn btn-primary" data-acao="entrarOutraEquipeUI" data-i18n="eq.entrar">Entrar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ==================== CRIAR EQUIPE (a partir de dentro do app) ==================== -->
-<div class="modal-overlay" id="modal-criar-equipe" role="dialog" aria-modal="true" aria-labelledby="modal-criar-equipe-title">
-  <div class="modal-box estreita">
-    <div class="modal-header">
-      <h2 id="modal-criar-equipe-title" data-i18n="hub.criarBtn">+ Criar equipe</h2>
-      <button type="button" class="modal-close" data-acao="fecharModalCriarEquipe" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="nova-equipe-nome" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
-      <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
-        <div class="campo-senha"><input id="nova-equipe-senha" type="password" autocomplete="new-password" data-i18n-ph="hub.senhaEquipePh" placeholder="crie uma senha">
-          <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="nova-equipe-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button></div></div>
-      <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label>
-        <div class="campo-senha"><input id="nova-equipe-senha2" type="password" autocomplete="new-password">
-          <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="nova-equipe-senha2" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button></div></div>
-      <div id="nova-equipe-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
-    </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-outline" data-acao="fecharModalCriarEquipe" data-i18n="btn.cancelar">Cancelar</button>
-      <button type="button" class="btn btn-primary" id="nova-equipe-submit" data-acao="criarEquipeMenuUI" data-i18n="hub.criarBtn">+ Criar equipe</button>
-    </div>
-  </div>
-</div>
-
-<div id="tela-acesso" style="display:none; position:fixed; inset:0; z-index:200; align-items:center; justify-content:center; background:var(--bg);">
-  <footer class="rodape-autor rodape-acesso"><span data-i18n="rod.texto">Desenvolvido por</span> <a href="https://www.linkedin.com/in/guilherme-santos-66b8162a0" target="_blank" rel="noopener noreferrer">Guilherme dos Santos Braz</a> <span data-i18n="rod.cargo">— Técnico de processos e estudante de engenharia mecânica</span> · <a href="https://guisbraz.github.io/portifolio/" target="_blank" rel="noopener noreferrer" data-i18n="rod.portfolio">Portfólio</a></footer>
-  <div class="modal-box estreita">
-
-    <!-- ver "entrar" -->
-    <div id="login-view-entrar">
-      <div class="modal-header">
-        <div style="min-width:0;">
-          <h2 id="modal-login-title" data-i18n="auth.tituloLogin">Entrar no ROSTAG PCP</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subLogin">É preciso conta pra ver e mexer nos projetos.</div>
-        </div>
+      <div class="settings-tabs" role="tablist" style="margin-bottom:14px;">
+        <button type="button" class="settings-tab-btn active" role="tab" aria-selected="true" id="eqm-tab-entrar" data-acao="equipeAba" data-arg="entrar" data-i18n="hub.abaEntrar">Entrar em equipe</button>
+        <button type="button" class="settings-tab-btn" role="tab" aria-selected="false" id="eqm-tab-criar" data-acao="equipeAba" data-arg="criar" data-i18n="hub.abaCriar">Criar equipe</button>
       </div>
-      <div id="acesso-convite-banner-entrar" style="display:none; margin:0 20px 0; padding:10px 12px; border-radius:8px; background:var(--bg-panel-alt); border:1px solid var(--line); font-size:12px;" data-i18n="auth.bannerConvite">Você tem um convite pendente — entre ou crie sua conta para participar da equipe.</div>
-      <form id="login-form" data-submit="fazerLogin">
-        <div class="modal-body">
-          <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="login-email" type="email" autocomplete="username" required></div>
-          <div class="field"><label data-i18n="auth.senha">SENHA</label>
-            <div class="campo-senha"><input id="login-senha" type="password" autocomplete="current-password" required>
-              <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="login-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
-            </div>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:12px; margin-top:-6px;">
-            <button type="button" class="link-btn" data-acao="mostrarViewAcesso" data-arg="recuperar" data-i18n="auth.esqueciSenha">Esqueci minha senha</button>
-            <button type="button" class="link-btn" data-acao="mostrarViewAcesso" data-arg="cadastro" data-i18n="auth.criarConta">Criar conta</button>
-          </div>
-          <div id="login-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary" id="login-submit" style="width:100%;" data-i18n="auth.entrarBtn">Entrar</button>
-        </div>
-      </form>
-    </div>
 
-    <!-- ver "criar conta" -->
-    <div id="login-view-cadastro" style="display:none">
-      <div class="modal-header">
-        <div style="min-width:0;">
-          <h2 data-i18n="auth.tituloCadastro">Criar conta</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subCadastro">Qualquer pessoa pode criar uma conta. Pra participar de uma equipe, crie a sua ou use um link de convite.</div>
-        </div>
+      <div id="eqm-painel-entrar" role="tabpanel">
+        <div class="field"><label for="eqm-entrar-nome" data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="eqm-entrar-nome" maxlength="60" autocomplete="off" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
+        <div class="field"><label for="eqm-entrar-senha" data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
+          <div class="campo-senha"><input id="eqm-entrar-senha" type="password" autocomplete="off" data-enter="equipeConfirmar"><button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="eqm-entrar-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha" aria-pressed="false">👁</button></div></div>
+        <div class="hint-txt" data-i18n="eq.entrarNota">Pelo nome e senha da equipe você entra como Técnico de processo. Recebeu um link de convite? Cole abaixo.</div>
+        <div class="field" style="margin-top:12px;"><label for="eqm-convite" data-i18n="eq.convite">LINK DE CONVITE</label><input id="eqm-convite" autocomplete="off" data-enter="equipeConfirmar" data-i18n-ph="eq.convitePh" placeholder="cole o link ou o código"></div>
       </div>
-      <div id="acesso-convite-banner-cadastro" style="display:none; margin:0 20px 0; padding:10px 12px; border-radius:8px; background:var(--bg-panel-alt); border:1px solid var(--line); font-size:12px;" data-i18n="auth.bannerConvite">Você tem um convite pendente — entre ou crie sua conta para participar da equipe.</div>
-      <form id="cadastro-form" data-submit="fazerCadastro">
-        <div class="modal-body">
-          <div class="field"><label data-i18n="auth.nome">NOME</label><input id="cadastro-nome" required></div>
-          <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="cadastro-email" type="email" autocomplete="username" required></div>
-          <div class="field"><label data-i18n="auth.senha">SENHA</label>
-            <div class="campo-senha"><input id="cadastro-senha" type="password" autocomplete="new-password" minlength="6" required>
-              <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="cadastro-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
-            </div>
-          </div>
-          <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label>
-            <div class="campo-senha"><input id="cadastro-senha2" type="password" autocomplete="new-password" minlength="6" required>
-              <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="cadastro-senha2" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
-            </div>
-          </div>
-          <div id="cadastro-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="link-btn" style="align-self:center; font-size:12px;" data-acao="mostrarViewAcesso" data-arg="entrar" data-i18n="auth.jaTenhoConta">Já tenho conta</button>
-          <button type="submit" class="btn btn-primary" id="cadastro-submit" data-i18n="auth.criarContaBtn">Criar conta</button>
-        </div>
-      </form>
-    </div>
 
-    <!-- ver "recuperar senha" -->
-    <div id="login-view-recuperar" style="display:none">
-      <div class="modal-header">
-        <div style="min-width:0;">
-          <h2 data-i18n="auth.tituloRecuperar">Recuperar senha</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="auth.subRecuperar">Manda um link de redefinição para o seu e-mail.</div>
-        </div>
-      </div>
-      <form id="recuperar-form" data-submit="fazerRecuperarSenha">
-        <div class="modal-body">
-          <div class="field"><label data-i18n="auth.email">E-MAIL</label><input id="recuperar-email" type="email" autocomplete="username" required></div>
-          <div id="recuperar-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="link-btn" style="align-self:center; font-size:12px;" data-acao="mostrarViewAcesso" data-arg="entrar" data-i18n="auth.voltarLogin">Voltar</button>
-          <button type="submit" class="btn btn-primary" id="recuperar-submit" data-i18n="auth.enviarLink">Enviar link</button>
-        </div>
-      </form>
-    </div>
-
-    <!-- ver "hub" (logado, mas sem nenhuma equipe — criar uma, entrar numa existente por nome+senha, ou migrar dados antigos) -->
-    <div id="login-view-hub" style="display:none">
-      <div class="modal-header">
-        <div style="min-width:0;">
-          <h2 data-i18n="hub.titulo">Sua equipe</h2>
-          <div class="detail-sub" style="margin-top:2px;" data-i18n="hub.sub">Você ainda não faz parte de nenhuma equipe. Crie a sua, entre numa existente, ou peça um link de convite.</div>
-        </div>
-      </div>
-      <div class="modal-body">
-        <div id="hub-migracao" style="display:none; margin-bottom:16px; padding:12px; border-radius:8px; background:var(--bg-panel-alt); border:1px solid var(--line);">
+      <div id="eqm-painel-criar" role="tabpanel" hidden>
+        <div class="field"><label for="eqm-criar-nome" data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="eqm-criar-nome" maxlength="60" autocomplete="off" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
+        <div class="field"><label for="eqm-criar-senha" data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
+          <div class="campo-senha"><input id="eqm-criar-senha" type="password" autocomplete="new-password" data-i18n-ph="hub.senhaEquipePh" placeholder="crie uma senha"><button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="eqm-criar-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha" aria-pressed="false">👁</button></div></div>
+        <div class="field"><label for="eqm-criar-senha2" data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label>
+          <div class="campo-senha"><input id="eqm-criar-senha2" type="password" autocomplete="new-password" data-enter="equipeConfirmar"><button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="eqm-criar-senha2" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha" aria-pressed="false">👁</button></div></div>
+        <div class="hint-txt" data-i18n="hub.senhaNota">Essa senha é o que qualquer pessoa vai usar pra entrar na equipe pelo nome. Quem entra assim vira técnico de processo; o Gerente de PCP muda o cargo depois se precisar.</div>
+        <div id="eqm-migracao" class="eqm-migracao" hidden>
           <div style="font-weight:700; font-size:13px; margin-bottom:4px;" data-i18n="hub.migracaoTitulo">Encontramos uma equipe sua de antes</div>
-          <div class="hint-txt" style="margin-bottom:10px;" data-i18n="hub.migracaoNota">Antes de existir o sistema de várias equipes, havia um espaço só. Migre pra continuar de onde parou (usa o nome e a senha preenchidos em "Criar equipe" ao lado) — os projetos são copiados, nada é apagado.</div>
-          <button type="button" class="btn btn-primary" id="btn-migrar-equipe" data-acao="migrarEquipeAntigaUI" data-i18n="hub.migrarBtn">Migrar meus dados</button>
-        </div>
-
-        <div class="settings-tabs" role="tablist" style="margin-bottom:14px;">
-          <button type="button" class="settings-tab-btn active" role="tab" aria-selected="true" id="hub-tab-criar" data-acao="hubMudarAba" data-arg="criar" data-i18n="hub.abaCriar">Criar equipe</button>
-          <button type="button" class="settings-tab-btn" role="tab" aria-selected="false" id="hub-tab-entrar" data-acao="hubMudarAba" data-arg="entrar" data-i18n="hub.abaEntrar">Entrar em equipe</button>
-        </div>
-
-        <div id="hub-painel-criar">
-          <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="hub-nome-equipe" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
-          <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
-            <div class="campo-senha"><input id="hub-senha-equipe" type="password" autocomplete="new-password" data-i18n-ph="hub.senhaEquipePh" placeholder="crie uma senha">
-              <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="hub-senha-equipe" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
-            </div>
-          </div>
-          <div class="field"><label data-i18n="auth.confirmarSenha">CONFIRMAR SENHA</label>
-            <div class="campo-senha"><input id="hub-senha-equipe2" type="password" autocomplete="new-password">
-              <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="hub-senha-equipe2" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
-            </div>
-          </div>
-          <div class="hint-txt" style="margin-bottom:6px;" data-i18n="hub.senhaNota">Essa senha é o que qualquer pessoa vai usar pra entrar na equipe pelo nome (aba "Entrar em equipe"). Quem entra assim vira planejador; promova depois se precisar.</div>
-          <div id="hub-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
-        </div>
-
-        <div id="hub-painel-entrar" style="display:none">
-          <div class="field"><label data-i18n="hub.nomeEquipe">NOME DA EQUIPE</label><input id="hub-entrar-nome" data-i18n-ph="hub.nomeEquipePh" placeholder="ex: PCP Rostag"></div>
-          <div class="field"><label data-i18n="hub.senhaEquipe">SENHA DA EQUIPE</label>
-            <div class="campo-senha"><input id="hub-entrar-senha" type="password" autocomplete="current-password" data-i18n-ph="hub.senhaEquipePh" placeholder="senha combinada com a Gerência">
-              <button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="hub-entrar-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
-            </div>
-          </div>
-          <div id="hub-entrar-erro" style="color:var(--rust); font-size:12px; min-height:16px;"></div>
+          <div class="hint-txt" style="margin-bottom:10px;" data-i18n="hub.migracaoNota">Antes das equipes havia um espaço só. Migre para continuar de onde parou: usa o nome e a senha preenchidos acima, os projetos são copiados e nada é apagado.</div>
+          <button type="button" class="btn btn-outline" data-acao="migrarEquipeAntigaUI" data-i18n="hub.migrarBtn">Migrar meus dados</button>
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" data-acao="doLogout" data-i18n="btn.sair">⏻ Sair</button>
-        <button type="button" class="btn btn-primary" id="hub-criar-submit" data-acao="criarEquipeUI" data-i18n="hub.criarBtn">+ Criar equipe</button>
-        <button type="button" class="btn btn-primary" id="hub-entrar-submit" style="display:none" data-acao="entrarPorNomeSenhaUI" data-i18n="hub.entrarBtn">Entrar na equipe</button>
-      </div>
+      <div class="form-error" id="eqm-erro" role="alert"></div>
     </div>
-
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-equipe" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="eqm-confirmar" data-acao="equipeConfirmar" data-i18n="hub.entrarBtn">Entrar na equipe</button>
+    </div>
   </div>
+</div>
+
+<div id="tela-acesso" class="tela-acesso" style="display:none;">
+  <aside class="acesso-arte" aria-hidden="true">
+    <div class="acesso-arte-conteudo">
+      <img src="img/sobre.jpg" alt="" class="acesso-logo" width="220" height="220">
+      <div class="acesso-marca">ROSTAG PCP</div>
+      <div class="acesso-lema" data-i18n="acesso.lema">PLANEJAMENTO • CONTROLE • PRODUÇÃO</div>
+    </div>
+    <div class="acesso-faixa">
+      <span data-i18n="acesso.p1">Planejamento</span><span data-i18n="acesso.p2">Precisão</span><span data-i18n="acesso.p3">Resultados</span>
+    </div>
+  </aside>
+
+  <main class="acesso-lado">
+    <div class="acesso-cartao">
+
+      <!-- entrar -->
+      <section id="login-view-entrar" aria-labelledby="login-titulo">
+        <h1 id="login-titulo" class="acesso-titulo" data-i18n="auth.tituloLogin">Entrar na sua conta</h1>
+        <p class="acesso-sub" id="login-sub" data-i18n="auth.subLogin">Entre com a sua conta para ver e editar os projetos da sua equipe.</p>
+        <div class="acesso-aviso" id="acesso-convite-banner-entrar" hidden data-i18n="auth.bannerConvite">Você tem um convite pendente — entre ou crie sua conta para participar da equipe.</div>
+        <form id="login-form" data-submit="fazerLogin" novalidate>
+          <div class="field"><label for="login-email" data-i18n="auth.email">E-mail</label>
+            <div class="acesso-campo"><svg class="acesso-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><input id="login-email" type="email" autocomplete="username" inputmode="email" required data-i18n-ph="auth.emailPh" placeholder="seuemail@exemplo.com"></div></div>
+          <div class="field"><label for="login-senha" data-i18n="auth.senha">Senha</label>
+            <div class="acesso-campo"><svg class="acesso-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><input id="login-senha" type="password" autocomplete="current-password" required><button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="login-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha" aria-pressed="false">👁</button></div></div>
+          <div class="form-error" id="login-erro" role="alert"></div>
+          <button type="submit" class="btn btn-primary acesso-botao" id="login-submit" data-i18n="auth.entrarBtn">Entrar</button>
+        </form>
+        <div class="acesso-links">
+          <button type="button" class="link-btn" data-acao="mostrarViewAcesso" data-arg="cadastro"><span data-i18n="auth.semConta">Não tem conta?</span> <b data-i18n="auth.criarUma">Criar uma</b></button>
+          <button type="button" class="link-btn acesso-link-fraco" data-acao="mostrarViewAcesso" data-arg="recuperar" data-i18n="auth.esqueciSenha">Esqueci minha senha</button>
+        </div>
+      </section>
+
+      <!-- criar conta -->
+      <section id="login-view-cadastro" hidden aria-labelledby="cadastro-titulo">
+        <h1 id="cadastro-titulo" class="acesso-titulo" data-i18n="auth.tituloCadastro">Criar conta</h1>
+        <p class="acesso-sub" data-i18n="auth.subCadastro">Preencha seus dados. Depois de entrar, você cria a sua equipe ou entra numa existente.</p>
+        <div class="acesso-aviso" id="acesso-convite-banner-cadastro" hidden data-i18n="auth.bannerConvite">Você tem um convite pendente — entre ou crie sua conta para participar da equipe.</div>
+        <form id="cadastro-form" data-submit="fazerCadastro" novalidate>
+          <div class="field"><label for="cadastro-nome" data-i18n="auth.nomeUsuario">Nome de usuário</label>
+            <div class="acesso-campo"><svg class="acesso-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><input id="cadastro-nome" autocomplete="name" maxlength="60" required data-i18n-ph="auth.nomePh" placeholder="Como devemos te chamar"></div></div>
+          <div class="field"><label for="cadastro-email" data-i18n="auth.email">E-mail</label>
+            <div class="acesso-campo"><svg class="acesso-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><input id="cadastro-email" type="email" autocomplete="username" inputmode="email" required data-i18n-ph="auth.emailPh" placeholder="seuemail@exemplo.com"></div></div>
+          <div class="field"><label for="cadastro-senha" data-i18n="auth.senha">Senha</label>
+            <div class="acesso-campo"><svg class="acesso-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><input id="cadastro-senha" type="password" autocomplete="new-password" minlength="8" required data-i18n-ph="auth.senhaPh" placeholder="mínimo 8 caracteres"><button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="cadastro-senha" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha" aria-pressed="false">👁</button></div></div>
+          <div class="field"><label for="cadastro-senha2" data-i18n="auth.confirmarSenhaRot">Confirmar senha</label>
+            <div class="acesso-campo"><svg class="acesso-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><input id="cadastro-senha2" type="password" autocomplete="new-password" minlength="8" required><button type="button" class="btn-olho" data-acao="toggleSenhaVisivel" data-arg="cadastro-senha2" data-i18n-title="auth.mostrarSenha" title="Mostrar senha" aria-label="Mostrar senha" aria-pressed="false">👁</button></div></div>
+          <div class="form-error" id="cadastro-erro" role="alert"></div>
+          <button type="submit" class="btn btn-primary acesso-botao" id="cadastro-submit" data-i18n="auth.criarContaBtn">Criar conta</button>
+        </form>
+        <div class="acesso-links">
+          <button type="button" class="link-btn" data-acao="mostrarViewAcesso" data-arg="entrar"><span data-i18n="auth.jaTemConta">Já tem conta?</span> <b data-i18n="auth.voltarLogin">Voltar pro login</b></button>
+        </div>
+      </section>
+
+      <!-- recuperar senha -->
+      <section id="login-view-recuperar" hidden aria-labelledby="recuperar-titulo">
+        <h1 id="recuperar-titulo" class="acesso-titulo" data-i18n="auth.tituloRecuperar">Recuperar senha</h1>
+        <p class="acesso-sub" data-i18n="auth.subRecuperar">Enviamos um link de redefinição para o seu e-mail.</p>
+        <form id="recuperar-form" data-submit="fazerRecuperarSenha" novalidate>
+          <div class="field"><label for="recuperar-email" data-i18n="auth.email">E-mail</label>
+            <div class="acesso-campo"><svg class="acesso-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><input id="recuperar-email" type="email" autocomplete="username" inputmode="email" required data-i18n-ph="auth.emailPh" placeholder="seuemail@exemplo.com"></div></div>
+          <div class="form-error" id="recuperar-erro" role="alert"></div>
+          <button type="submit" class="btn btn-primary acesso-botao" id="recuperar-submit" data-i18n="auth.enviarLink">Enviar link</button>
+        </form>
+        <div class="acesso-links">
+          <button type="button" class="link-btn" data-acao="mostrarViewAcesso" data-arg="entrar" data-i18n="auth.voltarLogin">Voltar pro login</button>
+        </div>
+      </section>
+
+    </div>
+    <footer class="rodape-autor rodape-acesso"><span data-i18n="rod.texto">Desenvolvido por</span> <a href="https://www.linkedin.com/in/guilherme-santos-66b8162a0" target="_blank" rel="noopener noreferrer">Guilherme dos Santos Braz</a> <span data-i18n="rod.cargo">— Técnico de processos e estudante de engenharia mecânica</span> · <a href="https://guisbraz.github.io/portifolio/" target="_blank" rel="noopener noreferrer" data-i18n="rod.portfolio">Portfólio</a></footer>
+  </main>
 </div>
 
 <!-- ==================== DIÁLOGO (confirmação / texto) ==================== -->

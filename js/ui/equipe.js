@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------------
    Equipe (Configurações → Equipe): membros, papéis, convites e senha.
 --------------------------------------------------------------------------- */
-import { atualizarSeletorEquipe } from './acesso.js';
+import { atualizarSeletorEquipe } from './minhasEquipes.js';
 import { esc, br, dataDoInstante } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Auth from '../dados/auth.js';
@@ -57,8 +57,8 @@ function opcoesPapel(selecionado) {
 }
 
 export function renderEquipe() {
-  if (!Auth.podeEntrar()) { pararEscutas(); return; }
   atualizarSeletorEquipe();
+  if (!Auth.podeEntrar()) { pararEscutas(); return; }
   const gerente = Auth.souGerente();
   $('btn-convidar').style.display = gerente ? 'flex' : 'none';
   const sel = $('convite-papel');

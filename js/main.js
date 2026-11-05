@@ -33,7 +33,8 @@ import { escutarNotificacoes, pararNotificacoes } from './ui/notificacoes.js';
 import { pararInscricaoChat } from './ui/detalhe.js';
 import { iniciarSidebar } from './ui/sidebar.js';
 import { atualizarBadge } from './ui/filtros.js';
-import { mostrarViewAcesso, mostrarTelaAcesso, atualizarSeletorEquipe, convitePendente, consumirConviteSeHouver } from './ui/acesso.js';
+import { mostrarViewAcesso, mostrarTelaAcesso, convitePendente, consumirConviteSeHouver } from './ui/acesso.js';
+import { atualizarSeletorEquipe, atualizarSemEquipe } from './ui/minhasEquipes.js';
 import { renderEquipe } from './ui/equipe.js';
 import './ui/formulario.js';
 import './ui/ano.js';
@@ -132,7 +133,7 @@ function aplicarRestricoesPapel() {
   $('dados-acoes-escrita').style.display = gestor ? 'contents' : 'none';
   // programadores: painel e linha do tempo (só leitura), sem a lista de projetos
   const leProjetos = Papeis.leProjetos(papel);
-  [['painel', leProjetos || Papeis.ehCQ(papel)], ['projetos', veProjetos], ['linha', leProjetos], ['carga', Papeis.veCarga(papel)]].forEach(function (x) {
+  [['painel', leProjetos || Papeis.ehCQ(papel) || !Auth.membro()], ['projetos', veProjetos], ['linha', leProjetos], ['carga', Papeis.veCarga(papel)]].forEach(function (x) {
     const b = document.querySelector('.side-item[data-tab="' + x[0] + '"]');
     if (b) b.style.display = x[1] ? '' : 'none';
   });
@@ -185,18 +186,21 @@ function atualizarSessao() {
 
   if (u.uid !== uidCarregado) { sairDoApp(); uidCarregado = u.uid; aplicarUsuario(); }
 
+  // logado: o app abre sempre (sem equipe, só Painel, Notificações e
+  // Configurações, com o botão "Entrar em uma equipe" no topo)
+  mostrarTelaAcesso(false);
+  $('app-shell').style.display = '';
+  atualizarSemEquipe();
+  atualizarSeletorEquipe();
   if (!Auth.podeEntrar()) {
-    sairDoApp();
-    $('app-shell').style.display = 'none';
-    mostrarTelaAcesso(true);
-    // logado mas sem equipe: um convite pendente é usado direto
-    if (convitePendente) { consumirConviteSeHouver().then(function (ok) { if (!ok) mostrarViewAcesso('hub'); }); return; }
-    mostrarViewAcesso('hub');
+    if (equipeCarregada) sairDoApp();
+    aplicarRestricoesPapel();
+    aplicarRota();
+    // um convite pendente (link aberto antes do login) é usado direto
+    if (convitePendente) consumirConviteSeHouver();
     return;
   }
 
-  mostrarTelaAcesso(false);
-  $('app-shell').style.display = '';
   aplicarRestricoesPapel();
   atualizarSeletorEquipe();
   if (Auth.equipeAtualId() !== equipeCarregada || Auth.papel() !== papelCarregado) {

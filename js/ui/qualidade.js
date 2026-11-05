@@ -3,7 +3,7 @@
    formulário da RNC em tela cheia (R02), a reinspeção, o PDF e a aba RNC.
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto } from '../estado.js';
-import { esc, br, hoje, dataDoInstante, horaDoInstante } from '../nucleo/fmt.js';
+import { esc, hoje, dataHora } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Rnc from '../dominio/rnc.js';
 import { statusOp } from '../dominio/producao.js';
@@ -18,7 +18,6 @@ import { baixarPdf } from './rncPdf.js';
 
 function opPorId(id) { return estado.ops.find(function (o) { return o.id === id; }) || null; }
 function rncPorId(id) { return (estado.rncs || []).find(function (r) { return r.id === id; }) || null; }
-function quando(iso) { return iso ? br(dataDoInstante(iso)) + ' ' + horaDoInstante(iso) : '—'; }
 function descricaoOp(o) { return T('cq.opDesc', o.numero, T('area.' + o.area), o.commessa, o.desenho, o.posicao || '—'); }
 export function rncsDaOp(opId) {
   return (estado.rncs || []).filter(function (r) { return r.opId === opId; })
@@ -198,7 +197,7 @@ export function renderRnc() {
       '<div class="rnc-obs">' + esc(r.descricao || '—') + '</div>' +
       (r.disposicao ? '<div class="hint-txt"><b>' + esc(T('rf.disposicaoCurta')) + '</b> ' + esc(r.disposicao) + '</div>' : '') +
       (op && st === 'morta' ? '<div class="hint-txt">' + esc(T('rnc.morta', op.opNovaNumero || '—')) + '</div>' : '') +
-      '<div class="hint-txt">' + esc(T('rnc.registradaPor', r.inspetor || r.criadoPorNome || '—', quando(r.criadoEm))) + '</div>' +
+      '<div class="hint-txt">' + esc(T('rnc.registradaPor', r.inspetor || r.criadoPorNome || '—', dataHora(r.criadoEm))) + '</div>' +
       '<div class="rnc-acoes"><button type="button" class="btn btn-outline btn-mini" data-acao="verRnc" data-arg="' + esc(r.id) + '">' + esc(T('rnc.verFormulario')) + '</button>' +
         '<button type="button" class="btn btn-outline btn-mini" data-acao="pdfRncDireto" data-arg="' + esc(r.id) + '">' + esc(T('rf.pdf')) + '</button>' +
         (buscarProjeto(r.projetoId) ? '<button type="button" class="link-btn" data-acao="irPara" data-arg="projetos" data-arg2="' + esc(r.projetoId) + '">' + esc(T('rnc.verProjeto')) + '</button>' : '') +

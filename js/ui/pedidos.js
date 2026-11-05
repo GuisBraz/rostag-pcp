@@ -6,7 +6,7 @@
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto } from '../estado.js';
 import { esc, br, hoje, dataDoInstante } from '../nucleo/fmt.js';
-import { T } from '../i18n/index.js';
+import { T, plural } from '../i18n/index.js';
 import * as Projeto from '../dominio/projeto.js';
 import * as Papeis from '../dominio/papeis.js';
 import * as Auth from '../dados/auth.js';
@@ -130,7 +130,7 @@ export function renderPendencias() {
         '<b class="mono">' + esc(p.commessa) + '</b><span class="hint-txt">' + esc(p.descricao || '') + '</span></div>' +
       '<div class="pend-motivo">' + esc(ped.motivo) + '</div>' +
       '<div class="hint-txt">' + esc(T('pend.porEm', ped.porNome || '—', ped.em ? br(dataDoInstante(ped.em)) : '—')) +
-        (Projeto.status(p) === 'paralisado' ? ' · ' + esc(T('pend.paradoDesde', plural0(Projeto.diasParadoAtual(p)))) : '') + '</div>' +
+        (Projeto.status(p) === 'paralisado' ? ' · ' + esc(T('pend.paradoDesde', plural(Projeto.diasParadoAtual(p), 'x.dia', 'x.dias'))) : '') + '</div>' +
       '<div class="pend-acoes">' +
         '<button type="button" class="btn btn-success btn-mini" data-acao="aprovarPedido" data-arg="' + esc(p.id) + '">' + esc(T('ped.aprovar')) + '</button>' +
         '<button type="button" class="btn btn-danger btn-mini" data-acao="recusarPedido" data-arg="' + esc(p.id) + '">' + esc(T('ped.recusar')) + '</button>' +
@@ -138,7 +138,6 @@ export function renderPendencias() {
       '</div></div>';
   }).join('');
 }
-function plural0(n) { return n + ' ' + T(n === 1 ? 'x.dia' : 'x.dias'); }
 
 function abrirPendencias() {
   renderPendencias();

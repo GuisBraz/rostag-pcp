@@ -4,6 +4,7 @@
      gerente e CQ → todas · programador → a área dele
      GP → gpUid · técnico → tecnicoUid
 --------------------------------------------------------------------------- */
+import { agoraIso } from '../nucleo/fmt.js';
 import { db } from './firebase.js';
 import * as Auth from './auth.js';
 import * as Planilha from '../dominio/planilha.js';
@@ -12,7 +13,6 @@ const LOTE_MAX = 400;
 let parar = null;
 
 function colOps() { return db().collection('equipes').doc(Auth.equipeAtualId()).collection('ops'); }
-function agoraIso() { return new Date().toISOString(); }
 
 function consulta() {
   const papel = Auth.papel();

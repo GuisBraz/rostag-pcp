@@ -626,7 +626,7 @@ describe('pedidos do GP à Gerência', () => {
 /* ------------------------------------------------------------ notificações */
 describe('notificações', () => {
   const notif = (deUid, paraUid, extra) => ({
-    paraUid, deUid, equipeId: 'E1', tipo: 'designacao', mensagem: 'Você foi designado', projetoId: null, lida: false, ...extra
+    paraUid, deUid, deNome: deUid, equipeId: 'E1', tipo: 'designacao', mensagem: 'Você foi designado', projetoId: null, lida: false, ...extra
   });
   test('qualquer membro avisa outro membro da equipe', async () => {
     await assertSucceeds(como(G).collection('notificacoes').add(notif(G, P)));
@@ -634,7 +634,10 @@ describe('notificações', () => {
     await assertSucceeds(como(P).collection('notificacoes').add(notif(P, G, { tipo: 'planilhaOps' })));
     await assertSucceeds(como(Q).collection('notificacoes').add(notif(Q, M, { tipo: 'rnc' })));
   });
-  test('quem é de fora não cria', async () => {
+  test('nome do remetente limitado', async () => {
+    await assertFails(como(G).collection('notificacoes').add({ paraUid: P, deUid: G, deNome: 'x'.repeat(81), equipeId: 'E1', tipo: 'designacao', mensagem: 'm', projetoId: null, lida: false }));
+  });
+    test('quem é de fora não cria', async () => {
     await assertFails(como(Y).collection('notificacoes').add(notif(Y, P)));
   });
   test('não cria para quem não é da equipe, em nome de outro ou fora do formato', async () => {
@@ -695,7 +698,17 @@ describe('/usuarios', () => {
     await semear('notificacoes/n2', { paraUid: P, deUid: G, equipeId: 'E1', tipo: 'chat', mensagem: 'oi', projetoId: null, lida: true, lidaEm: 'x' });
     await assertSucceeds(como(P).doc('notificacoes/n2').update({ lida: false, lidaEm: null }));
   });
-  test('índice pessoal: só o dono lê', async () => {
+  test('índice pessoal: só os campos do app', async () => {
+    await semear('usuarios/' + P + '/minhasEquipes/E1', { papel: 'planejador', nomeEquipe: 'Equipe 1', entrouEm: 'x' });
+    await assertSucceeds(como(P).doc('usuarios/' + P + '/minhasEquipes/E1').update({ nomeEquipe: 'Equipe 1 nova' }));
+    await assertFails(como(P).doc('usuarios/' + P + '/minhasEquipes/E1').update({ lixo: 'x'.repeat(1000) }));
+  });
+  test('equipe principal: só o dono grava, e só um id', async () => {
+    await assertSucceeds(como(P).doc('usuarios/' + P).update({ equipePrincipal: 'E1' }));
+    await assertFails(como(P).doc('usuarios/' + P).update({ equipePrincipal: 'x'.repeat(200) }));
+    await assertFails(como(G).doc('usuarios/' + P).update({ equipePrincipal: 'E1' }));
+  });
+    test('índice pessoal: só o dono lê', async () => {
     await semear('usuarios/' + P + '/minhasEquipes/E1', { papel: 'tecnico' });
     await assertSucceeds(como(P).doc('usuarios/' + P + '/minhasEquipes/E1').get());
     await assertFails(como(C).doc('usuarios/' + P + '/minhasEquipes/E1').get());

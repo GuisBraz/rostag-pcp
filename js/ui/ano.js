@@ -2,9 +2,10 @@
    Tela do ano — a pontualidade das entregas aberta nos 12 meses.
 --------------------------------------------------------------------------- */
 import { estado } from '../estado.js';
-import { hoje, esc } from '../nucleo/fmt.js';
+import { hoje } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Serie from '../dominio/serie.js';
+import { kpi } from './componentes.js';
 import { $, $$, registrarAcoes } from './dom.js';
 import { abrirModal, fecharModal } from './modal.js';
 import { filtrarDash } from './filtros.js';
@@ -12,7 +13,6 @@ import { desenhar, destruir, opcoesBase, legenda, cor, falhaGrafico } from './gr
 
 let anoTela = null;
 
-export function anoAberto() { return $('modal-ano').classList.contains('open'); }
 
 function abrir() {
   anoTela = Number(hoje().slice(0, 4));
@@ -28,7 +28,6 @@ export function mudarAno(passo) {
   render();
 }
 
-function kpi(rot, valorHtml) { return '<div class="ano-kpi"><div class="rot">' + esc(rot) + '</div><div class="val">' + valorHtml + '</div></div>'; }
 
 function render() {
   const anos = Serie.anosComEntrega(estado.projetos);

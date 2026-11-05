@@ -22,6 +22,8 @@ const PAGINAS = { painel: 1, projetos: 1, linha: 1, fabrica: 1, carga: 1, rnc: 1
 // Telas que cada cargo usa. Programadores: painel, linha do tempo, Fábrica
 // e Carga (sem a lista de projetos). CQ: painel de indicadores, Fábrica e RNC.
 export function abaPermitida(aba) {
+  // sem equipe ainda: só o painel de boas-vindas, notificações e configurações
+  if (!Auth.membro()) return aba === 'painel' || aba === 'notificacoes' || aba === 'config';
   const papel = Auth.papel();
   if (aba === 'config' || aba === 'fabrica' || aba === 'notificacoes') return true;
   if (aba === 'rnc') return Papeis.veRnc(papel) || Papeis.ehCQ(papel);
@@ -30,7 +32,7 @@ export function abaPermitida(aba) {
   if (aba === 'painel' || aba === 'linha') return Papeis.leProjetos(papel);
   return Papeis.veProjetos(papel);
 }
-export function abaInicial() { const p = Auth.papel(); return Papeis.leProjetos(p) || Papeis.ehCQ(p) ? 'painel' : 'fabrica'; }
+export function abaInicial() { const p = Auth.papel(); return !Auth.membro() || Papeis.leProjetos(p) || Papeis.ehCQ(p) ? 'painel' : 'fabrica'; }
 
 export function irPara(aba, arg) {
   const nova = '#/' + aba + (arg ? '/' + encodeURIComponent(arg) : '');

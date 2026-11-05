@@ -23,6 +23,7 @@ const COR_STATUS = { andamento: 'violet', concluido: 'green', atrasado: 'rust', 
 const FUNDO_STATUS = { andamento: 'violet-bg', concluido: 'green-bg', atrasado: 'rust-bg', paralisado: 'amber-bg', cancelado: 'bg-panel-alt' };
 
 export function renderPainel() {
+  if (!Auth.membro()) return;   // sem equipe: o painel mostra só as boas-vindas (CSS)
   const lista = filtrarDash();
   // Gerência, GP e técnico têm o painel novo (gerencia.js); o GP usa o da
   // Gerência com os projetos dele. O "Precisa de atenção" é comum.

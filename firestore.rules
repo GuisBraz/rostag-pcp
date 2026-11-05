@@ -94,7 +94,9 @@ service cloud.firestore {
         && request.resource.data.equipesCriadas == 0;
       allow update: if request.auth != null && request.auth.uid == uid && (
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['nome','tema','idioma','alerta','alertaTarefa','fimDeSemana'])
+          .hasOnly(['nome','tema','idioma','alerta','alertaTarefa','fimDeSemana','equipePrincipal'])
+          && (request.resource.data.get('equipePrincipal', null) == null
+            || (request.resource.data.equipePrincipal is string && request.resource.data.equipePrincipal.size() <= 128))
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['equipesCriadas'])
             && request.resource.data.equipesCriadas == resource.data.get('equipesCriadas', 0) + 1)
       );
@@ -103,13 +105,19 @@ service cloud.firestore {
 
       // Índice pessoal: em quais equipes eu estou e meu papel em cada uma.
       match /minhasEquipes/{equipeId} {
+        // só os campos que o app grava (o índice não decide permissão, mas
+        // não deve virar depósito de dados arbitrários)
+        function indiceOk() {
+          return request.resource.data.keys().hasOnly(['papel', 'nomeEquipe', 'entrouEm', 'viaConvite'])
+            && request.resource.data.get('nomeEquipe', '') is string && request.resource.data.get('nomeEquipe', '').size() <= 80;
+        }
         allow read: if request.auth != null && request.auth.uid == uid;
-        allow create: if request.auth != null && request.auth.uid == uid && (
+        allow create: if request.auth != null && request.auth.uid == uid && indiceOk() && (
           (souCoordDe(equipeId) && request.resource.data.papel in ['gerente_pcp', 'gp'])
           || convitePraMim(equipeId, request.resource.data.papel)
           || (request.resource.data.papel in ['tecnico', 'planejador'] && jaEntreiPorSenha(equipeId))
         );
-        allow update: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null && request.auth.uid == uid && indiceOk();
         allow delete: if request.auth != null && request.auth.uid == uid;
       }
 
@@ -482,6 +490,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['paraUid', 'tipo', 'mensagem', 'projetoId', 'equipeId', 'deUid', 'deNome', 'lida', 'criadoEm'])
         && request.resource.data.paraUid is string
         && request.resource.data.deUid == request.auth.uid
+        && request.resource.data.deNome is string && request.resource.data.deNome.size() <= 80
         && request.resource.data.tipo in ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas',
                                           'designacaoTrocada', 'planilhaOps', 'rnc', 'chat', 'pedido', 'pedidoAprovado', 'pedidoRecusado']
         && request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 500

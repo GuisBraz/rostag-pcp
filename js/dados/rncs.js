@@ -6,6 +6,7 @@
    Quem lê: gerente e CQ (todas), GP e técnico (as dos projetos deles).
    Quem escreve: só o CQ.
 --------------------------------------------------------------------------- */
+import { agoraIso } from '../nucleo/fmt.js';
 import { db } from './firebase.js';
 import * as Auth from './auth.js';
 import * as Rnc from '../dominio/rnc.js';
@@ -13,7 +14,6 @@ import * as Rnc from '../dominio/rnc.js';
 let parar = null;
 
 function colEquipe(nome) { return db().collection('equipes').doc(Auth.equipeAtualId()).collection(nome); }
-function agoraIso() { return new Date().toISOString(); }
 
 function consulta() {
   const papel = Auth.papel();

@@ -99,7 +99,7 @@ export function atualizarInfoArmazenamento() {
 
 /* ------------------------------------------------------------- popups */
 export function fecharPopups() {
-  $$('.filter-panel.open, .notif-panel.open, .profile-menu.open').forEach(function (p) { p.classList.remove('open'); });
+  $$('.filter-panel.open, .notif-panel.open').forEach(function (p) { p.classList.remove('open'); });
   $$('[aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
 }
 export function alternarPopup(id, gatilho) {

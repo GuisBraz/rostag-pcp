@@ -3,7 +3,7 @@
    de OPs (técnico). A baixa do CQ e a RNC ficam em qualidade.js.
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto, opsDoProjeto } from '../estado.js';
-import { esc, br, dataDoInstante, horaDoInstante } from '../nucleo/fmt.js';
+import { esc, br, dataDoInstante, dataHora, compararNatural, numeroBr } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Papeis from '../dominio/papeis.js';
 import * as Planilha from '../dominio/planilha.js';
@@ -21,9 +21,6 @@ import { alternarPopup } from './app.js';
 
 const MAX_LINHAS = 600;   // a tabela fica pesada acima disso; os filtros resolvem
 
-function natural(a, b) { return String(a || '').localeCompare(String(b || ''), 'pt-BR', { numeric: true }); }
-function quando(iso) { return iso ? br(dataDoInstante(iso)) + ' ' + horaDoInstante(iso) : '—'; }
-function fmtNum(n) { return n == null ? '—' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 2 }); }
 // OP de projeto paralisado: a produção dele está parada inteira. Só aparece
 // para quem enxerga o projeto (Gerência, GP e técnico).
 function parado(o) {
@@ -59,7 +56,7 @@ function opsSemVisao() {
 }
 function opsFiltradas(base) {
   return base.filter(VISOES[visaoAtual()]).sort(function (a, b) {
-    return natural(a.commessa, b.commessa) || natural(a.desenho, b.desenho) || natural(a.posicao, b.posicao) || natural(a.area, b.area);
+    return compararNatural(a.commessa, b.commessa) || compararNatural(a.desenho, b.desenho) || compararNatural(a.posicao, b.posicao) || compararNatural(a.area, b.area);
   });
 }
 
@@ -75,7 +72,7 @@ function renderVisoes(base) {
 function preencherFiltroClientes() {
   const sel = $('fab-cliente');
   const atual = estado.filtroFab.cliente;
-  const nomes = Array.from(new Set(estado.ops.map(function (o) { return o.cliente; }).filter(Boolean))).sort(natural);
+  const nomes = Array.from(new Set(estado.ops.map(function (o) { return o.cliente; }).filter(Boolean))).sort(compararNatural);
   sel.innerHTML = '<option value="">' + esc(T('btn.todos')) + '</option>' +
     nomes.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
   sel.value = nomes.indexOf(atual) >= 0 ? atual : '';
@@ -87,7 +84,7 @@ function preencherFiltroProjetos() {
   const atual = estado.filtroFab.projeto;
   const vistos = {};
   estado.ops.forEach(function (o) { if (!vistos[o.projetoId]) vistos[o.projetoId] = o.commessa || o.projetoId; });
-  const ids = Object.keys(vistos).sort(function (a, b) { return natural(vistos[a], vistos[b]); });
+  const ids = Object.keys(vistos).sort(function (a, b) { return compararNatural(vistos[a], vistos[b]); });
   sel.innerHTML = '<option value="">' + esc(T('btn.todos')) + '</option>' +
     ids.map(function (id) { return '<option value="' + esc(id) + '">' + esc(vistos[id]) + '</option>'; }).join('');
   sel.value = vistos[atual] ? atual : '';
@@ -103,7 +100,7 @@ function barra(rot, s) {
 function renderAvanco(lista) {
   const porProjeto = {};
   lista.forEach(function (o) { (porProjeto[o.projetoId] = porProjeto[o.projetoId] || []).push(o); });
-  const ids = Object.keys(porProjeto).sort(function (a, b) { return natural(porProjeto[a][0].commessa, porProjeto[b][0].commessa); });
+  const ids = Object.keys(porProjeto).sort(function (a, b) { return compararNatural(porProjeto[a][0].commessa, porProjeto[b][0].commessa); });
   const area = Auth.areaProgramador();
   $('fab-avanco').innerHTML = ids.slice(0, 24).map(function (id) {
     const s = Producao.estatisticas(porProjeto[id]);
@@ -164,11 +161,11 @@ export function renderFabrica() {
       fim = cq ? '<button type="button" class="btn ' + (st === 'retrabalho' ? 'btn-danger' : 'btn-primary') + ' btn-mini" data-acao="abrirBaixa" data-arg="' + esc(o.id) + '">' +
         esc(T(st === 'retrabalho' ? 'baixa.reinspecao' : 'baixa.botao')) + '</button> ' + linkRnc : (linkRnc || '—');
     } else if (st === 'morta') {
-      fim = '<span class="hint-txt">' + esc(T('fab.mortaPara', o.opNovaNumero || '—', quando(o.mortaEm))) + '</span> ' + linkRnc;
+      fim = '<span class="hint-txt">' + esc(T('fab.mortaPara', o.opNovaNumero || '—', dataHora(o.mortaEm))) + '</span> ' + linkRnc;
     } else {
       // na coluna do CQ (a primeira) fica só a data; o nome aparece no título
       fim = cq ? '<span class="hint-txt" title="' + esc(o.finalizadoPorNome || '') + '">' + esc(o.finalizadoEm ? br(dataDoInstante(o.finalizadoEm)) : '—') + '</span> ' + linkRnc
-        : '<span class="hint-txt">' + esc(o.finalizadoPorNome || '—') + ' · ' + esc(quando(o.finalizadoEm)) + '</span> ' + linkRnc;
+        : '<span class="hint-txt">' + esc(o.finalizadoPorNome || '—') + ' · ' + esc(dataHora(o.finalizadoEm)) + '</span> ' + linkRnc;
     }
     const origem = o.origemOpId ? porId[o.origemOpId] : null;
     const celFim = '<td class="fab-acao">' + fim + '</td>';
@@ -176,7 +173,7 @@ export function renderFabrica() {
       '<td class="mono">' + esc(o.numero) + (o.origemOpId ? '<span class="op-origem">' + esc(T('fab.origem', origem ? origem.numero : '—')) + '</span>' : '') + '</td>' +
       '<td>' + pillArea(o.area) + '</td><td class="mono">' + esc(o.commessa) + parado(o) + '</td>' +
       '<td class="mono">' + esc(o.desenho) + '</td><td>' + esc(o.posicao || '—') + '</td><td>' + esc(o.rev || '—') + '</td>' +
-      '<td>' + esc(o.descricao || '—') + '</td><td class="num">' + fmtNum(o.qtd) + '</td><td class="num">' + fmtNum(o.pesoTotal) + '</td>' +
+      '<td>' + esc(o.descricao || '—') + '</td><td class="num">' + numeroBr(o.qtd) + '</td><td class="num">' + numeroBr(o.pesoTotal) + '</td>' +
       '<td>' + pillOp(o) + '</td>' + (cq ? '' : celFim) + '</tr>';
   }).join('') + (lista.length > MAX_LINHAS
     ? '<tr><td colspan="' + colunas.length + '" class="hint-txt">' + esc(T('fab.maisLinhas', lista.length - MAX_LINHAS)) + '</td></tr>' : '');
@@ -197,7 +194,7 @@ let lida = null;   // { ops, ignoradas, erros, avisos, arquivo }
 function projetosParaPlanilha() {
   return estado.projetos.filter(function (p) {
     return Projeto.aberto(p) && !Projeto.aguardandoCronograma(p) && (Auth.souGerente() || p.responsavelUid === Auth.uid());
-  }).sort(function (a, b) { return natural(a.commessa, b.commessa); });
+  }).sort(function (a, b) { return compararNatural(a.commessa, b.commessa); });
 }
 
 function abrirPlanilha() {

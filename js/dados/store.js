@@ -16,7 +16,6 @@ const LOTE_MAX = 400;          // limite do Firestore é 500 operações por lot
 
 let parar = null;
 let servidor = new Map();      // id -> JSON da última versão confirmada pelo servidor
-let pendentes = 0;
 
 function colProjetos() {
   return db().collection('equipes').doc(Auth.equipeAtualId()).collection('projetos');
@@ -65,7 +64,6 @@ export function copiaServidor() {
   return lista;
 }
 
-export function temPendentes() { return pendentes > 0; }
 
 // Calcula o que mudou entre a lista local e a última versão do servidor.
 export function diferenca(projetosAtuais, base) {
@@ -111,9 +109,7 @@ export function salvar(projetosAtuais) {
     });
     envios.push(lote.commit());
   }
-  pendentes++;
-  return Promise.all(envios).then(function () { return ops.length; })
-    .finally(function () { pendentes--; });
+  return Promise.all(envios).then(function () { return ops.length; });
 }
 
 export function tamanhoAproximado(projetos) { return JSON.stringify(projetos || []).length; }

@@ -42,6 +42,14 @@ export function horaDoInstante(ts) {
   const d = new Date(ts);
   return isNaN(d) ? '' : String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
+// Instante ISO de agora (é o formato gravado no Firestore).
+export function agoraIso() { return new Date().toISOString(); }
+// "dd/mm/aaaa hh:mm" de um instante ISO ("—" quando vazio).
+export function dataHora(isoTs) { return isoTs ? br(dataDoInstante(isoTs)) + ' ' + horaDoInstante(isoTs) : '—'; }
+// Ordena texto com números do jeito humano ("OP 2" antes de "OP 10").
+export function compararNatural(a, b) { return String(a || '').localeCompare(String(b || ''), 'pt-BR', { numeric: true }); }
+// Número com até 2 casas no formato brasileiro ("—" quando vazio).
+export function numeroBr(n) { return n == null ? '—' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 2 }); }
 export function fds(s) { const d = parse(s).getDay(); return d === 0 || d === 6; }
 export function bytes(n) {
   const sep = prefs.idioma === 'en' ? '.' : ',';
@@ -62,4 +70,3 @@ export function iniciais(nome) {
   return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
 }
 
-export function copiaProfunda(v) { return JSON.parse(JSON.stringify(v)); }

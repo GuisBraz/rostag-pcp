@@ -66,7 +66,7 @@ export function iniciarAtalhos() {
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       if (modalAberto()) { e.preventDefault(); fecharModal(); return; }
-      if (document.querySelector('.filter-panel.open, .notif-panel.open, .profile-menu.open')) { fecharPopups(); return; }
+      if (document.querySelector('.filter-panel.open, .notif-panel.open')) { fecharPopups(); return; }
       if (appVisivel() && reagendarAberto()) { fecharReagendar(); return; }
       if (appVisivel() && estado.idDetalhe && !digitando(e)) irPara('projetos');
       return;

@@ -13,6 +13,7 @@ import * as Projeto from '../dominio/projeto.js';
 import * as Producao from '../dominio/producao.js';
 import * as Papeis from '../dominio/papeis.js';
 import * as Auth from '../dados/auth.js';
+import { kpi } from './componentes.js';
 import { $, registrarAcoes } from './dom.js';
 import { abrirModal, fecharModal } from './modal.js';
 import { desenhar, destruir, cor, falhaGrafico } from './graficos.js';
@@ -275,7 +276,6 @@ function desenharGraficoCarga(id, caixa, linhas) {
       } } });
 }
 
-function kpi(rot, valor) { return '<div class="ano-kpi"><div class="rot">' + esc(rot) + '</div><div class="val">' + valor + '</div></div>'; }
 
 function desenharCarga() {
   const abertos = estado.projetos.filter(Projeto.aberto);

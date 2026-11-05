@@ -8,16 +8,22 @@ equipe, e o app pode ser instalado no PC e no celular (funciona offline).
 
 ## Como funciona o acesso
 
-- **Login obrigatório.** Nada aparece sem entrar. Qualquer pessoa pode
-  **criar uma conta** (e-mail e senha) na própria tela de acesso.
+- **Login obrigatório.** A primeira tela é sempre o login. Quem não tem conta
+  usa **"Criar uma"** (nome, e-mail e senha de pelo menos 8 caracteres).
+- **Depois do login:**
+  - quem já está em equipe entra direto na **equipe principal** (escolhida em
+    Configurações → Equipe; sem escolha, a primeira em que entrou). "Trocar"
+    muda a equipe só até sair;
+  - quem ainda não tem equipe entra no app com o menu reduzido e o botão
+    **"＋ Entrar em uma equipe"** no topo, que abre a janela para entrar (nome +
+    senha ou link de convite) ou criar uma equipe.
 - **Equipes.** Cada equipe tem seus próprios projetos; uma conta pode estar
-  em várias equipes e trocar entre elas pelo menu lateral. Cada pessoa pode
-  **criar até 3 equipes**.
+  em várias. Cada pessoa pode **criar até 3 equipes**.
 - **Cargos dentro da equipe** (detalhes em [`docs/ESPECIFICACAO.md`](docs/ESPECIFICACAO.md)):
-  - **Gerente de PCP** — cria projetos, designa GP e técnico, vê tudo e
-    administra a equipe (convites, cargos, remover). O **coordenador** (quem
-    criou a equipe; a coordenação pode ser passada) é sempre Gerente de PCP
-    e é o único que troca a senha da equipe.
+  - **Gerente de PCP (Gerência)** — vê tudo, aprova pedidos de paralisar ou
+    cancelar, acompanha o desempenho e administra a equipe (convites, cargos,
+    remover, senha). Pode haver vários; ninguém muda o próprio cargo e
+    gerente não sai sozinho.
   - **GP (gerente de projetos)** — vê só os projetos dele, cria projetos (vira
     o GP deles), designa o técnico e define o **cronograma macro** (PCP e
     produção).
@@ -25,16 +31,17 @@ equipe, e o app pode ser instalado no PC e no celular (funciona offline).
     definido, marca o checklist do PCP e sobe a **planilha de OPs**.
   - **Programador de usinagem / de caldeiraria** — consulta as OPs da área
     dele na aba Fábrica.
-  - **Controle de qualidade (CQ)** — finaliza cada OP: *Aprovada* ou *Com
-    RNC* (com observação). Não desfaz.
+  - **Controle de qualidade (CQ)** — dá baixa em cada OP: *Aprovar* ou abrir
+    a *RNC* (formulário R02, com PDF), reinspeção, desvio e peça morta.
 - **Como alguém entra numa equipe:**
   - pelo **link de convite** (Configurações → Equipe), já com o cargo
-    escolhido pelo Gerente de PCP; ou
-  - pela aba **Entrar em equipe**, digitando o **nome + senha da equipe** —
-    quem entra assim vira técnico de processo.
-- Equipes criadas antes dos cargos novos são convertidas sozinhas quando o
-  Gerente de PCP abre o app: coordenador → Gerente de PCP, planejador →
-  técnico de processo, GP continua GP.
+    escolhido pela Gerência — abrir o link ou colar na janela "Entrar em uma
+    equipe"; ou
+  - pelo **nome + senha da equipe** na mesma janela — quem entra assim vira
+    técnico de processo.
+- Equipes criadas antes dos cargos novos são convertidas sozinhas quando um
+  gerente abre o app: quem criou → Gerente de PCP, planejador → técnico de
+  processo, GP continua GP.
 
 A trava de verdade fica nas regras do Firestore
 ([`firestore.rules`](firestore.rules)), não na tela: mesmo que alguém mexa no
@@ -43,7 +50,7 @@ código do navegador, o banco recusa o que o papel da pessoa não permite.
 **Senha da equipe.** Nunca é guardada em texto puro: o app calcula um hash
 (PBKDF2 com um "sal" aleatório por equipe) e esse hash fica num lugar que
 nenhum usuário consegue ler — só as regras do Firestore comparam. Equipes
-criadas antes dessa mudança usam um formato antigo; o coordenador vê um aviso
+criadas antes dessa mudança usam um formato antigo; a Gerência vê um aviso
 em **Configurações → Equipe** e basta **trocar a senha da equipe** ali para
 migrar.
 
@@ -115,20 +122,32 @@ npx firebase emulators:start --only firestore,auth --project demo-rostag
 
 e abra `http://localhost:5173/?emulador=1`. Contas, equipes e projetos criados
 assim ficam só no emulador e somem quando ele é desligado. O modo de teste só
-liga em `localhost` com `?emulador` na URL.
+liga em `localhost` com `?emulador` na URL. Para já ter uma equipe com
+projeto, OPs e uma conta de cada cargo, rode (com o emulador ligado):
+
+```bash
+node scripts/semear-emulador.mjs
+```
 
 ## Estrutura do código
 
 ```
 index.html            marcação das telas (sem script inline)
-css/app.css           estilos, tema claro e escuro
+css/app.css           estilos base (tema Azul e Dark)
+css/temas.css         as outras identidades visuais (Pastel, Técnico, ST, Grego, Prata)
 js/main.js            ponto de entrada: liga login, equipe e telas
-js/nucleo/            preferências e formatação (datas, escape de HTML)
-js/i18n/              textos em português (pt.js) e inglês (en.js)
-js/dominio/           regras de negócio puras: cronograma, status, alertas
-js/dados/             Firebase: conta e equipes (auth.js), projetos (store.js), OPs (ops.js)
-js/ui/                uma tela ou componente por arquivo (fabrica.js: Fábrica, CQ e RNC)
-vendor/               Chart.js e SheetJS (leitura de planilhas), servidos junto, sem CDN
+js/estado.js          estado compartilhado entre as telas
+js/nucleo/            preferências e formatação (datas, números, escape de HTML)
+js/i18n/              textos em português (pt.js) e inglês (en.js; o que faltar cai no pt)
+js/dominio/           regras de negócio puras, testadas sem navegador: cronograma,
+                      projeto, produção, RNC, desempenho, carga, OP manual
+js/dados/             Firebase: conta e equipes (auth.js), projetos (store.js), OPs,
+                      RNCs, checklist padrão, carga
+js/ui/                uma tela ou componente por arquivo — acesso.js (login),
+                      minhasEquipes.js (entrar/criar/trocar equipe), fabrica.js,
+                      qualidade.js (baixa e RNC), gerencia.js, pedidos.js…
+vendor/               Chart.js, SheetJS (planilhas) e jsPDF (PDF da RNC), sem CDN
+scripts/              verificar.mjs (npm run check) e semear-emulador.mjs (dados de teste)
 docs/                 especificação do sistema integrado
 sw.js                 service worker: abre o app instalado sem internet
 firestore.rules       regras de segurança do banco
@@ -149,6 +168,11 @@ Alguns princípios que o código segue:
   dicionários.
 - **Datas são strings `AAAA-MM-DD` locais** — nunca `toISOString()`, que
   converte para UTC e pode mudar o dia.
+
+- **Separação em camadas.** `dominio/` não conhece DOM nem Firebase (por isso
+  é testado direto no Node); `dados/` só fala com o Firebase; `ui/` monta a
+  tela e chama os dois. Helpers comuns ficam em `nucleo/fmt.js` e
+  `ui/componentes.js` — não copie funções entre arquivos.
 
 ## Testes e verificação
 

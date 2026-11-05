@@ -10,13 +10,14 @@
    é confiável para decidir permissão, e fica desatualizado quando o
    coordenador muda meu papel.
 --------------------------------------------------------------------------- */
+import { agoraIso } from '../nucleo/fmt.js';
 import { FIREBASE_PRONTO, db, auth, apagarCampo, horaDoServidor } from './firebase.js';
 import * as Papeis from '../dominio/papeis.js';
 
 let usuario = null;        // usuário do Firebase Authentication
 let perfil = null;         // /usuarios/{uid}: nome e preferências
 let minhasEquipes = [];    // [{id, papel, nomeEquipe, entrouEm}]
-let equipeAtualId_ = null; // equipe em uso (lembrada por navegador)
+let equipeAtualId_ = null; // equipe em uso nesta aba (ao entrar: a principal)
 let equipeAtual = null;    // /equipes/{id}: nome, coordenadorUid...
 let meuMembro = null;      // /equipes/{id}/membros/{meu uid}
 let pararMembro = null;    // cancela o listener do meu membro
@@ -31,7 +32,6 @@ function docEquipe(id) { return db().collection('equipes').doc(id); }
 function colMembros(equipeId) { return docEquipe(equipeId).collection('membros'); }
 function docSegredoEquipe(equipeId) { return db().collection('equipeSegredos').doc(equipeId); }
 function docCoordenadorAntigo() { return db().collection('sistema').doc('coordenador'); }
-function agoraIso() { return new Date().toISOString(); }
 
 /* ------------------------------------------------------------- senha/hash */
 // Nome de equipe normalizado (busca ignora maiúsculas e espaços extras).
@@ -58,8 +58,11 @@ function hashSenhaEquipe(senha, sal) {
   }).then(hexDe);
 }
 
-function lerEquipeLocal() { try { return localStorage.getItem(CHAVE_EQUIPE); } catch (e) { return null; } }
-function gravarEquipeLocal(id) { try { localStorage.setItem(CHAVE_EQUIPE, id); } catch (e) { /* sem armazenamento */ } }
+// A equipe trocada pelo "Trocar" vale só nesta aba (sobrevive a recarregar a
+// página); um login novo sempre começa pela equipe principal.
+function chaveEquipeSessao() { return CHAVE_EQUIPE + '_' + (usuario ? usuario.uid : ''); }
+function lerEquipeSessao() { try { return sessionStorage.getItem(chaveEquipeSessao()); } catch (e) { return null; } }
+function gravarEquipeSessao(id) { try { sessionStorage.setItem(chaveEquipeSessao(), id); } catch (e) { /* sem armazenamento */ } }
 
 /* ------------------------------------------------------------ carregamento */
 function avisar() { ouvintes.slice().forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } }); }
@@ -117,7 +120,7 @@ function selecionarEquipe(equipeId) {
     if (!snap.exists) throw new Error('equipe-nao-encontrada');
     equipeAtualId_ = equipeId;
     equipeAtual = Object.assign({ id: snap.id }, snap.data());
-    gravarEquipeLocal(equipeId);
+    gravarEquipeSessao(equipeId);
     return escutarMeuMembro(equipeId);
   }).then(function () {
     if (!meuMembro) throw new Error('sem-acesso');
@@ -139,11 +142,29 @@ function esquecerEquipe(equipeId) {
   colMinhasEquipes(usuario.uid).doc(equipeId).delete().catch(function (e) { console.warn('índice da equipe não apagado:', e && e.code); });
 }
 
-// Tenta a equipe lembrada; se não der, as outras na ordem; sem nenhuma, vai pro hub.
+// Equipe principal: a escolhida em Configurações → Equipe; sem escolha, a
+// primeira em que a pessoa entrou.
+export function equipePrincipalId() {
+  const ids = minhasEquipes.map(function (e) { return e.id; });
+  if (perfil && perfil.equipePrincipal && ids.indexOf(perfil.equipePrincipal) >= 0) return perfil.equipePrincipal;
+  const porEntrada = minhasEquipes.slice().sort(function (a, b) { return String(a.entrouEm || '').localeCompare(String(b.entrouEm || '')); });
+  return porEntrada.length ? porEntrada[0].id : null;
+}
+export function definirEquipePrincipal(equipeId) {
+  if (!usuario || !minhasEquipes.some(function (e) { return e.id === equipeId; })) return Promise.reject(new Error('equipe-nao-encontrada'));
+  return docPerfil(usuario.uid).update({ equipePrincipal: equipeId }).then(function () {
+    perfil = Object.assign({}, perfil, { equipePrincipal: equipeId });
+    avisar();
+  });
+}
+
+// Ordem de tentativa: a equipe desta aba (recarregou a página), a principal e
+// as outras. Sem nenhuma que dê acesso, o app abre "sem equipe".
 function escolherEquipeInicial() {
-  const salva = lerEquipeLocal();
   const ordem = minhasEquipes.map(function (e) { return e.id; });
-  if (salva && ordem.indexOf(salva) > 0) { ordem.splice(ordem.indexOf(salva), 1); ordem.unshift(salva); }
+  [equipePrincipalId(), lerEquipeSessao()].forEach(function (id) {
+    if (id && ordem.indexOf(id) >= 0) { ordem.splice(ordem.indexOf(id), 1); ordem.unshift(id); }
+  });
   function tentar(i) {
     if (i >= ordem.length) { equipeAtualId_ = null; equipeAtual = null; return Promise.resolve(); }
     return selecionarEquipe(ordem[i]).catch(function (e) {
@@ -172,7 +193,6 @@ export function inicializar() {
 }
 
 /* ----------------------------------------------------------------- estado */
-export function estaPronto() { return pronto; }
 export function logado() { return !!usuario; }
 export function usuarioAtual() { return usuario; }
 export function uid() { return usuario ? usuario.uid : null; }
@@ -192,8 +212,6 @@ export function podeEntrar() { return logado() && membro(); }
 function equipeMigrada() { return !!(equipeAtual && equipeAtual.papeisMigrados); }
 export function souCoordenador() { return !!(equipeAtual && usuario && !equipeMigrada() && equipeAtual.coordenadorUid === usuario.uid); }
 export function coordenadorUidAtual() { return equipeAtual && !equipeMigrada() ? equipeAtual.coordenadorUid : null; }
-// Papel gravado em /membros (pode ser o legado "planejador").
-export function papelGravado() { return meuMembro ? meuMembro.papel : null; }
 // Papel efetivo: criador da equipe antiga = Gerente de PCP; "planejador" = Técnico.
 export function papel() { return membro() ? Papeis.papelEfetivo(meuMembro.papel, souCoordenador()) : null; }
 export function souGerente() { return Papeis.ehGerente(papel()); }
@@ -254,6 +272,8 @@ export function recuperarSenha(email) {
 }
 export function sair() {
   pararEscutaMembro();
+  // o próximo login começa de novo pela equipe principal
+  try { sessionStorage.removeItem(chaveEquipeSessao()); } catch (e) { /* sem armazenamento */ }
   return FIREBASE_PRONTO ? auth().signOut() : Promise.resolve();
 }
 

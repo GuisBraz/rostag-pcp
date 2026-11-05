@@ -4,13 +4,13 @@
    usinagem (máquina e horas previstas, gravadas na própria OP).
    Quem grava cada coisa é decidido nas regras do Firestore.
 --------------------------------------------------------------------------- */
+import { agoraIso } from '../nucleo/fmt.js';
 import { db } from './firebase.js';
 import * as Auth from './auth.js';
 
 let pararMaquinas = null, pararConfig = null;
 
 function equipe() { return db().collection('equipes').doc(Auth.equipeAtualId()); }
-function agoraIso() { return new Date().toISOString(); }
 
 export function escutar(aoMaquinas, aoConfig) {
   pararEscuta();
