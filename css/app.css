@@ -888,17 +888,9 @@ body.visao-programador .so-nao-programador { display: none !important; }
 .rodape-autor a:hover { color: var(--teal); text-decoration: underline; }
 /* ---------------- tela de acesso (login / criar conta) ---------------- */
 .tela-acesso { position: fixed; inset: 0; z-index: 200; display: grid; grid-template-columns: minmax(320px, 44%) 1fr; background: var(--bg); overflow: auto; }
-.acesso-arte { position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden;
-  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.08), transparent 55%), var(--sb-bg); color: #fff; }
-.acesso-arte::before { content: ''; position: absolute; inset: 0; opacity: 0.18;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cg fill='none' stroke='%23ffffff'%3E%3Cpath stroke-width='0.5' d='M0 20h200M0 60h200M0 100h200M0 140h200M0 180h200M20 0v200M60 0v200M100 0v200M140 0v200M180 0v200'/%3E%3Ccircle cx='100' cy='100' r='34'/%3E%3Ccircle cx='100' cy='100' r='13'/%3E%3C/g%3E%3C/svg%3E"); background-size: 200px; }
-.acesso-arte-conteudo { position: relative; text-align: center; padding: 32px; }
-.acesso-logo { width: 200px; height: 200px; object-fit: cover; border-radius: 22px; box-shadow: 0 18px 40px rgba(0,0,0,0.35); }
-.acesso-marca { margin-top: 22px; font-family: var(--font-titulo); font-size: 30px; font-weight: 800; letter-spacing: 0.06em; }
-.acesso-lema { margin-top: 6px; font-size: 11.5px; letter-spacing: 0.22em; opacity: 0.75; }
-.acesso-faixa { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 28px; padding: 18px; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.14em; text-transform: uppercase; background: rgba(0,0,0,0.25); border-top: 1px solid rgba(255,255,255,0.12); }
-.acesso-lado { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 20px 16px; min-height: 100%; }
+.acesso-arte { background: #0B1A36 url("../img/login-arte.webp") center / cover no-repeat; }
+.acesso-lado { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 20px 16px; min-height: 100%;
+  background: #EFF3FB url("../img/login-fundo.webp") right center / auto 100% no-repeat; }
 .acesso-cartao { width: 100%; max-width: 440px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--sombra-alta); padding: 34px 36px 28px; }
 .acesso-titulo { font-family: var(--font-titulo); font-size: 22px; font-weight: 800; color: var(--ink); }
 .acesso-sub { margin: 6px 0 20px; font-size: 13px; color: var(--ink-dim); line-height: 1.5; }
@@ -916,13 +908,11 @@ body.visao-programador .so-nao-programador { display: none !important; }
 .rodape-acesso { margin-top: 22px; border-top: none; padding-top: 0; }
 @media (max-width: 860px) {
   .tela-acesso { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .acesso-arte { min-height: 150px; }
-  .acesso-arte-conteudo { display: flex; align-items: center; gap: 14px; padding: 20px; }
-  .acesso-logo { width: 64px; height: 64px; border-radius: 14px; }
-  .acesso-marca { margin-top: 0; font-size: 20px; text-align: left; }
-  .acesso-lema, .acesso-faixa { display: none; }
+  .acesso-arte { min-height: 190px; background-size: cover; background-position: center 42%; }
+  .acesso-lado { background-size: auto 60%; background-position: right bottom; }
   .acesso-cartao { padding: 26px 22px 22px; }
 }
+
 /* app sem equipe: só Painel, Notificações e Configurações */
 body.sem-equipe .side-item[data-tab]:not([data-tab="painel"]):not([data-tab="notificacoes"]) { display: none !important; }
 body.sem-equipe #tab-painel > *:not(#sem-equipe-painel) { display: none !important; }

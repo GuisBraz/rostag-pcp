@@ -588,7 +588,6 @@ export default {
   'cfg.tema.claro':'Azul & Navy', 'cfg.tema.escuro':'Dark (preto & azul)', 'cfg.tema.pastel':'Pastel & Marinho', 'cfg.tema.tecnico':'Técnico (laranja)',
   'cfg.tema.st':'ST Logística', 'cfg.tema.grego':'Grego (marfim & dourado)', 'cfg.tema.prata':'Prata acentuada',
   'modulo.gerencia':'Gerência', 'modulo.qualidade':'Controle de qualidade', 'modulo.processos':'Engenharia de processos', 'modulo.planejamento':'Engenharia de planejamento',
-  'acesso.lema':'PLANEJAMENTO • CONTROLE • PRODUÇÃO', 'acesso.p1':'Planejamento', 'acesso.p2':'Precisão', 'acesso.p3':'Resultados',
   'auth.subSaiu':'Você saiu da conta — entre novamente pra continuar.', 'auth.emailPh':'seuemail@exemplo.com', 'auth.nomePh':'Como devemos te chamar',
   'auth.senhaPh':'mínimo 8 caracteres', 'auth.nomeUsuario':'Nome de usuário', 'auth.confirmarSenhaRot':'Confirmar senha',
   'auth.semConta':'Não tem conta?', 'auth.criarUma':'Criar uma', 'auth.jaTemConta':'Já tem conta?',
