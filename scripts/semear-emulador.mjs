@@ -7,7 +7,7 @@ const AUTH = 'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:s
 const SENHA = 'teste-' + 'local-123';
 const PESSOAS = [
   ['gerente', 'Gerência Teste', 'gerente_pcp'], ['gerente2', 'Gerente Dois', 'gerente_pcp'], ['gp', 'GP Teste', 'gp'], ['tecnico', 'Técnico Teste', 'tecnico'],
-  ['cq', 'Qualidade Teste', 'cq'], ['progu', 'Programador Usinagem', 'prog_usinagem']
+  ['cq', 'Qualidade Teste', 'cq'], ['progu', 'Programador Usinagem', 'prog_usinagem'], ['progk', 'Programadora Caldeiraria', 'prog_caldeiraria']
 ];
 
 async function conta(apelido, nome) {
@@ -63,6 +63,9 @@ await env.withSecurityRulesDisabled(async (ctx) => {
     situacao: 'encerrada', atualizadoEm: iso(-80), opId: 'op6', projetoId: 'p1', area: 'usinagem', gpUid: uids.gp, tecnicoUid: uids.tecnico,
     criadoPorUid: uids.cq, criadoPorNome: 'Qualidade Teste', criadoEm: iso(-95) });
   await db.doc('equipes/' + E + '/ops/op6').update({ rncAtualId: 'rOld', rncNumero: '014' });
+  // programação: uma máquina e uma terceirizada para começar
+  await db.doc('equipes/' + E + '/maquinas/mForest').set({ nome: 'Mandrilhadora Forest', horasDia: 8, ativa: true, criadoEm: iso(-30), atualizadoEm: iso(-30) });
+  await db.doc('equipes/' + E + '/terceirizadas/tMetal').set({ nome: 'Metalúrgica Teste', ativa: true, criadoEm: iso(-30), atualizadoEm: iso(-30) });
 });
 await env.cleanup();
 console.log('Equipe Teste criada com', PESSOAS.map((p) => p[0] + '@teste.local').join(', '));

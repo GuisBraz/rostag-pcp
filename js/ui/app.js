@@ -17,6 +17,9 @@ import { refreshOpcoes } from './filtros.js';
 import { renderLinha } from './linha.js';
 import { renderDetalhe } from './detalhe.js';
 import { render as renderAvanco } from './avanco.js';
+import { render as renderOpDetalhe } from './opDetalhe.js';
+import { renderJanelas as renderJanelasFinalizadas, renderFinalizadas } from './finalizadas.js';
+import { renderOrdens } from './ordens.js';
 import { renderNotificacoes } from './notificacoes.js';
 import { renderCarga } from './carga.js';
 import { renderFabrica, renderRnc, atualizarContadorRnc } from './fabrica.js';
@@ -74,6 +77,8 @@ export function renderTudo() {
   if (a === 'fabrica') renderFabrica();
   if (a === 'carga') renderCarga();
   if (a === 'rnc') renderRnc();
+  if (a === 'ordens') renderOrdens();
+  if (a === 'finalizadas') renderFinalizadas();
   if (a === 'painel') renderPainel(); else renderNotificacoes();
   atualizarContadorRnc();
   atualizarInfoArmazenamento();
@@ -85,6 +90,8 @@ export function redesenhar() {
   renderTudo();
   if (estado.idDetalhe) renderDetalhe();
   renderAvanco();
+  renderOpDetalhe();
+  renderJanelasFinalizadas();
 }
 
 export function atualizarInfoArmazenamento() {

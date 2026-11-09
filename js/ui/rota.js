@@ -14,21 +14,28 @@ import { abaConfig } from './preferencias.js';
 import { renderFabrica, renderRnc } from './fabrica.js';
 import { renderTelaNotificacoes } from './notificacoes.js';
 import { renderCarga } from './carga.js';
+import { renderOrdens } from './ordens.js';
+import { renderFinalizadas } from './finalizadas.js';
 import * as Auth from '../dados/auth.js';
 import * as Papeis from '../dominio/papeis.js';
 
-const PAGINAS = { painel: 1, projetos: 1, linha: 1, fabrica: 1, carga: 1, rnc: 1, notificacoes: 1, config: 1 };
+const PAGINAS = { painel: 1, projetos: 1, linha: 1, ordens: 1, fabrica: 1, carga: 1, rnc: 1, finalizadas: 1, notificacoes: 1, config: 1 };
 
-// Telas que cada cargo usa. Programadores: painel, linha do tempo, Fábrica
-// e Carga (sem a lista de projetos). CQ: painel de indicadores, Fábrica e RNC.
+// Telas que cada cargo usa. Programador de caldeiraria: painel, linha do
+// tempo, Ordens de Produção, Fábrica (a programação), RNC e OPs finalizadas.
+// Programador de usinagem: o mesmo, com a Carga Máquina no lugar da Fábrica.
+// CQ: painel de indicadores, Fábrica e RNC. Todos: OPs finalizadas.
 export function abaPermitida(aba) {
   // sem equipe ainda: só o painel de boas-vindas, notificações e configurações
   if (!Auth.membro()) return aba === 'painel' || aba === 'notificacoes' || aba === 'config';
   const papel = Auth.papel();
-  if (aba === 'config' || aba === 'fabrica' || aba === 'notificacoes') return true;
-  if (aba === 'rnc') return Papeis.veRnc(papel) || Papeis.ehCQ(papel);
+  const area = Papeis.areaDoProgramador(papel);
+  if (aba === 'config' || aba === 'notificacoes' || aba === 'finalizadas') return true;
+  if (aba === 'fabrica') return area !== 'usinagem';
+  if (aba === 'ordens') return !!area || Papeis.ehGerente(papel);
+  if (aba === 'rnc') return Papeis.veRnc(papel) || Papeis.ehCQ(papel) || !!area;
   if (aba === 'painel' && Papeis.ehCQ(papel)) return true;
-  if (aba === 'carga') return Papeis.veCarga(papel);
+  if (aba === 'carga') return Papeis.veCarga(papel) && area !== 'caldeiraria';
   if (aba === 'painel' || aba === 'linha') return Papeis.leProjetos(papel);
   return Papeis.veProjetos(papel);
 }
@@ -61,7 +68,8 @@ export function aplicarRota() {
   $('tab-' + aba).classList.add('active');
   // no Painel Geral o título diz o módulo de quem está logado
   const modulo = aba === 'painel' ? Papeis.moduloDe(Auth.papel()) : null;
-  $('page-title').innerHTML = esc(T('nav.' + aba)) + (modulo ? '<span class="titulo-modulo"><span class="titulo-traco"> — </span>' + esc(T('modulo.' + modulo)) + '</span>' : '');
+  const nomeAba = aba === 'carga' && Auth.areaProgramador() === 'usinagem' ? 'cargaMaquina' : aba;
+  $('page-title').innerHTML = esc(T('nav.' + nomeAba)) + (modulo ? '<span class="titulo-modulo"><span class="titulo-traco"> — </span>' + esc(T('modulo.' + modulo)) + '</span>' : '');
   // o Painel Geral não tem subtítulo (a saudação ocupa o topo)
   $('page-sub').textContent = aba === 'painel' ? '' : T('sub.' + aba);
   fecharPopups();
@@ -71,6 +79,8 @@ export function aplicarRota() {
   if (aba === 'linha') renderLinha();
   if (aba === 'fabrica') renderFabrica();
   if (aba === 'carga') renderCarga();
+  if (aba === 'ordens') renderOrdens();
+  if (aba === 'finalizadas') renderFinalizadas();
   if (aba === 'rnc') renderRnc();
   if (aba === 'notificacoes') renderTelaNotificacoes();
   if (aba === 'config') abaConfig(arg && $('stab-' + arg) ? arg : 'geral');

@@ -16,7 +16,8 @@ import * as Auth from '../dados/auth.js';
 import { kpi } from './componentes.js';
 import { $, registrarAcoes } from './dom.js';
 import { abrirModal, fecharModal } from './modal.js';
-import { desenhar, destruir, cor, falhaGrafico } from './graficos.js';
+import { desenhar, destruir, cor, falhaGrafico, opcoesBase, legenda } from './graficos.js';
+import * as Rnc from '../dominio/rnc.js';
 import { irPara } from './rota.js';
 import { limparFiltroProjComStatus, limparFiltroProjPcp } from './projetos.js';
 import * as Carga from '../dominio/carga.js';
@@ -150,8 +151,20 @@ export function renderPainelProgramador() {
     cartao('irCarga', T('prg.pendente.' + area), '<div class="value">' + pend + '</div>', pendDet);
   $('prg-grafico-titulo').textContent = T('prg.grafico.' + area);
   $('prg-grafico-nota').textContent = T('prg.graficoNota.' + area);
-  if (!window.Chart) { falhaGrafico('chartCargaPainel'); return; }
+  // mês a mês: em aberto × concluídas × RNC (só a área do programador)
+  const serie = Rnc.serie(estado.ops.filter(function (o) { return o.area === area; }), (estado.rncs || []).filter(function (r) { return r.area === area; }),
+    h.slice(0, 7), 6, new Date().toISOString());
+  const atual = serie[serie.length - 1];
+  $('prg-mes-resumo').innerHTML = kpi(T('prg.mesAbertas'), String(atual.emAberto)) + kpi(T('prg.mesConcluidas'), '<span style="color:var(--green)">' + atual.finalizadas + '</span>') +
+    kpi(T('prg.mesRnc'), '<span style="color:var(--rust)">' + atual.rncs + '</span>');
+  if (!window.Chart) { falhaGrafico('chartCargaPainel'); falhaGrafico('chartPrgMes'); return; }
   desenharGraficoKg('chartCargaPainel', sems, valores, cap, unidade);
+  const rot = serie.map(function (x) { return new Date(Number(x.mes.slice(0, 4)), Number(x.mes.slice(5, 7)) - 1, 1).toLocaleDateString(codigoIdioma(), { month: 'short' }) + '/' + x.mes.slice(2, 4); });
+  desenhar('chartPrgMes', { type: 'bar', data: { labels: rot, datasets: [
+    { label: T('prg.mesAbertas'), data: serie.map(function (x) { return x.emAberto; }), backgroundColor: cor('--amber'), borderRadius: 4 },
+    { label: T('prg.mesConcluidas'), data: serie.map(function (x) { return x.finalizadas; }), backgroundColor: cor('--green'), borderRadius: 4 },
+    { label: T('prg.mesRnc'), data: serie.map(function (x) { return x.rncs; }), backgroundColor: cor('--rust'), borderRadius: 4 }
+  ] }, options: legenda(opcoesBase(), false) });
 }
 
 /* ------------------------------------------------ painel do técnico */
@@ -496,8 +509,8 @@ registrarAcoes({
   abrirCarga: abrirCarga,
   fecharCarga: function () { fecharModal('modal-carga'); },
   gerVerProjetos: function () { limparFiltroProjComStatus(''); irPara('projetos'); },
-  gerVerOps: function () { irPara('fabrica'); },
+  gerVerOps: function () { irPara(Auth.areaProgramador() ? 'ordens' : 'fabrica'); },
   tecVerProjetos: function () { limparFiltroProjComStatus(''); irPara('projetos'); },
-  irCarga: function () { irPara('carga'); },
+  irCarga: function () { irPara(Auth.areaProgramador() === 'caldeiraria' ? 'fabrica' : 'carga'); },
   tecVerAtrasadas: function () { limparFiltroProjPcp('atrasada'); irPara('projetos'); }
 });

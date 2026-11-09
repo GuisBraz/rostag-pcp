@@ -635,6 +635,12 @@ export function notificarVarios(uids, tipo, mensagem, projetoId) {
   const unicos = Array.from(new Set((uids || []).filter(Boolean)));
   return Promise.all(unicos.map(function (u) { return criarNotificacao(u, tipo, mensagem, projetoId); }));
 }
+// Uids de quem tem um destes cargos na equipe (ex.: o programador da área).
+export function uidsPorPapel(lista) {
+  return listarEquipe().then(function (membros) {
+    return membros.filter(function (m) { return lista.indexOf(m.papel) >= 0; }).map(function (m) { return m.uid; });
+  }).catch(function () { return []; });
+}
 // Uids dos Gerentes de PCP da equipe (em equipe antiga, o criador também).
 export function uidsGerentes() {
   const coord = coordenadorUidAtual();

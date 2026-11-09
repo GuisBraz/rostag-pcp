@@ -51,13 +51,20 @@ export function abrirBaixa(id) {
   abrirModal('modal-baixa', { aoFechar: function () { baixaOp = null; } });
 }
 
+// CQ deu baixa: o programador da área é avisado de que pode finalizar a OP.
+function avisarProgramador(o) {
+  Auth.uidsPorPapel(['prog_' + o.area]).then(function (uids) {
+    Auth.notificarVarios(uids, 'opAprovada', T('notif.opAprovada', o.numero, o.commessa, o.descricao || o.desenho), o.projetoId);
+  });
+}
+
 function cqAprovar() {
   const o = baixaOp;
   if (!o) return;
   confirmar(T('cq.aprovarConfirm', descricaoOp(o)), { titulo: T('cq.aprovar'), textoOk: T('baixa.simAprovar') }).then(function (ok) {
     if (!ok) return;
     fecharModal('modal-baixa');
-    Ops.aprovar(o.id).then(function () { toast(T('cq.aprovada', o.numero)); })
+    Ops.aprovar(o.id).then(function () { toast(T('cq.aprovada', o.numero)); avisarProgramador(o); })
       .catch(function (e) { avisoErro(e, 'cq.erro'); });
   });
 }
@@ -156,6 +163,7 @@ function salvarFormRnc(_a, _b, btn) {
     comBotaoOcupado(btn, Rncs.salvar(form.rnc, dados, op).then(function (r) {
       fecharModal('modal-rnc-form');
       toast(r.efeito && r.efeito.encerra ? T('rf.resultado.' + r.efeito.opStatus, op.numero, dados.reOp) : T('rf.salva', dados.numero));
+      if (r.efeito && (r.efeito.opStatus === 'aprovada' || r.efeito.opStatus === 'desvio')) avisarProgramador(op);
     }).catch(function (e) { avisoErro(e, 'cq.erro'); }));
   });
 }

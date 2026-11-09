@@ -12,6 +12,7 @@ import * as Projeto from '../dominio/projeto.js';
 import * as Auth from '../dados/auth.js';
 import * as DadosCarga from '../dados/carga.js';
 import { kpi } from './componentes.js';
+import { renderFilaUsi, renderQuadroCald, agendasAtuais } from './programacao.js';
 import { $, registrarAcoes } from './dom.js';
 import { confirmar } from './modal.js';
 import { toast } from './toast.js';
@@ -19,7 +20,6 @@ import { avisoErro } from './app.js';
 import { desenhar, cor, falhaGrafico } from './graficos.js';
 
 let abaCarga = null;          // 'usinagem' | 'caldeiraria'
-let filtroOps = 'pendentes';  // 'pendentes' | 'todas'
 
 function areasPermitidas() {
   const p = Auth.papel();
@@ -51,37 +51,11 @@ export function renderCarga() {
 export function resumoMaquinas(h) {
   const sems = Carga.semanas(Carga.SEMANAS_PADRAO, h);
   const maquinas = (estado.maquinas || []).filter(function (m) { return m.ativa !== false; });
-  const r = Carga.cargaMaquinas(estado.ops, estado.projetos, maquinas, sems, h, estado.setores);
+  const r = Carga.cargaMaquinas(estado.ops, estado.projetos, maquinas, sems, h, estado.setores, agendasAtuais(h));
   const capTotal = r.linhas.reduce(function (s, l) { return s + l.capacidade; }, 0);
   const semana = r.linhas.map(function (l) { return l.porSemana; })
     .reduce(function (acc, v) { return acc.map(function (x, i) { return x + v[i]; }); }, sems.map(function () { return 0; }));
   return { sems: sems, r: r, capTotal: capTotal, semana: semana };
-}
-
-function opsUsinagemAbertas() {
-  const porId = {};
-  estado.projetos.forEach(function (p) { porId[p.id] = p; });
-  return estado.ops.filter(function (o) {
-    const p = porId[o.projetoId];
-    return o.area === 'usinagem' && o.status === 'aberta' && (!p || Projeto.aberto(p));
-  }).sort(function (a, b) { return String(a.commessa).localeCompare(String(b.commessa), 'pt-BR', { numeric: true }) || String(a.numero).localeCompare(String(b.numero)); });
-}
-
-// OP com PDF: as horas vêm das operações (por setor); não se programa à mão.
-function opDoPdf(o, ativas) {
-  const hm = Carga.horasPorMaquina(o, ativas, estado.setores).porMaquina;
-  const partes = Object.keys(hm).map(function (id) {
-    const m = ativas.find(function (x) { return x.id === id; });
-    return esc((m && m.nome) || '—') + ' ' + fmtNum(hm[id], 1) + ' h';
-  });
-  const pendentes = Array.from(new Set(o.operacoes.filter(function (x) { return !Carga.setorResolvido(x.setor, ativas, estado.setores); })
-    .map(function (x) { return x.setor; })));
-  return '<div class="carga-op">' +
-    '<div class="carga-op-info"><b class="mono">OP ' + esc(o.numero) + '</b> <span class="hint-inline">' + esc(o.commessa) + '</span>' +
-      '<div class="hint-txt">' + esc(T('rnc.peca', o.desenho, o.posicao || '—')) + (o.descricao ? ' · ' + esc(o.descricao) : '') + ' · ' + esc(T('cg.qtd', fmtNum(o.qtd))) + '</div></div>' +
-    '<div class="carga-op-pdf"><span class="pill-area">' + esc(T('cg.doPdf')) + '</span> ' + (partes.join(' · ') || '—') +
-      (pendentes.length ? '<div class="hint-txt carga-pendente">' + esc(T('cg.setoresPendentes', pendentes.join(', '))) + '</div>' : '') + '</div>' +
-    '</div>';
 }
 
 // Setores que aparecem nos PDFs das OPs de usinagem e a máquina de cada um.
@@ -144,33 +118,9 @@ function renderUsinagem() {
       (r.resumo.semJanela ? '<div class="hint-txt">' + esc(T('cg.semJanelaH', r.resumo.semJanela, fmtNum(r.resumo.horasSemJanela, 1))) + '</div>' : '');
   }
 
-  // OPs para programar
+  // programação: aguardando, fila de cada máquina, baixa do CQ e RNC
   const editar = podeEditar('usinagem');
-  const todas = opsUsinagemAbertas();
-  const ativasMaq = (estado.maquinas || []).filter(function (m) { return m.ativa !== false; });
-  const programada = function (o) { return Object.keys(Carga.horasPorMaquina(o, ativasMaq, estado.setores).porMaquina).length > 0; };
-  const lista = filtroOps === 'pendentes' ? todas.filter(function (o) { return !programada(o); }) : todas;
-  $('cu-filtro').value = filtroOps;
-  const ativas = (estado.maquinas || []).filter(function (m) { return m.ativa !== false; });
-  const opcoes = function (sel) {
-    return '<option value="">' + esc(T('cg.escolher')) + '</option>' + ativas.map(function (m) {
-      return '<option value="' + esc(m.id) + '"' + (m.id === sel ? ' selected' : '') + '>' + esc(m.nome) + '</option>';
-    }).join('');
-  };
-  $('cu-ops').innerHTML = lista.length ? '<div class="carga-ops">' + lista.slice(0, 300).map(function (o) {
-    const nomeMaq = (ativas.find(function (m) { return m.id === o.maquinaId; }) || {}).nome;
-    if (Array.isArray(o.operacoes) && o.operacoes.length) return opDoPdf(o, ativas);
-    return '<div class="carga-op">' +
-      '<div class="carga-op-info"><b class="mono">OP ' + esc(o.numero) + '</b> <span class="hint-inline">' + esc(o.commessa) + '</span>' +
-        '<div class="hint-txt">' + esc(T('rnc.peca', o.desenho, o.posicao || '—')) + (o.descricao ? ' · ' + esc(o.descricao) : '') + ' · ' + esc(T('cg.qtd', fmtNum(o.qtd))) + '</div></div>' +
-      (editar
-        ? '<select class="carga-op-maq" data-change="programarMaquina" data-arg="' + esc(o.id) + '" aria-label="' + esc(T('cg.maquina')) + '">' + opcoes(o.maquinaId) + '</select>' +
-          '<input class="carga-op-h" type="number" min="0" max="10000" step="0.5" value="' + (o.horasPrevistas != null ? esc(o.horasPrevistas) : '') + '"' +
-          ' placeholder="h" data-change="programarHoras" data-arg="' + esc(o.id) + '" aria-label="' + esc(T('cg.horas')) + '">'
-        : '<span class="hint-txt">' + esc(nomeMaq || '—') + ' · ' + (o.horasPrevistas != null ? fmtNum(o.horasPrevistas, 1) + ' h' : '—') + '</span>') +
-      '</div>';
-  }).join('') + '</div>' + (lista.length > 300 ? '<div class="hint-txt">' + esc(T('fab.maisLinhas', lista.length - 300)) + '</div>' : '')
-    : '<div class="empty-state">' + esc(T(todas.length ? 'cg.tudoProgramado' : 'cg.semOpsUsinagem')) + '</div>';
+  renderFilaUsi('cu-programacao');
 
   // máquinas
   $('cu-maq-form').style.display = editar ? '' : 'none';
@@ -215,6 +165,8 @@ function renderCaldeiraria() {
     }).join('') + '</table>' + (r.semJanela ? '<div class="hint-txt">' + esc(T('cg.semJanelaKg', fmtNum(r.semJanela))) + '</div>' : '')
     : '<div class="empty-state">' + esc(T('cg.semOpsCald')) + '</div>';
 
+  // a Gerência também vê (e pode mexer) no quadro da caldeiraria
+  renderQuadroCald('cc-quadro');
   if (!window.Chart) { falhaGrafico('chartCargaFabrica'); return; }
   desenharGraficoKg('chartCargaFabrica', x.sems, r.porSemana, r.capacidade, 'kg');
 }
@@ -240,10 +192,6 @@ export function desenharGraficoKg(id, sems, valores, capacidade, unidade) {
 }
 
 /* --------------------------------------------------------------- ações */
-function opPorId(id) { return estado.ops.find(function (o) { return o.id === id; }); }
-function programar(id, maquinaId, horas) {
-  DadosCarga.programarOp(id, maquinaId, horas).catch(function (e) { avisoErro(e); renderCarga(); });
-}
 function maquinaPorId(id) { return (estado.maquinas || []).find(function (m) { return m.id === id; }); }
 function salvarMaq(m, mudanca) {
   const nova = Object.assign({}, m, mudanca);
@@ -258,16 +206,6 @@ registrarAcoes({
     DadosCarga.salvarSetor(el.dataset.arg, v === '__auto' ? null : v).catch(function (e) { avisoErro(e); renderCarga(); });
   },
   abaCarga: function (a) { abaCarga = a; renderCarga(); },
-  filtrarOpsCarga: function (v) { filtroOps = v === 'todas' ? 'todas' : 'pendentes'; renderCarga(); },
-  programarMaquina: function (v, _b, el) {
-    const o = opPorId(el.dataset.arg); if (!o) return;
-    programar(o.id, v || null, o.horasPrevistas);
-  },
-  programarHoras: function (v, _b, el) {
-    const o = opPorId(el.dataset.arg); if (!o) return;
-    const h = v === '' ? null : Math.max(0, Math.min(10000, Number(v)));
-    programar(o.id, o.maquinaId || null, h);
-  },
   adicionarMaquina: function () {
     const nome = $('cu-maq-nome').value.trim(), horas = Number($('cu-maq-horas').value);
     if (!nome || !(horas > 0 && horas <= 24)) { toast(T('cg.maquinaInvalida'), { tipo: 'erro' }); return; }
@@ -280,7 +218,7 @@ registrarAcoes({
   editarMaquinaAtiva: function (_v, _b, el) { const m = maquinaPorId(el.dataset.arg); if (m) salvarMaq(m, { ativa: el.checked }); },
   excluirMaquina: function (id) {
     const m = maquinaPorId(id); if (!m) return;
-    const usadas = estado.ops.filter(function (o) { return o.maquinaId === id && o.status === 'aberta'; }).length;
+    const usadas = (m.fila || []).length;
     confirmar(T('cg.excluirMaquinaQ', m.nome, plural(usadas, 'cg.opU', 'cg.opsU')), { titulo: T('btn.excluir'), textoOk: T('btn.excluir'), perigo: true })
       .then(function (ok) { if (ok) DadosCarga.excluirMaquina(id).catch(function (e) { avisoErro(e); }); });
   },

@@ -414,4 +414,9 @@ export default {
   'av.kTotal':'TOTAL PROGRESS', 'av.kRnc':'PIECES IN NCR', 'av.f.todos':'All', 'av.f.abertos':'In production', 'av.f.rnc':'With NCR', 'av.f.concluidos':'Done',
   'av.f.servico':'Service / heat tr.', 'av.f.comerciais':'Purchased', 'av.cObs':'Notes', 'av.baixar':'⭳ Download progress sheet',
   'cg.setoresTit':'Work order PDF sectors', 'cg.naoMaquina':'Not a machine', 'cg.semEscolha':'— choose —',
+  'nav.ordens':'Work Orders', 'nav.finalizadas':'Finished Orders', 'nav.cargaMaquina':'Machine Load',
+  'prog.col.emAberto':'Open', 'prog.col.programada':'At the shop', 'prog.col.baixaCq':'QC approved — finish', 'prog.col.rnc':'NCR — awaiting disposition',
+  'prog.finalizar':'✔ Finish work order', 'prog.programar':'Schedule', 'prog.aguardando':'Waiting to be scheduled',
+  'fin.g.expedicao':'Shipping', 'fin.g.montagem':'Mechanical assembly', 'fin.g.pintura':'Painting', 'fin.g.semDestino':'No destination',
+  'fin.romaneio':'⭳ Export packing list',
 };

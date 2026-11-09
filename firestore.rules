@@ -339,55 +339,78 @@ service cloud.firestore {
               && get(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.origemOpId)).data.projetoId == request.resource.data.projetoId
               && get(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.origemOpId)).data.area == request.resource.data.area)
           );
-        allow update: if (
-            (souGerenteDe(equipeId) || souTecnicoDoProjeto(projeto(equipeId, resource.data.projetoId))
-              || (souPapel(equipeId, 'gp') && projeto(equipeId, resource.data.projetoId).get('gpUid', null) == request.auth.uid))
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-                 (souPapel(equipeId, 'gp') ? ['gpUid', 'tecnicoUid'] : camposDados()))
-            && designacaoConfere(request.resource.data, projeto(equipeId, resource.data.projetoId))
-            && extrasOk(request.resource.data)
-            && request.resource.data.numero is string
-            && request.resource.data.numero.size() > 0 && request.resource.data.numero.size() <= 40
-          ) || (
-            // carga máquina: o programador de usinagem (ou o gerente) escolhe a
-            // máquina e as horas previstas de uma OP de usinagem
-            (souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId))
-            && resource.data.area == 'usinagem'
-            && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['maquinaId', 'horasPrevistas', 'programadoEm', 'programadoPorUid'])
-            && (request.resource.data.get('maquinaId', null) == null || request.resource.data.maquinaId is string)
-            && (request.resource.data.get('horasPrevistas', null) == null
-              || (request.resource.data.horasPrevistas is number
-                && request.resource.data.horasPrevistas >= 0 && request.resource.data.horasPrevistas <= 10000))
-            && request.resource.data.programadoPorUid == request.auth.uid
-          ) || (
-            // Controle de qualidade. Da OP aberta ou em retrabalho:
-            //  → aprovada (aberta ou retrabalho) / desvio (só do retrabalho)
-            //  → retrabalho, apontando para a RNC que existe depois deste lote
-            //  → morta (só do retrabalho), com a OP nova já criada no lote
-            // Aprovada, desvio e morta são finais: o CQ não desfaz.
-            souPapel(equipeId, 'cq') && resource.data.status in ['aberta', 'retrabalho', 'rnc']
-            && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['status', 'finalizadoPorUid', 'finalizadoPorNome', 'finalizadoEm',
-                           'rncAtualId', 'rncNumero', 'retrabalhoDesde', 'mortaEm', 'opNovaId', 'opNovaNumero', 'qtdNc'])
-            // peças reprovadas na RNC: inteiro de 1 até a quantidade da OP
-            && (request.resource.data.get('qtdNc', 1) is int && request.resource.data.get('qtdNc', 1) >= 1
-              && (!(resource.data.get('qtd', null) is number) || resource.data.qtd <= 0
-                || request.resource.data.get('qtdNc', 1) <= resource.data.qtd))
-            && (
-              (request.resource.data.status == 'aprovada'
-                || (request.resource.data.status == 'desvio' && resource.data.status in ['retrabalho', 'rnc']))
-                && request.resource.data.finalizadoPorUid == request.auth.uid
-                && request.resource.data.finalizadoEm is string
-              || (request.resource.data.status == 'retrabalho'
-                && request.resource.data.rncAtualId is string
-                && existsAfter(/databases/$(database)/documents/equipes/$(equipeId)/rncs/$(request.resource.data.rncAtualId)))
-              || (request.resource.data.status == 'morta' && resource.data.status in ['retrabalho', 'rnc']
-                && request.resource.data.opNovaId is string
-                && existsAfter(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(request.resource.data.opNovaId))
-                && request.resource.data.mortaEm is string)
-            )
+        // Quem atualiza a OP e o quê. O cargo e as chaves alteradas são
+        // calculados uma vez só: a regra tem limite de 1000 expressões.
+        //  - dados da peça: gerente e técnico do projeto (planilha, PDF);
+        //    o GP do projeto só acompanha a designação
+        //  - destino da peça pronta: gerente, GP e técnico do projeto
+        //  - programação: programador da área (ou gerente)
+        //  - finalizar: programador da área (ou gerente), depois do CQ, uma vez
+        //  - controle de qualidade: aprova, abre RNC, desvio, peça morta
+        function dadosOk(papel, gerente, k, d, r) {
+          let p = projeto(equipeId, r.projetoId);
+          let tec = papel in ['tecnico', 'planejador'] && p.get('responsavelUid', null) == request.auth.uid;
+          let gpDono = papel == 'gp' && p.get('gpUid', null) == request.auth.uid;
+          return (gerente || tec || gpDono) && (
+            (k.hasOnly(gpDono && !gerente ? ['gpUid', 'tecnicoUid'] : camposDados())
+              && designacaoConfere(d, p) && extrasOk(d)
+              && d.numero is string && d.numero.size() > 0 && d.numero.size() <= 40)
+            || (k.hasOnly(['destino', 'destinoEm', 'destinoPorUid'])
+              && d.destino in ['expedicao', 'montagem', 'pintura'] && d.destinoPorUid == request.auth.uid)
           );
+        }
+        function programacaoOk(papel, gerente, k, d, r) {
+          let usi = r.area == 'usinagem' && (gerente || papel == 'prog_usinagem');
+          let cald = r.area == 'caldeiraria' && (gerente || papel == 'prog_caldeiraria');
+          return (usi && k.hasOnly(['maquinaId', 'horasPrevistas', 'programadoEm', 'programadoPorUid'])
+              && (d.get('maquinaId', null) == null || d.maquinaId is string)
+              && (d.get('horasPrevistas', null) == null || (d.horasPrevistas is number && d.horasPrevistas >= 0 && d.horasPrevistas <= 10000))
+              && d.programadoPorUid == request.auth.uid)
+            || (cald && k.hasOnly(['programacao', 'desprogramadaEm'])
+              && (d.get('programacao', null) == null
+                || (d.programacao is map
+                  && d.programacao.keys().hasOnly(['terceirizadaId', 'terceirizada', 'previsaoFim', 'em', 'porUid'])
+                  && d.programacao.terceirizadaId is string && d.programacao.previsaoFim is string
+                  && d.programacao.porUid == request.auth.uid)))
+            || (usi && k.hasOnly(['horasReais', 'desprogramadaEm'])
+              && (d.get('horasReais', null) == null || (d.horasReais is number && d.horasReais >= 0 && d.horasReais <= 10000)))
+            || ((usi || cald) && r.status in ['aprovada', 'desvio'] && !('encerradaEm' in r)
+              && k.hasOnly(['encerradaEm', 'encerradaPorUid', 'encerradaPorNome'])
+              && d.encerradaEm is string && d.encerradaPorUid == request.auth.uid);
+        }
+        // CQ, da OP aberta ou em retrabalho:
+        //  → aprovada (aberta ou retrabalho) / desvio (só do retrabalho)
+        //  → retrabalho, apontando para a RNC que existe depois deste lote
+        //  → morta (só do retrabalho), com a OP nova já criada no lote
+        // Aprovada, desvio e morta são finais: o CQ não desfaz.
+        // qtdNc (peças reprovadas): inteiro de 1 até a quantidade da OP.
+        function cqOk(k, d, r) {
+          return r.status in ['aberta', 'retrabalho', 'rnc']
+            && k.hasOnly(['status', 'finalizadoPorUid', 'finalizadoPorNome', 'finalizadoEm',
+                          'rncAtualId', 'rncNumero', 'retrabalhoDesde', 'mortaEm', 'opNovaId', 'opNovaNumero', 'qtdNc'])
+            && d.get('qtdNc', 1) is int && d.get('qtdNc', 1) >= 1
+            && (!(r.get('qtd', null) is number) || r.qtd <= 0 || d.get('qtdNc', 1) <= r.qtd)
+            && (
+              ((d.status == 'aprovada' || (d.status == 'desvio' && r.status in ['retrabalho', 'rnc']))
+                && d.finalizadoPorUid == request.auth.uid && d.finalizadoEm is string)
+              || (d.status == 'retrabalho' && d.rncAtualId is string
+                && existsAfter(/databases/$(database)/documents/equipes/$(equipeId)/rncs/$(d.rncAtualId)))
+              || (d.status == 'morta' && r.status in ['retrabalho', 'rnc'] && d.opNovaId is string
+                && existsAfter(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(d.opNovaId))
+                && d.mortaEm is string)
+            );
+        }
+        function atualizacaoOk() {
+          let papel = papelEm(equipeId);
+          let gerente = papel == 'gerente_pcp' || (souCoordDe(equipeId) && !equipeMigrada(equipeId));
+          let k = request.resource.data.diff(resource.data).affectedKeys();
+          let d = request.resource.data;
+          let r = resource.data;
+          return k.size() > 0 && ((papel == 'cq' && cqOk(k, d, r))
+            || ((gerente || papel in ['prog_usinagem', 'prog_caldeiraria']) && programacaoOk(papel, gerente, k, d, r))
+            || ((gerente || papel in ['gp', 'tecnico', 'planejador']) && dadosOk(papel, gerente, k, d, r)));
+        }
+        allow update: if membroDe(equipeId) && atualizacaoOk();
         allow delete: if souGerenteDe(equipeId)
           || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid && resource.data.status == 'aberta');
       }
@@ -411,7 +434,9 @@ service cloud.firestore {
         }
         allow read: if souGerenteDe(equipeId) || souPapel(equipeId, 'cq')
           || (souPapel(equipeId, 'gp') && resource.data.gpUid == request.auth.uid)
-          || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid);
+          || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid)
+          || (souPapel(equipeId, 'prog_usinagem') && resource.data.area == 'usinagem')
+          || (souPapel(equipeId, 'prog_caldeiraria') && resource.data.area == 'caldeiraria');
         allow create: if souPapel(equipeId, 'cq')
           && request.resource.data.keys().hasOnly(camposForm().concat(['opId', 'projetoId', 'area', 'gpUid', 'tecnicoUid',
                'criadoPorUid', 'criadoPorNome', 'criadoEm']))
@@ -434,13 +459,25 @@ service cloud.firestore {
       match /maquinas/{maquinaId} {
         allow read: if membroDe(equipeId);
         allow create, update: if (souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId))
-          && request.resource.data.keys().hasOnly(['nome', 'horasDia', 'ativa', 'criadoEm', 'atualizadoEm'])
+          && request.resource.data.keys().hasOnly(['nome', 'horasDia', 'ativa', 'criadoEm', 'atualizadoEm', 'fila'])
+          && request.resource.data.get('fila', []) is list && request.resource.data.get('fila', []).size() <= 300
           && request.resource.data.nome is string
           && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 60
           && request.resource.data.horasDia is number
           && request.resource.data.horasDia > 0 && request.resource.data.horasDia <= 24
           && request.resource.data.ativa is bool;
         allow delete: if souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId);
+      }
+
+      // Terceirizadas da caldeiraria (onde a OP "está em fábrica"): toda a
+      // equipe lê; programador de caldeiraria e gerente cadastram e apagam.
+      match /terceirizadas/{tercId} {
+        allow read: if membroDe(equipeId);
+        allow create, update: if (souPapel(equipeId, 'prog_caldeiraria') || souGerenteDe(equipeId))
+          && request.resource.data.keys().hasOnly(['nome', 'ativa', 'criadoEm', 'atualizadoEm'])
+          && request.resource.data.nome is string
+          && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 60;
+        allow delete: if souPapel(equipeId, 'prog_caldeiraria') || souGerenteDe(equipeId);
       }
 
       // Lista de avanço do projeto: a planilha inteira, como valores. Toda a
@@ -530,7 +567,8 @@ service cloud.firestore {
         && request.resource.data.deUid == request.auth.uid
         && request.resource.data.deNome is string && request.resource.data.deNome.size() <= 80
         && request.resource.data.tipo in ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas',
-                                          'designacaoTrocada', 'planilhaOps', 'rnc', 'chat', 'pedido', 'pedidoAprovado', 'pedidoRecusado']
+                                          'designacaoTrocada', 'planilhaOps', 'rnc', 'chat', 'pedido', 'pedidoAprovado', 'pedidoRecusado',
+                                          'opAprovada', 'opFinalizada']
         && request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 500
         && (request.resource.data.projetoId == null || request.resource.data.projetoId is string)
         && request.resource.data.lida == false

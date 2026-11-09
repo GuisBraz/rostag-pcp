@@ -11,6 +11,8 @@ import { estado, buscarProjeto } from '../estado.js';
 import { esc, br, brCurto, hoje, addDias, dataDoInstante, horaDoInstante } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Alertas from '../dominio/alertas.js';
+import * as Prog from '../dominio/programacao.js';
+import { agendasAtuais, agendaPorOp } from './programacao.js';
 import * as Semana from '../dominio/semana.js';
 import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes } from './dom.js';
@@ -51,14 +53,15 @@ export function pararNotificacoes() {
   registrando = new Set();
 }
 
-const TIPOS_REAIS = ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas', 'designacaoTrocada', 'planilhaOps', 'rnc', 'chat', 'pedido', 'pedidoAprovado', 'pedidoRecusado'];
+const TIPOS_REAIS = ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas', 'designacaoTrocada', 'planilhaOps', 'rnc', 'chat', 'pedido', 'pedidoAprovado', 'pedidoRecusado',
+  'opAprovada', 'opFinalizada'];
 // Categorias para o filtro da tela cheia.
 const CATEGORIA = {
   designacao: 'projeto', projetoCriado: 'projeto', cronograma: 'projeto', datas: 'projeto', designacaoTrocada: 'projeto',
-  planilhaOps: 'fabrica', rnc: 'fabrica', chat: 'conversa', observacao: 'conversa',
+  planilhaOps: 'fabrica', rnc: 'fabrica', chat: 'conversa', observacao: 'conversa', opAprovada: 'fabrica', opFinalizada: 'fabrica',
   pedido: 'projeto', pedidoAprovado: 'projeto', pedidoRecusado: 'projeto'
 };
-function categoriaDe(n) { return n.real ? (CATEGORIA[n.tipo] || 'conversa') : (/^prod-/.test(n.tipo) ? 'fabrica' : 'prazos'); }
+function categoriaDe(n) { return n.real ? (CATEGORIA[n.tipo] || 'conversa') : (/^(prod|prog)-/.test(n.tipo) ? 'fabrica' : 'prazos'); }
 
 function mapReal(n) {
   const tipo = TIPOS_REAIS.indexOf(n.tipo) >= 0 ? n.tipo : 'observacao';
@@ -74,7 +77,7 @@ function alertasCalculados() {
   if (!Auth.podeEntrar()) return [];
   const semana = Semana.inicioSemana(hoje()), equipeId = Auth.equipeAtualId();
   const novos = [];
-  const lista = Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops }).map(function (n) {
+  const lista = Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops }).concat(avisosProgramador()).map(function (n) {
     const chave = Semana.chaveAlerta(semana, equipeId, n.id);
     const st = estadoAlertas && estadoAlertas[chave];
     if (estadoAlertas && !st && !registrando.has(chave)) {
@@ -86,6 +89,23 @@ function alertasCalculados() {
   // primeira vez que o alerta aparece nesta semana: grava quando (só com os dados já carregados)
   if (novos.length && estado.carregado) Auth.registrarAlertas(novos);
   return lista;
+}
+
+// Avisos graduais do programador: sem programação, data vencendo, projeto
+// vencendo e projeto atrasado (calculados a partir das OPs da área).
+function avisosProgramador() {
+  const area = Auth.areaProgramador();
+  if (!area) return [];
+  const h = hoje(), proj = {};
+  estado.projetos.forEach(function (p) { proj[p.id] = p; });
+  const agendas = area === 'usinagem' ? agendasAtuais(h) : {};
+  return Prog.avisos(estado.ops, proj, area, Prog.opsNaFila(estado.maquinas), agendaPorOp(agendas), h).map(function (a) {
+    return {
+      id: a.id, tipo: a.tipo, nivel: a.nivel, projetoId: a.projetoId, ordem: a.ordem, origem: 'sistema', quando: a.data || h,
+      titulo: T('n.' + a.tipo, a.commessa, a.numero || ''),
+      meta: T('n.' + a.tipo + 'M', a.n || 0, a.data ? br(a.data) : '', Prog.DIAS_SEM_PROGRAMACAO)
+    };
+  });
 }
 
 function listaAtual() {
@@ -230,6 +250,11 @@ function abrirNotificacao(id) {
     return;
   }
   renderNotificacoes();
+  // programação e OPs prontas têm tela própria
+  const area = Auth.areaProgramador();
+  if (/^prog-/.test(n.tipo)) { irPara('ordens'); return; }
+  if (n.tipo === 'opAprovada' && area) { irPara(area === 'usinagem' ? 'carga' : 'fabrica'); return; }
+  if (n.tipo === 'opFinalizada') { irPara('finalizadas'); return; }
   if (n.projetoId && buscarProjeto(n.projetoId)) irPara('projetos', n.projetoId);
 }
 

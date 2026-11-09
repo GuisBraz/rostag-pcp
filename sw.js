@@ -6,7 +6,7 @@
    nova aparece no próximo carregamento, sem ficar presa em cache.
    Os dados (Firestore) não passam por aqui: o próprio SDK guarda o cache.
 --------------------------------------------------------------------------- */
-const CACHE = 'rostag-pcp-v16';
+const CACHE = 'rostag-pcp-v17';
 const ARQUIVOS = [
   './', 'index.html', 'manifest.json', 'css/app.css', 'css/temas.css', 'vendor/chart.umd.min.js', 'img/logo.png',
   'img/favicon.png', 'img/sobre.jpg', 'img/logo-sofir.png', 'img/login-arte.webp', 'img/login-fundo.webp',
@@ -15,18 +15,20 @@ const ARQUIVOS = [
   'js/nucleo/fmt.js', 'js/nucleo/prefs.js',
   'js/i18n/en.js', 'js/i18n/index.js', 'js/i18n/pt.js',
   'js/dominio/alertas.js', 'js/dominio/avanco.js', 'js/dominio/carga.js', 'js/dominio/constantes.js',
-  'js/dominio/cronograma.js', 'js/dominio/desempenho.js', 'js/dominio/opManual.js', 'js/dominio/opPdf.js',
-  'js/dominio/papeis.js', 'js/dominio/planilha.js', 'js/dominio/producao.js', 'js/dominio/projeto.js',
-  'js/dominio/rnc.js', 'js/dominio/semana.js', 'js/dominio/serie.js',
+  'js/dominio/cronograma.js', 'js/dominio/desempenho.js', 'js/dominio/finalizadas.js', 'js/dominio/opManual.js',
+  'js/dominio/opPdf.js', 'js/dominio/papeis.js', 'js/dominio/planilha.js', 'js/dominio/producao.js',
+  'js/dominio/programacao.js', 'js/dominio/projeto.js', 'js/dominio/rnc.js', 'js/dominio/semana.js',
+  'js/dominio/serie.js',
   'js/dados/auth.js', 'js/dados/avanco.js', 'js/dados/carga.js', 'js/dados/checklist.js', 'js/dados/firebase.js',
-  'js/dados/ops.js', 'js/dados/rncs.js', 'js/dados/store.js',
+  'js/dados/ops.js', 'js/dados/programacao.js', 'js/dados/rncs.js', 'js/dados/store.js',
   'js/ui/acesso.js', 'js/ui/ano.js', 'js/ui/app.js', 'js/ui/atalhos.js', 'js/ui/avanco.js',
   'js/ui/bibliotecas.js', 'js/ui/carga.js', 'js/ui/checklistPadrao.js', 'js/ui/componentes.js', 'js/ui/dados.js',
   'js/ui/desempenho.js', 'js/ui/detalhe.js', 'js/ui/dom.js', 'js/ui/equipe.js', 'js/ui/fabrica.js',
-  'js/ui/filtros.js', 'js/ui/formulario.js', 'js/ui/gerencia.js', 'js/ui/graficos.js', 'js/ui/linha.js',
-  'js/ui/minhasEquipes.js', 'js/ui/modal.js', 'js/ui/notificacoes.js', 'js/ui/opManual.js', 'js/ui/opPdf.js',
-  'js/ui/painel.js', 'js/ui/painelCq.js', 'js/ui/pedidos.js', 'js/ui/preferencias.js', 'js/ui/projetos.js',
-  'js/ui/qualidade.js', 'js/ui/rncPdf.js', 'js/ui/rota.js', 'js/ui/sidebar.js', 'js/ui/toast.js'
+  'js/ui/filtros.js', 'js/ui/finalizadas.js', 'js/ui/formulario.js', 'js/ui/gerencia.js', 'js/ui/graficos.js',
+  'js/ui/linha.js', 'js/ui/minhasEquipes.js', 'js/ui/modal.js', 'js/ui/notificacoes.js', 'js/ui/opDetalhe.js',
+  'js/ui/opManual.js', 'js/ui/opPdf.js', 'js/ui/ordens.js', 'js/ui/painel.js', 'js/ui/painelCq.js',
+  'js/ui/pedidos.js', 'js/ui/preferencias.js', 'js/ui/programacao.js', 'js/ui/projetos.js', 'js/ui/qualidade.js',
+  'js/ui/rncPdf.js', 'js/ui/rota.js', 'js/ui/sidebar.js', 'js/ui/toast.js'
 ];
 // SDK do Firebase (gstatic): sem ele o app não abre offline. A URL tem a
 // versão, então o conteúdo nunca muda — cache primeiro. Mesmas URLs do index.html.

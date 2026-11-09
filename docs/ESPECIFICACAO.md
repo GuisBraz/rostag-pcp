@@ -131,6 +131,39 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - **Painel do CQ**: aprovadas × RNC e em aberto × finalizadas do mês, com tela
   cheia de 6 e 12 meses; retrabalho, peças mortas e desvio.
 
+## 4.1 Programação (programadores) e OPs finalizadas
+
+- **Abas do programador de caldeiraria:** Painel (gráfico mês a mês: em aberto ×
+  concluídas × RNC), Linha do Tempo, Ordens de Produção, **Fábrica** (o quadro),
+  RNC (só leitura) e OPs Finalizadas. **Usinagem:** o mesmo, com a **Carga
+  Máquina** no lugar da Fábrica.
+- **Caldeiraria (quadro):** Em aberto → **Em fábrica** (terceirizada + data
+  prevista para finalizar; nunca antes de hoje; depois do prazo do projeto só
+  avisa) → Baixa do CQ → Finalizar. "Tirar" devolve para em aberto. RNC fica
+  "aguardando disposição". Carga em kg por terceirizada; cadastro de
+  terceirizadas só com o nome (programadora e Gerência).
+- **Usinagem (Carga Máquina, como o MS Project):** uma fila por máquina
+  (`maquinas/{id}.fila`). As horas vêm do PDF da OP (setor → máquina) ou são
+  digitadas; início e fim saem do calendário da máquina (horas/dia, seg–sex),
+  a partir de hoje ou de "não iniciar antes de". Máquina ocupada empurra a OP;
+  fim depois do prazo do projeto = "planejado em atraso". Horas reais por OP,
+  com aviso quando passam das previstas. OP aprovada pelo CQ deixa de ocupar a
+  máquina.
+- **Finalizar:** CQ aprova → o programador da área é avisado → ele finaliza
+  (`encerradaEm`) → a OP sai da programação e o técnico e o GP recebem o
+  próximo passo (TTAT → serviço externo → oxidação → pintura, pelas marcas da
+  planilha) ou "sem próxima etapa".
+- **Avisos graduais do programador** (sino): OPs em aberto há mais de 2 dias,
+  OP programada com a data a 2 dias (ou vencida), OP planejada em atraso,
+  projeto com o fim da produção a 7 dias e projeto atrasado — este também põe
+  a **borda vermelha** nas OPs do projeto.
+- **OPs Finalizadas (todos):** botões Expedição, Montagem mecânica, Pintura e
+  OP sem destino → commessas não finalizadas (tela cheia) → peças da commessa
+  (disponível, em produção, outro destino) e **romaneio** (.xlsx, só as
+  disponíveis). Peça pronta = todas as OPs dela finalizadas; destino gravado em
+  `op.destino` (Gerência, GP e técnico do projeto); sem destino gravado, peça
+  com pintura marcada vai para Pintura.
+
 ## 5. Notificações
 
 | # | Evento | Quem recebe | Origem |

@@ -46,9 +46,11 @@
       <button type="button" class="side-item active" data-tab="painel" data-acao="irPara" data-arg="painel" title="Alt+1"><span class="icon" aria-hidden="true">▦</span><span class="label" data-i18n="nav.painel">Painel Geral</span></button>
       <button type="button" class="side-item" data-tab="projetos" data-acao="irPara" data-arg="projetos" title="Alt+2"><span class="icon" aria-hidden="true">▤</span><span class="label" data-i18n="nav.projetos">Projetos</span></button>
       <button type="button" class="side-item" data-tab="linha" data-acao="irPara" data-arg="linha" title="Alt+3"><span class="icon" aria-hidden="true">⏱</span><span class="label" data-i18n="nav.linha">Linha do Tempo</span></button>
+      <button type="button" class="side-item" data-tab="ordens" data-acao="irPara" data-arg="ordens" style="display:none"><span class="icon" aria-hidden="true">☰</span><span class="label" data-i18n="nav.ordens">Ordens de Produção</span></button>
       <button type="button" class="side-item" data-tab="fabrica" data-acao="irPara" data-arg="fabrica" title="Alt+4"><span class="icon" aria-hidden="true">⚙</span><span class="label" data-i18n="nav.fabrica">Fábrica</span></button>
       <button type="button" class="side-item" data-tab="carga" data-acao="irPara" data-arg="carga" title="Alt+7" style="display:none"><span class="icon" aria-hidden="true">▥</span><span class="label" data-i18n="nav.carga">Carga</span></button>
       <button type="button" class="side-item" data-tab="rnc" data-acao="irPara" data-arg="rnc" title="Alt+5"><span class="icon" aria-hidden="true">⚠</span><span class="label" data-i18n="nav.rnc">RNC</span><span class="side-badge" id="rnc-contador" style="display:none">0</span></button>
+      <button type="button" class="side-item" data-tab="finalizadas" data-acao="irPara" data-arg="finalizadas"><span class="icon" aria-hidden="true">✔</span><span class="label" data-i18n="nav.finalizadas">OPs Finalizadas</span></button>
       <button type="button" class="side-item" data-tab="notificacoes" data-acao="irPara" data-arg="notificacoes" title="Alt+6"><span class="icon" aria-hidden="true">🔔</span><span class="label" data-i18n="nav.notificacoes">Notificações</span><span class="side-badge side-badge-azul" id="notif-nav-contador" style="display:none">0</span></button>
     </nav>
 
@@ -161,6 +163,14 @@
         <div class="ger-legenda" id="cq-abertas-legenda"></div>
       </div>
     </div>
+  </div>
+
+  <!-- Programadores: o mês a mês das OPs da área -->
+  <div class="card panel-pad so-programador" style="margin-bottom:18px;">
+    <div class="panel-title" data-i18n="prg.mesTit">OPs da área — mês a mês</div>
+    <div class="panel-note" data-i18n="prg.mesNota">Em aberto no fim de cada mês, concluídas (baixa do CQ) e RNCs abertas no mês.</div>
+    <div class="ano-resumo" id="prg-mes-resumo"></div>
+    <div style="height:260px"><canvas id="chartPrgMes"></canvas></div>
   </div>
 
   <!-- Programadores: carga das próximas semanas no lugar do andamento e do "Precisa de atenção" -->
@@ -388,24 +398,14 @@
   <div class="carga-abas" id="carga-abas" role="tablist"></div>
 
   <div id="carga-usinagem">
+    <div id="cu-programacao" class="prog-area"></div>
     <div class="ano-resumo" id="cu-resumo"></div>
     <div class="card panel-pad carga-bloco">
       <div class="panel-title" data-i18n="cg.tituloMaq">Carga máquina — próximas 8 semanas</div>
-      <div class="panel-note" data-i18n="cg.notaMaq">Horas programadas nas OPs de usinagem x capacidade de cada máquina (horas/dia × 5 dias). As horas de cada OP são espalhadas pela janela de produção do projeto.</div>
+      <div class="panel-note" data-i18n="cg.notaMaq">Horas das OPs de usinagem x capacidade de cada máquina (horas/dia × 5 dias). OP na fila conta pelas datas da fila; as que ainda não foram programadas são espalhadas pela janela de produção do projeto.</div>
       <div id="cu-grade"></div>
     </div>
     <div class="carga-grid2">
-      <div class="card panel-pad">
-        <div class="carga-cab">
-          <div class="panel-title" data-i18n="cg.programar">Programar OPs</div>
-          <select id="cu-filtro" data-change="filtrarOpsCarga" aria-label="Filtro">
-            <option value="pendentes" data-i18n="cg.fPendentes">Sem máquina ou horas</option>
-            <option value="todas" data-i18n="cg.fTodas">Todas as abertas</option>
-          </select>
-        </div>
-        <div class="panel-note" data-i18n="cg.programarNota">Escolha a máquina e as horas previstas de cada OP de usinagem.</div>
-        <div id="cu-ops"></div>
-      </div>
       <div class="card panel-pad">
         <div class="panel-title" data-i18n="cg.maquinasTit">Máquinas</div>
         <div class="panel-note" data-i18n="cg.maquinasNota">Horas disponíveis por dia em cada máquina. Máquina inativa sai da carga.</div>
@@ -423,6 +423,7 @@
   </div>
 
   <div id="carga-caldeiraria" hidden>
+    <div id="cc-quadro" class="prog-area"></div>
     <div class="ano-resumo" id="cc-resumo"></div>
     <div class="card panel-pad carga-bloco">
       <div class="carga-cab">
@@ -459,6 +460,8 @@
       </div>
     </div>
   </div>
+  <div id="fab-quadro" hidden></div>
+  <div id="fab-lista-wrap">
   <div class="fab-visoes" id="fab-visoes" role="tablist"></div>
   <div class="fab-filtros card panel-pad">
     <div class="field"><label data-i18n="fab.fArea">ÁREA</label>
@@ -479,6 +482,34 @@
         <tbody id="fab-tbody"></tbody>
       </table>
     </div>
+  </div>
+  </div>
+</div>
+
+<!-- ==================== ORDENS DE PRODUÇÃO ==================== -->
+<div class="tabpanel" id="tab-ordens">
+  <div class="actionbar"><div class="hint" id="ord-count">—</div></div>
+  <div class="av-barra">
+    <div class="fab-visoes" id="ord-filtros" role="tablist"></div>
+    <div class="ord-ferramentas">
+      <select id="ord-area" data-change="areaOrdens" aria-label="Área">
+        <option value="" data-i18n="btn.todas">Todas</option>
+        <option value="caldeiraria" data-i18n="area.caldeiraria">Caldeiraria</option>
+        <option value="usinagem" data-i18n="area.usinagem">Usinagem</option>
+      </select>
+      <input id="ord-busca" class="av-busca" data-i18n-ph="ord.buscaPh" placeholder="buscar OP, desenho, descrição..." aria-label="Buscar">
+    </div>
+  </div>
+  <div id="ord-lista" class="ord-lista"></div>
+</div>
+
+<!-- ==================== OPs FINALIZADAS ==================== -->
+<div class="tabpanel" id="tab-finalizadas">
+  <div class="fin-botoes" id="fin-botoes"></div>
+  <div class="card panel-pad">
+    <div class="panel-title" data-i18n="fin.recentes">Finalizadas recentemente</div>
+    <div class="panel-note" data-i18n="fin.recentesNota">Peças prontas (todas as OPs finalizadas pelo programador) de projetos em andamento.</div>
+    <div id="fin-recentes"></div>
   </div>
 </div>
 
@@ -818,6 +849,64 @@
     <div class="modal-footer av-footer">
       <span class="hint-txt" id="av-rodape"></span>
       <button type="button" class="btn btn-primary" id="av-baixar" data-acao="baixarAvanco" disabled data-i18n="av.baixar">⭳ Baixar planilha de avanço</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DETALHE DA OP ==================== -->
+<div class="modal-overlay" id="modal-op-detalhe" role="dialog" aria-modal="true" aria-labelledby="opd-titulo">
+  <div class="modal-box modal-largo">
+    <div class="modal-header">
+      <div><h2 id="opd-titulo">OP</h2><div id="opd-sub" class="opd-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-op-detalhe" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body" id="opd-corpo"></div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-op-detalhe" data-i18n="btn.fechar">Fechar</button>
+      <button type="button" class="btn btn-success" id="opd-finalizar" data-acao="finalizarOpDetalhe" hidden data-i18n="prog.finalizar">✔ Finalizar OP</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PROGRAMAR OP ==================== -->
+<div class="modal-overlay" id="modal-programar" role="dialog" aria-modal="true" aria-labelledby="prog-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="prog-titulo">Programar</h2><div id="prog-sub" class="opd-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-programar" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="prog-corpo"></div>
+      <div class="hint-txt prog-aviso" id="prog-aviso"></div>
+      <div class="form-error" id="prog-erro"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-programar" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-acao="salvarProgramacao" data-i18n="prog.salvar">Programar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== FINALIZADAS: COMMESSAS E PEÇAS ==================== -->
+<div class="modal-overlay tela-cheia" id="modal-fin-commessas" role="dialog" aria-modal="true" aria-labelledby="finc-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="finc-titulo">—</h2><div class="hint-txt" id="finc-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-fin-commessas" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body"><div class="fin-commessas" id="finc-lista"></div></div>
+  </div>
+</div>
+<div class="modal-overlay tela-cheia" id="modal-fin-itens" role="dialog" aria-modal="true" aria-labelledby="fini-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="fini-titulo">—</h2><div class="hint-txt" id="fini-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-fin-itens" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fin-itens-topo"><span class="hint" id="fini-resumo"></span>
+        <button type="button" class="btn btn-primary" id="fini-romaneio" data-acao="exportarRomaneio" data-i18n="fin.romaneio">⭳ Exportar romaneio</button></div>
+      <div id="fini-lista"></div>
     </div>
   </div>
 </div>

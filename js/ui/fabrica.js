@@ -22,6 +22,8 @@ import { configurar as configurarOpManual } from './opManual.js';
 import { alternarPopup } from './app.js';
 import { garantirXlsx } from './bibliotecas.js';
 import './opPdf.js';
+import { renderQuadroCald } from './programacao.js';
+import { classeAtraso } from './opDetalhe.js';
 import './avanco.js';
 
 const MAX_LINHAS = 600;   // a tabela fica pesada acima disso; os filtros resolvem
@@ -145,6 +147,11 @@ function renderAvanco(lista) {
 
 export function renderFabrica() {
   const papel = Auth.papel();
+  // programador de caldeiraria: a aba Fábrica é o quadro de programação
+  const quadro = papel === 'prog_caldeiraria';
+  $('fab-lista-wrap').hidden = quadro;
+  $('fab-quadro').hidden = !quadro;
+  if (quadro) { $('fab-count').textContent = ''; $('btn-subir-planilha').style.display = 'none'; renderQuadroCald('fab-quadro'); return; }
   const prog = Auth.areaProgramador();
   const cq = Auth.souCQ();
   $('btn-subir-planilha').style.display = Papeis.sobePlanilha(papel) ? '' : 'none';
@@ -195,7 +202,7 @@ export function renderFabrica() {
     }
     const origem = o.origemOpId ? porId[o.origemOpId] : null;
     const celFim = '<td class="fab-acao">' + fim + '</td>';
-    return '<tr class="' + (st === 'retrabalho' ? 'linha-rnc' : (st === 'morta' ? 'linha-morta' : '')) + '">' + (cq ? celFim : '') +
+    return '<tr class="' + (st === 'retrabalho' ? 'linha-rnc' : (st === 'morta' ? 'linha-morta' : '')) + classeAtraso(o) + '">' + (cq ? celFim : '') +
       '<td class="mono">' + esc(o.numero) + (o.origemOpId ? '<span class="op-origem">' + esc(T('fab.origem', origem ? origem.numero : '—')) + '</span>' : '') + '</td>' +
       '<td>' + pillArea(o.area) + '</td><td class="mono">' + esc(o.commessa) + parado(o) + '</td>' +
       '<td class="mono">' + esc(o.desenho) + '</td><td>' + esc(o.posicao || '—') + '</td><td>' + esc(o.rev || '—') + '</td>' +

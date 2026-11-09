@@ -17,6 +17,7 @@ import * as DadosCarga from './dados/carga.js';
 import * as Ops from './dados/ops.js';
 import * as DadosRncs from './dados/rncs.js';
 import * as DadosChecklist from './dados/checklist.js';
+import * as DadosProg from './dados/programacao.js';
 import * as Cronograma from './dominio/cronograma.js';
 import * as Projeto from './dominio/projeto.js';
 import * as Papeis from './dominio/papeis.js';
@@ -100,13 +101,16 @@ function escutarEquipe() {
     aplicarRota();
   }
   Ops.escutar(aoReceberOps, function () { estado.opsCarregadas = true; redesenhar(); });
-  if (Papeis.veRnc(papelCarregado) || Papeis.ehCQ(papelCarregado)) DadosRncs.escutar(function (l) { estado.rncs = l; redesenhar(); });
+  if (Papeis.veRnc(papelCarregado) || Papeis.ehCQ(papelCarregado) || Papeis.ehProgramador(papelCarregado)) DadosRncs.escutar(function (l) { estado.rncs = l; redesenhar(); });
   else DadosRncs.pararEscuta();
   // checklist padrão: só quem cria projeto (Gerência e GP) precisa
   estado.checklistPadrao = null;
   if (Papeis.gereProjetos(papelCarregado)) DadosChecklist.escutar(function (c) { estado.checklistPadrao = c; renderChecklistInfo(); });
   else DadosChecklist.pararEscuta();
-  estado.maquinas = []; estado.cfgFabrica = {}; estado.setores = {};
+  estado.maquinas = []; estado.cfgFabrica = {}; estado.setores = {}; estado.terceirizadas = [];
+  // terceirizadas da caldeiraria: quem programa a caldeiraria (e a Gerência)
+  if (papelCarregado === 'prog_caldeiraria' || Papeis.ehGerente(papelCarregado)) DadosProg.escutarTerceirizadas(function (l) { estado.terceirizadas = l; redesenhar(); });
+  else DadosProg.pararEscuta();
   if (Papeis.veCarga(papelCarregado)) {
     DadosCarga.escutar(function (m) { estado.maquinas = m; redesenhar(); }, function (c) { estado.cfgFabrica = c; redesenhar(); }, function (s) { estado.setores = s; redesenhar(); });
   } else {
@@ -133,12 +137,18 @@ function aplicarRestricoesPapel() {
   $('dados-acoes-escrita').style.display = gestor ? 'contents' : 'none';
   // programadores: painel e linha do tempo (só leitura), sem a lista de projetos
   const leProjetos = Papeis.leProjetos(papel);
-  [['painel', leProjetos || Papeis.ehCQ(papel) || !Auth.membro()], ['projetos', veProjetos], ['linha', leProjetos], ['carga', Papeis.veCarga(papel)]].forEach(function (x) {
+  const area = Papeis.areaDoProgramador(papel);
+  [['painel', leProjetos || Papeis.ehCQ(papel) || !Auth.membro()], ['projetos', veProjetos], ['linha', leProjetos],
+    ['carga', Papeis.veCarga(papel) && area !== 'caldeiraria'], ['fabrica', area !== 'usinagem'],
+    ['ordens', !!area || Papeis.ehGerente(papel)], ['finalizadas', Auth.membro()]].forEach(function (x) {
     const b = document.querySelector('.side-item[data-tab="' + x[0] + '"]');
     if (b) b.style.display = x[1] ? '' : 'none';
   });
+  // a usinagem programa na "Carga Máquina"
+  const rotCarga = document.querySelector('.side-item[data-tab="carga"] .label');
+  if (rotCarga) rotCarga.textContent = T(area === 'usinagem' ? 'nav.cargaMaquina' : 'nav.carga');
   const bRnc = document.querySelector('.side-item[data-tab="rnc"]');
-  if (bRnc) bRnc.style.display = Papeis.veRnc(papel) || Papeis.ehCQ(papel) ? '' : 'none';
+  if (bRnc) bRnc.style.display = Papeis.veRnc(papel) || Papeis.ehCQ(papel) || !!area ? '' : 'none';
 }
 
 function aplicarUsuario() {

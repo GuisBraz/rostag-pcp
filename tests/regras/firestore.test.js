@@ -367,7 +367,9 @@ describe('RNC (formulário R02)', () => {
     await assertSucceeds(como(P).doc('equipes/E1/rncs/r2').get());
     await assertSucceeds(como(T).doc('equipes/E1/rncs/r3').get());
     await assertFails(como(T).doc('equipes/E1/rncs/r2').get());
-    for (const uid of [U, K, Y]) await assertFails(como(uid).doc('equipes/E1/rncs/r2').get());
+    // r2 é de usinagem: o programador de usinagem lê (só leitura); caldeiraria e quem é de fora, não
+    await assertSucceeds(como(U).doc('equipes/E1/rncs/r2').get());
+    for (const uid of [K, Y]) await assertFails(como(uid).doc('equipes/E1/rncs/r2').get());
   });
   test('reinspeção conforme aprova; desvio libera com desvio', async () => {
     await assertSucceeds(abrir(como(Q), 'r1'));
@@ -808,5 +810,71 @@ describe('planilha de avanço completa, PDF da OP e RNC por peças', () => {
     for (const uid of [K, T, Q, G]) await assertFails(como(uid).doc('equipes/E1/config/setores').set(cfg(uid)));
     await assertFails(como(U).doc('equipes/E1/config/setores').set({ ...cfg(U), extra: 1 }));
     await assertSucceeds(como(Q).doc('equipes/E1/config/setores').get());
+  });
+});
+
+describe('programação, finalizar e destino', () => {
+  async function aprovada(id, extra) { await semear('equipes/E1/ops/' + id, op({ status: 'aprovada', finalizadoPorUid: Q, ...extra })); }
+
+  test('terceirizadas: programador de caldeiraria e gerente cadastram; todos leem', async () => {
+    await assertSucceeds(como(K).doc('equipes/E1/terceirizadas/t1').set({ nome: 'Metal A', ativa: true, criadoEm: 'x', atualizadoEm: 'x' }));
+    await assertSucceeds(como(M).doc('equipes/E1/terceirizadas/t2').set({ nome: 'Metal B', ativa: true, criadoEm: 'x', atualizadoEm: 'x' }));
+    for (const uid of [U, T, Q, G]) await assertFails(como(uid).doc('equipes/E1/terceirizadas/t9').set({ nome: 'X', ativa: true, criadoEm: 'x', atualizadoEm: 'x' }));
+    await assertFails(como(K).doc('equipes/E1/terceirizadas/t3').set({ nome: '', ativa: true, criadoEm: 'x', atualizadoEm: 'x' }));
+    await assertSucceeds(como(Q).doc('equipes/E1/terceirizadas/t1').get());
+    await assertSucceeds(como(K).doc('equipes/E1/terceirizadas/t1').delete());
+  });
+  test('programação da caldeiraria: só o programador de caldeiraria (ou gerente), só OP de caldeiraria', async () => {
+    const prog = (uid) => ({ programacao: { terceirizadaId: 't1', terceirizada: 'Metal A', previsaoFim: '2026-12-01', em: 'x', porUid: uid } });
+    await assertSucceeds(como(K).doc('equipes/E1/ops/op2').update(prog(K)));
+    await assertSucceeds(como(K).doc('equipes/E1/ops/op2').update({ programacao: null, desprogramadaEm: 'y' }));
+    await assertSucceeds(como(M).doc('equipes/E1/ops/op2').update(prog(M)));
+    await assertFails(como(K).doc('equipes/E1/ops/op1').update(prog(K)));       // op1 é de usinagem
+    await assertFails(como(U).doc('equipes/E1/ops/op2').update(prog(U)));
+    await assertFails(como(K).doc('equipes/E1/ops/op2').update(prog(M)));       // em nome de outro
+    await assertFails(como(K).doc('equipes/E1/ops/op2').update({ ...prog(K), status: 'aprovada' }));
+  });
+  test('fila das máquinas e horas reais (usinagem)', async () => {
+    await semear('equipes/E1/maquinas/m1', { nome: 'Forest', horasDia: 8, ativa: true, criadoEm: 'x', atualizadoEm: 'x' });
+    await assertSucceeds(como(U).doc('equipes/E1/maquinas/m1').update({ fila: [{ opId: 'op1', horas: null, naoAntes: null }], atualizadoEm: 'y' }));
+    await assertFails(como(K).doc('equipes/E1/maquinas/m1').update({ fila: [], atualizadoEm: 'y' }));
+    await assertSucceeds(como(U).doc('equipes/E1/ops/op1').update({ horasReais: 12.5 }));
+    await assertFails(como(U).doc('equipes/E1/ops/op1').update({ horasReais: -1 }));
+    await assertFails(como(U).doc('equipes/E1/ops/op2').update({ horasReais: 3 }));   // op2 é de caldeiraria
+    await assertFails(como(K).doc('equipes/E1/ops/op1').update({ horasReais: 3 }));
+  });
+  test('finalizar: programador da área ou gerente, só depois da baixa do CQ e uma vez', async () => {
+    const fim = (uid) => ({ encerradaEm: 'x', encerradaPorUid: uid, encerradaPorNome: uid });
+    await assertFails(como(U).doc('equipes/E1/ops/op1').update(fim(U)));            // ainda aberta
+    await aprovada('op1');
+    await assertFails(como(K).doc('equipes/E1/ops/op1').update(fim(K)));            // área errada
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim(Q)));
+    await assertSucceeds(como(U).doc('equipes/E1/ops/op1').update(fim(U)));
+    await assertFails(como(U).doc('equipes/E1/ops/op1').update(fim(U)));            // de novo, não
+    await aprovada('op7', { area: 'caldeiraria', numero: '777' });
+    await assertSucceeds(como(M).doc('equipes/E1/ops/op7').update(fim(M)));
+  });
+  test('destino da peça: gerente, GP e técnico do projeto', async () => {
+    const d = (uid) => ({ destino: 'expedicao', destinoEm: 'x', destinoPorUid: uid });
+    await assertSucceeds(como(P).doc('equipes/E1/ops/op1').update(d(P)));          // técnico do projeto doP
+    await assertSucceeds(como(G).doc('equipes/E1/ops/op1').update(d(G)));          // GP do projeto doP
+    await assertSucceeds(como(M).doc('equipes/E1/ops/op2').update(d(M)));
+    await assertFails(como(T).doc('equipes/E1/ops/op1').update(d(T)));            // técnico de outro projeto
+    await assertFails(como(U).doc('equipes/E1/ops/op1').update(d(U)));
+    await assertFails(como(P).doc('equipes/E1/ops/op1').update({ ...d(P), destino: 'lixo' }));
+  });
+  test('RNC: programadores leem só as da área deles', async () => {
+    const r = { numero: '1', descricao: 'x', disposicao: '', observacoes: '', situacao: 'aberta', opId: 'op1', projetoId: 'doP', gpUid: G, tecnicoUid: P };
+    await semear('equipes/E1/rncs/ru', { ...r, area: 'usinagem' });
+    await semear('equipes/E1/rncs/rc', { ...r, area: 'caldeiraria' });
+    await assertSucceeds(como(U).doc('equipes/E1/rncs/ru').get());
+    await assertFails(como(U).doc('equipes/E1/rncs/rc').get());
+    await assertSucceeds(como(K).collection('equipes/E1/rncs').where('area', '==', 'caldeiraria').get());
+    await assertFails(como(U).doc('equipes/E1/rncs/ru').update({ disposicao: 'x' }));
+  });
+  test('notificações novas do fluxo de finalização', async () => {
+    for (const tipo of ['opAprovada', 'opFinalizada']) {
+      await assertSucceeds(como(Q).collection('notificacoes').add({ paraUid: U, tipo, mensagem: 'm', projetoId: 'doP', equipeId: 'E1', deUid: Q, deNome: 'Q', lida: false, criadoEm: 'x' }));
+    }
   });
 });

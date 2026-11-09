@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------------
    Carga — máquinas da usinagem (equipes/{id}/maquinas), capacidade da
-   fábrica (equipes/{id}/config/fabrica) e a programação das OPs de
-   usinagem (máquina e horas previstas, gravadas na própria OP).
+   fábrica (equipes/{id}/config/fabrica) e o setor do PDF → máquina
+   (config/setores). A fila de cada máquina fica em dados/programacao.js.
    Quem grava cada coisa é decidido nas regras do Firestore.
 --------------------------------------------------------------------------- */
 import { agoraIso } from '../nucleo/fmt.js';
@@ -58,11 +58,3 @@ export function salvarSetor(chaveSetor, maquinaId) {
   }, { merge: true });
 }
 
-// Máquina e horas previstas de uma OP de usinagem (null limpa).
-export function programarOp(opId, maquinaId, horas) {
-  return equipe().collection('ops').doc(opId).update({
-    maquinaId: maquinaId || null,
-    horasPrevistas: horas === '' || horas == null || isNaN(Number(horas)) ? null : Number(horas),
-    programadoEm: agoraIso(), programadoPorUid: Auth.uid()
-  });
-}

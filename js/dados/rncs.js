@@ -3,7 +3,8 @@
    uma OP. Abrir a RNC e mexer na OP vão no mesmo lote: a regra do Firestore
    confere que a OP foi para "retrabalho" apontando para esta RNC.
 
-   Quem lê: gerente e CQ (todas), GP e técnico (as dos projetos deles).
+   Quem lê: gerente e CQ (todas), GP e técnico (as dos projetos deles),
+   programadores (as da área deles, só leitura).
    Quem escreve: só o CQ.
 --------------------------------------------------------------------------- */
 import { agoraIso } from '../nucleo/fmt.js';
@@ -21,6 +22,8 @@ function consulta() {
   if (papel === 'gerente_pcp' || papel === 'cq') return colEquipe('rncs');
   if (papel === 'gp') return colEquipe('rncs').where('gpUid', '==', Auth.uid());
   if (papel === 'tecnico') return colEquipe('rncs').where('tecnicoUid', '==', Auth.uid());
+  const area = Auth.areaProgramador();
+  if (area) return colEquipe('rncs').where('area', '==', area);
   return null;
 }
 

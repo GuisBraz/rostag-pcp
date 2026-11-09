@@ -60,7 +60,7 @@ export function distribuir(valor, janela, sems) {
 }
 
 function opConta(o, p) {
-  return o.status === 'aberta' && p && Projeto.aberto(p) && Projeto.status(p) !== 'paralisado';
+  return o.status === 'aberta' && !o.encerradaEm && p && Projeto.aberto(p) && Projeto.status(p) !== 'paralisado';
 }
 
 /* Setor do PDF da OP → máquina cadastrada. O mapa (config/setores) guarda o
@@ -105,7 +105,9 @@ export function horasPorMaquina(o, maquinas, mapa) {
 }
 
 // Carga máquina: por máquina, horas por semana x capacidade (horasDia × 5).
-export function cargaMaquinas(ops, projetos, maquinas, sems, h, mapaSetores) {
+// agendas (opcional): { maquinaId: itens de Programacao.agendar } — OP na
+// fila de uma máquina conta pelas datas da fila, não pela janela do projeto.
+export function cargaMaquinas(ops, projetos, maquinas, sems, h, mapaSetores, agendas) {
   const porId = {};
   (projetos || []).forEach(function (p) { porId[p.id] = p; });
   const linhas = {};
@@ -115,6 +117,23 @@ export function cargaMaquinas(ops, projetos, maquinas, sems, h, mapaSetores) {
   });
   const resumo = { semMaquina: 0, semHoras: 0, semJanela: 0, horasSemJanela: 0, setoresSemMaquina: [] };
   const setoresVistos = {};
+  const naFila = {};
+  Object.keys(agendas || {}).forEach(function (mid) {
+    const l = linhas[mid];
+    if (!l) return;
+    (agendas[mid] || []).forEach(function (it) {
+      if (!it.op || it.concluida || it.ausente) return;
+      naFila[mid + '|' + it.opId] = true;
+      if (!it.porDia) return;
+      l.ops++;
+      Object.keys(it.porDia).forEach(function (d) {
+        const v = it.porDia[d];
+        l.horas += v;
+        const i = sems.findIndex(function (s) { return d >= s.inicio && d <= s.fim; });
+        if (i >= 0) l.porSemana[i] += v; else if (d > sems[sems.length - 1].fim) l.depois += v; else l.porSemana[0] += v;
+      });
+    });
+  });
   (ops || []).forEach(function (o) {
     if (o.area !== 'usinagem') return;
     const p = porId[o.projetoId];
@@ -126,7 +145,9 @@ export function cargaMaquinas(ops, projetos, maquinas, sems, h, mapaSetores) {
       });
     }
     const hm = horasPorMaquina(o, maquinas, mapaSetores);
-    const ids = Object.keys(hm.porMaquina).filter(function (id) { return linhas[id]; });
+    const programada = Object.keys(naFila).some(function (k) { return k.split('|')[1] === o.id; });
+    const ids = Object.keys(hm.porMaquina).filter(function (id) { return linhas[id] && !naFila[id + '|' + o.id]; });
+    if (programada && !ids.length) return;
     if (!ids.length) {
       if (!hm.doPdf && o.maquinaId && linhas[o.maquinaId]) resumo.semHoras++;
       else resumo.semMaquina++;
