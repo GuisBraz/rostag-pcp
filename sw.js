@@ -6,7 +6,7 @@
    nova aparece no próximo carregamento, sem ficar presa em cache.
    Os dados (Firestore) não passam por aqui: o próprio SDK guarda o cache.
 --------------------------------------------------------------------------- */
-const CACHE = 'rostag-pcp-v19';
+const CACHE = 'rostag-pcp-v20';
 const ARQUIVOS = [
   './', 'index.html', 'manifest.json', 'css/app.css', 'css/temas.css', 'vendor/chart.umd.min.js', 'img/logo.png',
   'img/favicon.png', 'img/sobre.jpg', 'img/logo-sofir.png', 'img/login-arte.webp', 'img/login-fundo.webp',
@@ -26,7 +26,7 @@ const ARQUIVOS = [
   'js/ui/desempenho.js', 'js/ui/detalhe.js', 'js/ui/dom.js', 'js/ui/equipe.js', 'js/ui/fabrica.js',
   'js/ui/filtros.js', 'js/ui/finalizadas.js', 'js/ui/formulario.js', 'js/ui/gerencia.js', 'js/ui/graficos.js',
   'js/ui/linha.js', 'js/ui/listaOps.js', 'js/ui/minhasEquipes.js', 'js/ui/modal.js', 'js/ui/notificacoes.js', 'js/ui/opDetalhe.js',
-  'js/ui/opManual.js', 'js/ui/opPdf.js', 'js/ui/ordens.js', 'js/ui/painel.js', 'js/ui/painelCq.js',
+  'js/ui/opManual.js', 'js/ui/opPdf.js', 'js/ui/ordens.js', 'js/ui/painel.js', 'js/ui/painelCq.js', 'js/ui/pdfTexto.js',
   'js/ui/pedidos.js', 'js/ui/preferencias.js', 'js/ui/projetoTecnico.js', 'js/ui/programacao.js', 'js/ui/projetos.js', 'js/ui/qualidade.js',
   'js/ui/rncPdf.js', 'js/ui/rota.js', 'js/ui/sidebar.js', 'js/ui/toast.js'
 ];

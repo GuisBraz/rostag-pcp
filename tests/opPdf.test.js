@@ -93,3 +93,57 @@ test('área provável da OP extra pelos setores do roteiro', () => {
   assert.equal(OpPdf.areaProvavel({ operacoes: [{ setor: 'MANDRILHADORA FOREST' }, { setor: 'AJUSTADOR' }] }), 'usinagem');
   assert.equal(OpPdf.areaProvavel({ operacoes: [] }), 'usinagem');
 });
+
+// OCR: palavras do Tesseract (bbox em pixels, escala 3) no layout da OP que
+// veio só como imagem — desenho "SM…" sem "DES.", letra no lugar de algarismo,
+// vírgula perdida, página de continuação e quadro de assinaturas.
+function linhaOcr(y, palavras) {
+  let x = 150;
+  return { baseline: { y0: y, y1: y }, words: palavras.map(function (p) {
+    if (typeof p === 'number') { x += p; return null; }
+    const w = { text: p, bbox: { x0: x, y0: y - 30, x1: x + p.length * 22, y1: y } };
+    x = w.bbox.x1 + 12;
+    return w;
+  }).filter(Boolean) };
+}
+function paginaOcr(setor, op, horas) {
+  return OpPdf.itensDoOcr([
+    linhaOcr(183, ['ORDEM', 'DE', 'PRODUÇÃO', 400, '02106401001']),
+    linhaOcr(255, ['COMESSE/CLIENTE:', 200, '2025-061P', '/', 'STELLANTIS-PE', '25-288', 300, 'DT', 'EMISSÃO:', '10/11/2026']),
+    linhaOcr(327, ['SETOR:', 200].concat(setor.split(' '))),
+    linhaOcr(384, ['OPERAÇÃO:', 200, op]),
+    linhaOcr(525, ['02106401001', 200, '8000016064', 200, 'SMO6125010103', 900, '40,00', 200, 'PC', 200, '1148', 100, horas]),
+    linhaOcr(570, ['BRACCIO', '1']),
+    linhaOcr(669, ['Traçar', 'a', 'sapata', 'posição', '02;']),
+    linhaOcr(1068, ['PC', 100, 'Data', 100, 'Assinatura']),
+    linhaOcr(1113, ['001', '//', 100, '62', 'S/S', '7', 100, '003', '//'])
+  ], 3);
+}
+
+test('OP lida por OCR: mesmos campos do PDF com texto', () => {
+  const continuacao = OpPdf.itensDoOcr([linhaOcr(183, ['ORDEM', 'DE', 'PRODUÇÃO', 400, '02106401001'])], 3);
+  const r = OpPdf.lerOp([paginaOcr('MONT. CALD TERCEIROS', 'o1', '40,00'), continuacao, paginaOcr('CONTROLE DE QUALIDAD', 'o4', '4,00')]);
+  assert.equal(r.ok, true);
+  assert.equal(r.numero, '02106401001');
+  assert.equal(r.commessa, '2025-061P');
+  assert.equal(r.produto, '8000016064');
+  assert.equal(r.desenho, 'SM06125010103');
+  assert.equal(r.descricao, 'BRACCIO 1');
+  assert.equal(r.qtd, 40);
+  assert.equal(r.um, 'PC');
+  assert.equal(r.pesoUnit, 11.48);
+  assert.deepEqual(r.operacoes.map(function (o) { return [o.n, o.setor, o.horas, o.texto]; }), [
+    ['01', 'MONT. CALD TERCEIROS', 40, 'Traçar a sapata posição 02;'],
+    ['04', 'CONTROLE DE QUALIDAD', 4, 'Traçar a sapata posição 02;']
+  ]);
+  assert.equal(r.horas, 44);
+});
+
+test('OCR: palavras próximas viram uma frase, vão de coluna separa', () => {
+  const itens = OpPdf.itensDoOcr([linhaOcr(300, ['SETOR:', 200, 'MONT.', 'CALD', 'TERCEIROS'])], 3);
+  assert.deepEqual(itens.map(function (i) { return i.s; }), ['SETOR:', 'MONT. CALD TERCEIROS']);
+  assert.equal(itens[0].y, 100);
+  assert.equal(OpPdf.codigoOcr('o4'), '04');
+  assert.equal(OpPdf.codigoOcr('SMO6125010103'), 'SM06125010103');
+  assert.equal(OpPdf.codigoOcr('CALD'), 'CALD');
+});

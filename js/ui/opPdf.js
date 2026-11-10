@@ -3,7 +3,8 @@
    PDFs gerados pelo sistema da empresa, acha a OP pelo número (ela já veio
    da planilha de avanço) e grava as operações (setor e horas), que vão para
    a carga máquina. Os dados da peça continuam os da planilha: o que não
-   bater só aparece como aviso na conferência.
+   bater só aparece como aviso na conferência. PDF que veio só como imagem
+   é lido por OCR (ver pdfTexto.js) e fica marcado para conferir.
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto } from '../estado.js';
 import { esc, numeroBr } from '../nucleo/fmt.js';
@@ -18,7 +19,7 @@ import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
 import { abrirModal, fecharModal } from './modal.js';
 import { toast } from './toast.js';
 import { avisoErro } from './app.js';
-import { garantirPdfJs } from './bibliotecas.js';
+import { paginasDoPdf } from './pdfTexto.js';
 
 const MAX_ARQUIVOS = 40;
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -50,23 +51,6 @@ export function abrirImportarPdf(projetoId) {
   abrirModal('modal-oppdf', { foco: 'oppdf-arquivo', aoFechar: function () { lidos = []; projetoFixo = null; } });
 }
 
-// Texto de cada página com a posição (y de cima para baixo).
-function paginasDoPdf(lib, dados) {
-  return lib.getDocument({ data: dados, isEvalSupported: false, disableFontFace: true }).promise.then(function (doc) {
-    const paginas = [];
-    let cadeia = Promise.resolve();
-    for (let n = 1; n <= Math.min(doc.numPages, 80); n++) {
-      cadeia = cadeia.then(function () { return doc.getPage(n); }).then(function (pg) {
-        const vp = pg.getViewport({ scale: 1 });
-        return pg.getTextContent().then(function (tc) {
-          paginas.push(tc.items.map(function (it) { const p = OpPdf.posicao(it.transform, vp.width, vp.height); return { x: p.x, y: p.y, s: it.str }; }));
-        });
-      });
-    }
-    return cadeia.then(function () { doc.destroy(); return paginas; });
-  });
-}
-
 // Só procura a OP dentro do projeto escolhido: outra commessa nunca se mistura.
 function acharOp(numero) {
   const k = chave(numero), pid = projetoAtualId();
@@ -83,29 +67,37 @@ function lerArquivos(ev) {
   $('oppdf-erro').textContent = '';
   $('oppdf-gravar').disabled = true;
   if (!arquivos.length) { $('oppdf-lista').innerHTML = ''; return; }
-  $('oppdf-lista').innerHTML = '<div class="hint-txt">' + esc(T('pdf.lendo', arquivos.length)) + '</div>';
-  garantirPdfJs().then(function (lib) {
+  const aviso = function (txt) { $('oppdf-lista').innerHTML = '<div class="hint-txt">' + esc(txt) + '</div>'; };
+  aviso(T('pdf.lendo', arquivos.length));
+  // um arquivo por vez (o OCR é pesado); a lista avisa em qual está
+  const lerTodos = Promise.resolve().then(function () {
     let cadeia = Promise.resolve();
-    arquivos.forEach(function (arq) {
+    arquivos.forEach(function (arq, i) {
       cadeia = cadeia.then(function () {
         if (arq.size > MAX_BYTES) { lidos.push({ arquivo: arq.name, situacao: 'grande' }); return; }
-        return arq.arrayBuffer().then(function (buf) { return paginasDoPdf(lib, new Uint8Array(buf)); }).then(function (paginas) {
-          const pdf = OpPdf.lerOp(paginas);
-          if (!pdf.ok) { lidos.push({ arquivo: arq.name, situacao: pdf.motivo }); return; }
+        const aoOcr = function (n, total) { aviso(T('pdf.lendoOcr', i + 1, arquivos.length, arq.name, n, total)); };
+        return arq.arrayBuffer().then(function (buf) { return paginasDoPdf(new Uint8Array(buf), aoOcr); }).then(function (r) {
+          const pdf = OpPdf.lerOp(r.paginas);
+          if (!pdf.ok) { lidos.push({ arquivo: arq.name, situacao: r.porOcr && pdf.motivo === 'naoEhOp' ? 'ocrFalhou' : pdf.motivo }); return; }
           const outra = commessaDiferente(pdf);
           const op = outra ? null : acharOp(pdf.numero);
           const repetido = lidos.some(function (l) { return l.pdf && l.pdf.numero === pdf.numero; });
           lidos.push({
-            arquivo: arq.name, pdf: pdf, op: op,
+            arquivo: arq.name, pdf: pdf, op: op, porOcr: r.porOcr > 0,
             situacao: outra ? 'outraCommessa' : (repetido ? 'repetido' : (op ? 'ok' : 'nova')),
             area: op ? op.area : OpPdf.areaProvavel(pdf),
             divergencias: op ? OpPdf.divergencias(pdf, op).filter(function (d) { return d.campo !== 'commessa'; }) : []
           });
-        }).catch(function (e) { console.warn(e); lidos.push({ arquivo: arq.name, situacao: 'erro' }); });
+        }).catch(function (e) {
+          console.warn(e);
+          if (e && e.message === 'biblioteca-indisponivel') throw e;
+          lidos.push({ arquivo: arq.name, situacao: 'erro' });
+        });
       });
     });
     return cadeia;
-  }).then(mostrar).catch(function (e) {
+  });
+  lerTodos.then(mostrar).catch(function (e) {
     console.warn(e);
     $('oppdf-lista').innerHTML = '';
     $('oppdf-erro').textContent = T('pdf.erroBiblioteca');
@@ -145,6 +137,7 @@ function mostrar() {
       }).join('') + '</ul>';
     } else conf = '✓ ' + esc(T('pdf.confere'));
     if (l.situacao === 'ok' && o && Array.isArray(o.operacoes) && o.operacoes.length) conf += '<div class="hint-txt">' + esc(T('pdf.jaTinha')) + '</div>';
+    if (l.porOcr && (l.situacao === 'ok' || l.situacao === 'nova')) conf += '<div class="hint-txt">' + esc(T('pdf.porOcr')) + '</div>';
     const classe = l.situacao === 'nova' ? 'oppdf-nova' : (l.situacao !== 'ok' ? 'oppdf-ruim' : (l.divergencias.length ? 'oppdf-aviso' : ''));
     return '<tr class="' + classe + '"><td class="oppdf-arq">' + esc(l.arquivo) + '</td><td class="mono">' + esc(p.numero) +
       (o ? '<div class="hint-txt">' + esc(T('area.' + o.area)) + '</div>' : '') + '</td><td>' + peca + '</td><td>' + opers + '</td><td>' + conf + '</td></tr>';

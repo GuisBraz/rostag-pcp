@@ -1,6 +1,7 @@
 /* ---------------------------------------------------------------------------
    Bibliotecas pesadas (vendor/), carregadas só na primeira vez que alguém
-   usa: SheetJS (planilhas), jsPDF (PDF da RNC) e PDF.js (ler o PDF da OP).
+   usa: SheetJS (planilhas), jsPDF (PDF da RNC), PDF.js (ler o PDF da OP) e
+   Tesseract (OCR do PDF da OP que veio só como imagem).
 --------------------------------------------------------------------------- */
 const carregando = {};
 
@@ -27,3 +28,4 @@ export function garantirPdfJs() {
     return lib;
   });
 }
+export function garantirTesseract() { return carregar('vendor/tesseract/tesseract.min.js', function () { return window.Tesseract; }); }

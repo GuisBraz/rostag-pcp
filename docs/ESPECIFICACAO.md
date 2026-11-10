@@ -102,8 +102,10 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - **PDF da OP** (Fábrica → ＋ Adicionar OPs → PDF da OP): um ou vários PDFs
   gerados pelo sistema da empresa. A OP é achada pelo número e recebe as
   **operações** (setor, horas, etapa). Os dados da peça continuam os da
-  planilha; o que não bater aparece como aviso. PDF impresso (só imagem) não
-  é lido.
+  planilha; o que não bater aparece como aviso. O sistema às vezes exporta
+  a OP como imagem (impressa): essas páginas são lidas por OCR (Tesseract,
+  em português, no próprio navegador; ~5 s por página) e a OP fica marcada
+  "lido da imagem — confira as horas".
 - **Carga máquina:** OP com PDF entra pelas operações — cada setor vai para a
   máquina de mesmo nome ou para a escolhida em Carga → Setores do PDF da OP
   (ou "não é máquina"). OP sem PDF continua com máquina e horas à mão.

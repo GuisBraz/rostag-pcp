@@ -820,7 +820,7 @@
       <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-oppdf" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
-      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="pdf.nota">Escolha um ou vários PDFs gerados pelo sistema da empresa. Cada um é ligado à OP pelo número (a OP já precisa ter vindo da planilha de avanço) e traz as operações com setor e horas, que alimentam a carga máquina. PDF "impresso" (só imagem) não dá para ler: gere de novo pelo sistema.</div>
+      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="pdf.nota">Escolha um ou vários PDFs gerados pelo sistema da empresa. Cada um é ligado à OP pelo número (a OP já precisa ter vindo da planilha de avanço) e traz as operações com setor e horas, que alimentam a carga máquina. PDF que veio só como imagem também é lido (por reconhecimento de texto, mais devagar): confira as horas antes de gravar.</div>
       <div class="field"><label for="oppdf-projeto" data-i18n="fab.projeto">PROJETO</label><select id="oppdf-projeto"></select></div>
       <div class="field"><label for="oppdf-arquivo" data-i18n="pdf.arquivos">ARQUIVOS PDF</label><input type="file" id="oppdf-arquivo" accept=".pdf,application/pdf" multiple data-change="lerPdfsOp"></div>
       <div id="oppdf-lista" class="oppdf-lista"></div>

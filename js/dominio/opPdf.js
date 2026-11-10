@@ -34,6 +34,40 @@ export function posicao(transform, largura, altura) {
   return { x: e, y: altura - f };
 }
 
+// Vão entre palavras, em alturas de letra: até isso é a mesma frase
+// ("MONT. CALD TERCEIROS"); mais que isso é outra coluna.
+const VAO_FRASE = 0.9;
+
+/**
+ * Resultado do OCR (Tesseract) → os mesmos pedaços { x, y, s } do PDF com
+ * texto, em pontos do PDF. linhas: data.lines do Tesseract (palavras com
+ * bbox em pixels); escala: pixels por ponto. Cada linha usa a altura da
+ * linha de base, para as palavras dela caírem juntas em linhasDaPagina.
+ */
+export function itensDoOcr(linhas, escala) {
+  const itens = [];
+  (linhas || []).forEach(function (ln) {
+    const palavras = (ln && ln.words || []).filter(function (w) { return w && w.bbox && texto(w.text); })
+      .sort(function (a, b) { return a.bbox.x0 - b.bbox.x0; });
+    if (!palavras.length) return;
+    const alturas = palavras.map(function (w) { return w.bbox.y1 - w.bbox.y0; }).sort(function (a, b) { return a - b; });
+    const altura = alturas[Math.floor(alturas.length / 2)] || 1;
+    const b = ln.baseline;
+    const y = b && b.y0 != null ? (b.y0 + b.y1) / 2 : Math.max.apply(null, palavras.map(function (w) { return w.bbox.y1; }));
+    let atual = null;
+    palavras.forEach(function (w) {
+      if (atual && w.bbox.x0 - atual.x1 <= altura * VAO_FRASE) {
+        atual.s += ' ' + texto(w.text); atual.x1 = w.bbox.x1;
+      } else {
+        atual = { x0: w.bbox.x0, x1: w.bbox.x1, s: texto(w.text) };
+        itens.push(atual);
+      }
+      atual.y = y;
+    });
+  });
+  return itens.map(function (it) { return { x: it.x0 / escala, y: it.y / escala, s: it.s }; });
+}
+
 // Linhas fixas do formulário (não são a instrução da operação).
 const FIXAS = /^(LIDER$|LERTODAOP|ASSDATA|CERTIFICARSEFORAMEXECUTADAS|PCDATAASSINATURA$|PCDATA$|DATAASSINATURA$|ASSINATURA$|DATA$|PC$|RECEBIDODE|ENVIADOPARA$)/;
 
@@ -67,6 +101,20 @@ function depoisDe(linha, rotuloChave) {
 
 const NUM_BR = /\d{1,3}(?:\.\d{3})*,\d+|\d+,\d+|\d+/g;
 
+// O OCR confunde letra com algarismo: "o1" → "01", "SMO6125010103" → "SM06125010103".
+const PARECE_DIGITO = /^[0-9oOIl|]+$/;
+function soDigitos(s) { return s.replace(/[oO]/g, '0').replace(/[Il|]/g, '1'); }
+export function codigoOcr(s) {
+  const t = texto(s);
+  if (PARECE_DIGITO.test(t)) return soDigitos(t);
+  // prefixo de letras o mais curto possível; o resto tem de parecer número
+  const m = t.match(/^([A-Za-z]+?)([0-9oOIl|]+)$/);
+  return m && (m[2].match(/\d/g) || []).length >= 4 ? m[1] + soDigitos(m[2]) : t;
+}
+// Qtd, peso e tempo sempre vêm com 2 casas ("40,00"); se o OCR perdeu a
+// vírgula ("1148"), ela volta antes dos 2 últimos algarismos.
+function decimalOcr(p) { return /^\d{3,}$/.test(p) ? p.slice(0, -2) + ',' + p.slice(-2) : p; }
+
 // Uma página = uma operação.
 export function lerPagina(itens) {
   const linhas = linhasDaPagina(itens);
@@ -89,7 +137,7 @@ export function lerPagina(itens) {
     } else if (k.indexOf('SETOR') === 0 && !r.setor) {
       r.setor = depoisDe(l, 'SETOR');
     } else if (k.indexOf('OPERACAO') === 0 && !r.operacao) {
-      r.operacao = depoisDe(l, 'OPERACAO');
+      r.operacao = codigoOcr(depoisDe(l, 'OPERACAO'));
     } else if (/ETAPA:?$/.test(tudo.trim().toUpperCase()) && !r.etapa) {
       r.etapa = tudo.replace(/:$/, '').trim();
     } else if (r.numero && iDados < 0 && l.partes[0] === r.numero && i > 0) {
@@ -98,12 +146,23 @@ export function lerPagina(itens) {
   });
   if (iDados >= 0) {
     const l = linhas[iDados];
-    r.produto = l.partes[1] && /^\d+$/.test(l.partes[1]) ? l.partes[1] : '';
+    const prod = codigoOcr((l.partes[1] || '').split(/\s+/)[0]);
+    r.produto = /^\d{6,}$/.test(prod) ? prod : '';
     const des = l.partes.find(function (p) { return /^DES\.?\s*/i.test(p); });
-    r.desenho = des ? texto(des.replace(/^DES\.?\s*/i, '')) : '';
+    let resto;
+    if (des) {
+      r.desenho = texto(des.replace(/^DES\.?\s*/i, ''));
+      resto = l.partes.slice(l.partes.indexOf(des) + 1);
+    } else {
+      // sem "DES.": o código do desenho (ex.: SM06125010103) vem logo depois do produto
+      const tokens = l.partes.join(' ').split(/\s+/);
+      const iDes = r.produto ? 2 : 1;
+      const cand = tokens[iDes] || '';
+      const temDesenho = cand && !/^[\d.,]+$/.test(cand) && !/^[A-Za-z]{1,4}$/.test(cand);
+      r.desenho = temDesenho ? codigoOcr(cand) : '';
+      resto = tokens.slice(temDesenho ? iDes + 1 : iDes).map(decimalOcr);
+    }
     // depois do desenho: qtd, UM, peso unit. e tempo (às vezes peso e tempo vêm juntos)
-    const iDes = des ? l.partes.indexOf(des) : 1;
-    const resto = l.partes.slice(iDes + 1);
     const um = resto.find(function (p) { return /^[A-Za-z]{1,4}$/.test(p); });
     r.um = um || '';
     const nums = (resto.filter(function (p) { return p !== um; }).join(' ').match(NUM_BR) || []).map(numero);
@@ -115,9 +174,14 @@ export function lerPagina(itens) {
     if (prox && prox.y - l.y < 30) { r.descricao = prox.partes.join(' '); inicioTexto = iDados + 2; }
     // o texto da instrução: as linhas depois da peça, sem as linhas fixas do formulário
     const instrucao = [];
-    linhas.slice(inicioTexto).forEach(function (ln) {
+    let fimDoTexto = false;
+    linhas.slice(inicioTexto).forEach(function (ln, j, resto) {
       const t = ln.partes.join(' ').trim();
       const k = chave(t);
+      // "PC Data Assinatura" seguido da grade 001, 002…: dali pra baixo é só
+      // o quadro de assinaturas (no OCR ele vira lixo, então nem entra)
+      if (k === 'PCDATAASSINATURA' && resto[j + 1] && /^0*01\b/.test(resto[j + 1].partes.join(' ').trim())) fimDoTexto = true;
+      if (fimDoTexto) return;
       if (!k || FIXAS.test(k) || (/ETAPA$/.test(k) && k.length <= 20) || /^\d+$/.test(k)) return;
       instrucao.push(t);
     });
@@ -134,7 +198,9 @@ export function lerPagina(itens) {
 export function lerOp(paginas) {
   const comTexto = (paginas || []).filter(function (p) { return p && p.some(function (it) { return texto(it.s); }); });
   if (!comTexto.length) return { ok: false, motivo: 'semTexto' };
-  const lidas = comTexto.map(lerPagina).filter(function (p) { return p.numero; });
+  let lidas = comTexto.map(lerPagina).filter(function (p) { return p.numero; });
+  // página de continuação (só o cabeçalho, sem setor nem operação) não é outra operação
+  if (lidas.some(function (p) { return p.setor || p.operacao; })) lidas = lidas.filter(function (p) { return p.setor || p.operacao; });
   if (!lidas.length) return { ok: false, motivo: 'naoEhOp' };
   const base = lidas[0];
   const numeros = Array.from(new Set(lidas.map(function (p) { return p.numero; })));
