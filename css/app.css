@@ -1089,3 +1089,24 @@ tr.op-proj-atrasado { box-shadow: none !important; }
 .fin-rnc .fin-n { color: var(--rust); }
 @media (max-width: 1300px) { .fin-botoes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .tec-areas, .fin-botoes { grid-template-columns: 1fr; } }
+
+/* ---- lista de OPs: ordenar por coluna, sem roteiro e fora da planilha ---- */
+.ord-tab th.lops-ord { cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--bg-panel); z-index: 1; }
+.ord-tab th.lops-ord:hover { color: var(--ink); }
+.ord-tab th.lops-ord.atual { color: var(--teal); }
+.lops-seta { display: inline-block; width: 12px; margin-left: 3px; font-size: 9px; }
+.fab-visoes button.lops-alerta { border-style: dashed; }
+.fab-visoes button.lops-alerta-semRoteiro { color: var(--amber-ink); border-color: var(--amber); }
+.fab-visoes button.lops-alerta-foraPlanilha { color: var(--violet); border-color: var(--violet); }
+.fab-visoes button.lops-alerta.ativa { color: #fff; border-style: solid; }
+.fab-visoes button.lops-alerta-semRoteiro.ativa { background: var(--amber-ink); border-color: var(--amber-ink); }
+.fab-visoes button.lops-alerta-foraPlanilha.ativa { background: var(--violet); }
+.fab-visoes button:disabled { opacity: .5; cursor: default; }
+tr.lops-linha-semRoteiro td:first-child { box-shadow: inset 4px 0 0 var(--amber); }
+tr.lops-linha-fora td:first-child { box-shadow: inset 4px 0 0 var(--violet); }
+.lops-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 20px; white-space: nowrap; margin-top: 2px; }
+.lops-badge-semRoteiro { color: var(--amber-ink); background: var(--amber-bg); }
+.lops-badge-foraPlanilha { color: var(--violet); background: var(--violet-bg); }
+.oppdf-tab tr.oppdf-nova td { background: var(--violet-bg); }
+.oppdf-area { margin-top: 6px; font-size: 12px; }
+.oppdf-area select { margin-left: 4px; }

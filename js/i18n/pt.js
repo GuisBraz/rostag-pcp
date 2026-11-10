@@ -640,7 +640,7 @@ export default {
   'pdf.diverge':'{0}: PDF {1} · planilha {2}', 'pdf.jaTinha':'Esta OP já tinha operações: serão substituídas.',
   'pdf.campo.desenho':'Desenho', 'pdf.campo.produto':'Produto', 'pdf.campo.qtd':'Quantidade', 'pdf.campo.pesoUnit':'Peso unit.', 'pdf.campo.commessa':'Commessa',
   'pdf.sit.grande':'arquivo grande demais (máx. 20 MB)', 'pdf.sit.semTexto':'PDF impresso (só imagem) — gere de novo pelo sistema',
-  'pdf.sit.naoEhOp':'não parece um PDF de OP', 'pdf.sit.naoEncontrada':'OP não encontrada — suba antes a planilha de avanço do projeto',
+  'pdf.sit.naoEhOp':'não parece um PDF de OP',
   'pdf.sit.repetido':'mesma OP em outro arquivo desta lista', 'pdf.sit.erro':'não foi possível ler o arquivo',
   'pdf.gravados':'Operações gravadas em {0} OP(s).', 'pdf.erroGravar':'Não foi possível gravar as operações.',
   'av.abrir':'Lista de avanço', 'av.titulo':'Lista de avanço — {0}', 'av.carregando':'Carregando a lista…', 'av.erroLer':'Não foi possível abrir a lista de avanço.',
@@ -728,4 +728,9 @@ export default {
   'q.excluirTudo':'Excluir o projeto "{0}"? As {1} OP(s) e a lista de avanço dele também serão apagadas (as RNCs ficam guardadas). Não dá para desfazer.',
   't.excluidoTudo':'Projeto {0} excluído, com {1} OP(s) e a lista de avanço.',
   'fin.g.andamento':'Em andamento', 'fin.g.rnc':'Em RNC', 'fin.ops':'OPs',
+  // lista de OPs: ordenação, alertas e OP extra pelo PDF
+  'lops.ordenar':'Clique para ordenar (de novo: inverte)', 'lops.alerta.semRoteiro':'⚠ Sem roteiro', 'lops.alerta.foraPlanilha':'➕ Fora da planilha',
+  'lops.badge.semRoteiro':'sem roteiro — PDF não importado', 'lops.badge.foraPlanilha':'fora da planilha',
+  'pdf.sit.nova':'Não está na planilha de avanço: entra como OP extra.', 'pdf.resumoNovas':'{0} OP(s) extra(s), fora da planilha',
+  'pdf.criadas':'{0} OP(s) extra(s) criada(s).', 'notif.opsExtras':'{0}: {1} OP(s) extra(s) entraram pelo PDF, fora da planilha de avanço.',
 };

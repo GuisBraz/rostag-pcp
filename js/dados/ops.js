@@ -74,14 +74,38 @@ export function gravarPlanilha(projeto, comparacao) {
   return Promise.all(envios).then(function () { return escritas.length; });
 }
 
+function operacoesLimpa(lista) {
+  return (lista || []).map(function (o) {
+    return { n: String(o.n || '').slice(0, 6), setor: String(o.setor || '').slice(0, 60), horas: Number(o.horas) || 0, etapa: String(o.etapa || '').slice(0, 40),
+      texto: String(o.texto || '').slice(0, 1500) };
+  }).slice(0, 60);
+}
+
+// OP que veio só pelo PDF (não está na planilha de avanço): uma OP extra.
+// O PDF não tem posição; o id usa o nº da OP para não colidir com as da planilha.
+export function criarDoPdf(projeto, pdf, area) {
+  const agora = agoraIso();
+  const qtd = pdf.qtd == null ? null : Number(pdf.qtd);
+  const pesoUnit = pdf.pesoUnit == null ? null : Number(pdf.pesoUnit);
+  const id = Planilha.idOp(projeto.id, area, pdf.desenho || 'sem-desenho', 'OP' + pdf.numero);
+  return colOps().doc(id).set({
+    projetoId: projeto.id, commessa: String(projeto.commessa || ''), cliente: String(projeto.cliente || ''),
+    descricaoProjeto: String(projeto.descricao || '').slice(0, 160),
+    gpUid: projeto.gpUid || null, tecnicoUid: projeto.responsavelUid || null,
+    area: area, numero: String(pdf.numero).slice(0, 40), desenho: String(pdf.desenho || '').slice(0, 60), posicao: '', rev: '',
+    descricao: String(pdf.descricao || '').slice(0, 200), qtd: qtd, pesoUnit: pesoUnit,
+    pesoTotal: qtd != null && pesoUnit != null ? Math.round(qtd * pesoUnit * 100) / 100 : null,
+    produto: String(pdf.produto || '').slice(0, 40), obs: '', marcas: {}, origem: 'pdf',
+    operacoes: operacoesLimpa(pdf.operacoes), pdfEm: agora, pdfPorUid: Auth.uid(),
+    status: 'aberta', criadoEm: agora, criadoPorUid: Auth.uid(), atualizadoEm: agora
+  }).then(function () { return id; });
+}
+
 // Operações lidas do PDF da OP (setor, horas, etapa). Os dados da peça
 // continuam os da planilha; o PDF só acrescenta o roteiro.
 export function gravarPdf(opId, pdf) {
   return colOps().doc(opId).update({
-    operacoes: pdf.operacoes.map(function (o) {
-      return { n: String(o.n || '').slice(0, 6), setor: String(o.setor || '').slice(0, 60), horas: Number(o.horas) || 0, etapa: String(o.etapa || '').slice(0, 40),
-        texto: String(o.texto || '').slice(0, 1500) };
-    }).slice(0, 60),
+    operacoes: operacoesLimpa(pdf.operacoes),
     pdfEm: agoraIso(), pdfPorUid: Auth.uid(), atualizadoEm: agoraIso()
   });
 }

@@ -97,7 +97,8 @@ function lerArquivos(ev) {
           const repetido = lidos.some(function (l) { return l.pdf && l.pdf.numero === pdf.numero; });
           lidos.push({
             arquivo: arq.name, pdf: pdf, op: op,
-            situacao: outra ? 'outraCommessa' : (repetido ? 'repetido' : (op ? 'ok' : 'naoEncontrada')),
+            situacao: outra ? 'outraCommessa' : (repetido ? 'repetido' : (op ? 'ok' : 'nova')),
+            area: op ? op.area : OpPdf.areaProvavel(pdf),
             divergencias: op ? OpPdf.divergencias(pdf, op).filter(function (d) { return d.campo !== 'commessa'; }) : []
           });
         }).catch(function (e) { console.warn(e); lidos.push({ arquivo: arq.name, situacao: 'erro' }); });
@@ -114,8 +115,11 @@ function lerArquivos(ev) {
 function rotuloCampo(c) { return T('pdf.campo.' + c); }
 function valorCampo(c, v) { return (c === 'qtd' || c === 'pesoUnit') ? numeroBr(v) : String(v); }
 
+function prontos() { return lidos.filter(function (l) { return l.situacao === 'ok' || l.situacao === 'nova'; }); }
+
 function mostrar() {
-  const ok = lidos.filter(function (l) { return l.situacao === 'ok'; });
+  const ok = prontos();
+  const novas = lidos.filter(function (l) { return l.situacao === 'nova'; }).length;
   const linhas = lidos.map(function (l) {
     if (!l.pdf) {
       return '<tr class="oppdf-ruim"><td class="oppdf-arq">' + esc(l.arquivo) + '</td><td colspan="3">—</td><td>✕ ' + esc(T('pdf.sit.' + l.situacao)) + '</td></tr>';
@@ -127,6 +131,13 @@ function mostrar() {
       '<div class="hint-txt">' + esc(Array.from(new Set(p.operacoes.map(function (x) { return x.setor; }))).join(', ')) + '</div>';
     let conf;
     if (l.situacao === 'outraCommessa') conf = '✕ ' + esc(T('pdf.sit.outraCommessa', p.commessa, (buscarProjeto(projetoAtualId()) || {}).commessa || ''));
+    else if (l.situacao === 'nova') {
+      // não está na planilha: entra como OP extra; a área vem dos setores e pode ser trocada
+      const i = lidos.indexOf(l);
+      conf = '➕ ' + esc(T('pdf.sit.nova')) + '<div class="oppdf-area"><label>' + esc(T('fab.cArea')) + ' <select data-change="areaPdfNova" data-arg="' + i + '">' +
+        ['caldeiraria', 'usinagem'].map(function (a) { return '<option value="' + a + '"' + (l.area === a ? ' selected' : '') + '>' + esc(T('area.' + a)) + '</option>'; }).join('') +
+        '</select></label></div>';
+    }
     else if (l.situacao !== 'ok') conf = '✕ ' + esc(T('pdf.sit.' + l.situacao));
     else if (l.divergencias.length) {
       conf = '⚠ ' + esc(T('pdf.divergeTit')) + '<ul>' + l.divergencias.map(function (d) {
@@ -134,11 +145,11 @@ function mostrar() {
       }).join('') + '</ul>';
     } else conf = '✓ ' + esc(T('pdf.confere'));
     if (l.situacao === 'ok' && o && Array.isArray(o.operacoes) && o.operacoes.length) conf += '<div class="hint-txt">' + esc(T('pdf.jaTinha')) + '</div>';
-    const classe = l.situacao !== 'ok' ? 'oppdf-ruim' : (l.divergencias.length ? 'oppdf-aviso' : '');
+    const classe = l.situacao === 'nova' ? 'oppdf-nova' : (l.situacao !== 'ok' ? 'oppdf-ruim' : (l.divergencias.length ? 'oppdf-aviso' : ''));
     return '<tr class="' + classe + '"><td class="oppdf-arq">' + esc(l.arquivo) + '</td><td class="mono">' + esc(p.numero) +
       (o ? '<div class="hint-txt">' + esc(T('area.' + o.area)) + '</div>' : '') + '</td><td>' + peca + '</td><td>' + opers + '</td><td>' + conf + '</td></tr>';
   }).join('');
-  $('oppdf-lista').innerHTML = '<div class="hint-txt oppdf-resumo">' + esc(T('pdf.resumo', lidos.length, ok.length)) + '</div>' +
+  $('oppdf-lista').innerHTML = '<div class="hint-txt oppdf-resumo">' + esc(T('pdf.resumo', lidos.length, ok.length)) + (novas ? ' · ' + esc(T('pdf.resumoNovas', novas)) : '') + '</div>' +
     '<div class="table-wrap"><table class="oppdf-tab"><thead><tr><th>' + esc(T('pdf.cArquivo')) + '</th><th>' + esc(T('fab.cOp')) + '</th><th>' +
     esc(T('pdf.cPeca')) + '</th><th>' + esc(T('pdf.cOperacoes')) + '</th><th>' + esc(T('pdf.cConferencia')) + '</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
   $('oppdf-gravar').disabled = !ok.length;
@@ -146,11 +157,17 @@ function mostrar() {
 }
 
 function gravar(_a, _b, btn) {
-  const ok = lidos.filter(function (l) { return l.situacao === 'ok'; });
+  const ok = prontos();
   if (!ok.length) return;
-  comBotaoOcupado(btn, Promise.all(ok.map(function (l) { return Ops.gravarPdf(l.op.id, l.pdf); })).then(function () {
+  const p = buscarProjeto(projetoAtualId());
+  if (!p) return;
+  const novas = ok.filter(function (l) { return l.situacao === 'nova'; }).length;
+  comBotaoOcupado(btn, Promise.all(ok.map(function (l) {
+    return l.situacao === 'nova' ? Ops.criarDoPdf(p, l.pdf, l.area) : Ops.gravarPdf(l.op.id, l.pdf);
+  })).then(function () {
     fecharModal('modal-oppdf');
-    toast(T('pdf.gravados', ok.length));
+    toast(T('pdf.gravados', ok.length) + (novas ? ' ' + T('pdf.criadas', novas) : ''));
+    if (novas && p.gpUid) Auth.criarNotificacao(p.gpUid, 'planilhaOps', T('notif.opsExtras', p.commessa, novas), p.id);
   }).catch(function (e) { avisoErro(e, 'pdf.erroGravar'); }));
 }
 
@@ -160,6 +177,7 @@ document.addEventListener('change', function (e) {
 });
 
 registrarAcoes({
+  areaPdfNova: function (v, _b, el) { const l = lidos[Number(el.dataset.arg)]; if (l && (v === 'caldeiraria' || v === 'usinagem')) l.area = v; },
   addOpsPdf: function (projetoId) { abrirImportarPdf(projetoId || null); },
   lerPdfsOp: lerArquivos,
   gravarPdfsOp: gravar

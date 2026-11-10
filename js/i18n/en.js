@@ -407,7 +407,7 @@ export default {
   'pdf.titulo':'Import work order PDF', 'pdf.arquivos':'PDF FILES', 'pdf.gravar0':'Save operations', 'pdf.gravar':'Save operations ({0})',
   'pdf.lendo':'Reading {0} file(s)…', 'pdf.resumo':'{0} file(s) read · {1} ready to save', 'pdf.cArquivo':'File', 'pdf.cPeca':'Part', 'pdf.cOperacoes':'Operations', 'pdf.cConferencia':'Check',
   'pdf.confere':'Matches the sheet', 'pdf.divergeTit':'Does not match the sheet (the sheet wins):', 'pdf.diverge':'{0}: PDF {1} · sheet {2}',
-  'pdf.sit.semTexto':'Printed PDF (image only) — export it again from the system', 'pdf.sit.naoEncontrada':'Work order not found — upload the progress sheet first',
+  'pdf.sit.semTexto':'Printed PDF (image only) — export it again from the system',
   'pdf.gravados':'Operations saved on {0} work order(s).',
   'av.abrir':'Progress list', 'av.titulo':'Progress list — {0}', 'av.semLista':'This project has no progress list yet.', 'av.pecas':'{0}/{1} pcs', 'av.emRnc':'{0} in NCR',
   'av.marca.pintura':'Painting', 'av.marca.servicoExterno':'External service', 'av.marca.ttat':'Heat treatment', 'av.marca.oxidacao':'Black oxide',
@@ -421,4 +421,5 @@ export default {
   'fin.romaneio':'⭳ Export packing list',
   'tec.checklist':'CHECKLIST', 'tec.planilha':'PROGRESS SHEET', 'tec.ops':'WORK ORDERS', 'esp.subir':'⭱ Upload sheet',
   'lops.pdf':'⭱ Work order PDFs', 'lops.manual':'✎ New work order', 'fin.g.andamento':'In progress', 'fin.g.rnc':'In NCR', 'fin.ops':'work orders',
+  'lops.alerta.semRoteiro':'⚠ No routing', 'lops.alerta.foraPlanilha':'➕ Not in the sheet',
 };

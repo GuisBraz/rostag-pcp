@@ -292,7 +292,8 @@ service cloud.firestore {
         function camposOp() {
           return ['projetoId', 'commessa', 'cliente', 'descricaoProjeto', 'gpUid', 'tecnicoUid', 'area', 'numero',
                   'desenho', 'posicao', 'rev', 'descricao', 'qtd', 'pesoUnit', 'pesoTotal', 'status',
-                  'criadoEm', 'criadoPorUid', 'atualizadoEm', 'produto', 'obs', 'marcas'];
+                  'criadoEm', 'criadoPorUid', 'atualizadoEm', 'produto', 'obs', 'marcas',
+                  'origem', 'operacoes', 'pdfEm', 'pdfPorUid'];
         }
         // da planilha (produto, observação, marcas) e do PDF da OP (operações)
         function camposDados() {
@@ -304,7 +305,8 @@ service cloud.firestore {
           return (d.get('produto', '') is string && d.get('produto', '').size() <= 40)
             && (d.get('obs', '') is string && d.get('obs', '').size() <= 300)
             && (d.get('marcas', {}) is map && d.get('marcas', {}).size() <= 8)
-            && (d.get('operacoes', []) is list && d.get('operacoes', []).size() <= 60);
+            && (d.get('operacoes', []) is list && d.get('operacoes', []).size() <= 60)
+            && (d.get('origem', 'planilha') in ['planilha', 'pdf', 'manual']);
         }
         function souTecnicoDoProjeto(p) {
           return souTecnicoDe(equipeId) && p.get('responsavelUid', null) == request.auth.uid;

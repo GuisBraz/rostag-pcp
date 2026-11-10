@@ -899,3 +899,12 @@ describe('excluir projeto leva as OPs e a lista de avanço', () => {
     for (const uid of [T, U, Q]) await assertFails(como(uid).doc('equipes/E1/avanco/doP').delete());
   });
 });
+
+describe('OP extra (fora da planilha) criada pelo PDF', () => {
+  test('técnico do projeto cria a OP já com o roteiro; origem conferida', async () => {
+    const operacoes = [{ n: '01', setor: 'MONT. CALD TERCEIROS', horas: 2, etapa: '', texto: 'Montar.' }];
+    await assertSucceeds(como(P).doc('equipes/E1/ops/extra1').set(op({ numero: '02099901001', posicao: '', origem: 'pdf', operacoes, pdfEm: 'x', pdfPorUid: P })));
+    await assertFails(como(P).doc('equipes/E1/ops/extra2').set(op({ numero: '02099902001', origem: 'outra', operacoes })));
+    await assertFails(como(U).doc('equipes/E1/ops/extra3').set(op({ numero: '02099903001', origem: 'pdf', operacoes, criadoPorUid: U })));
+  });
+});

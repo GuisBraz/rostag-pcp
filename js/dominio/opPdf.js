@@ -153,6 +153,13 @@ export function lerOp(paginas) {
   };
 }
 
+// Área provável de uma OP que não está na planilha, pelos setores do roteiro
+// (montagem, solda e acabamento são da caldeiraria; o resto, usinagem).
+export function areaProvavel(pdf) {
+  const setores = (pdf && pdf.operacoes || []).map(function (o) { return chave(o.setor); });
+  return setores.some(function (k) { return /CALD|SOLDA|MONT|ACABAMENTO|CHAPARIA|CORTE/.test(k); }) ? 'caldeiraria' : 'usinagem';
+}
+
 /**
  * Confere o PDF com a OP que já está no sistema (vinda da planilha).
  * Devolve a lista do que não bate: [{ campo, pdf, op }]. A planilha manda;

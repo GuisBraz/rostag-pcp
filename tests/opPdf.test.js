@@ -87,3 +87,9 @@ test('instrução da operação: só o texto, sem as linhas fixas do formulário
   assert.equal(r.operacoes[0].etapa, 'SEGUNDA ETAPA');
   assert.equal(r.operacoes[0].texto, 'Rebarbar e devolver para aguardar a segunda etapa.\nAbrir roscas conforme desenho.');
 });
+
+test('área provável da OP extra pelos setores do roteiro', () => {
+  assert.equal(OpPdf.areaProvavel({ operacoes: [{ setor: 'MONT. CALD TERCEIROS' }, { setor: 'SOLDA TERCEIROS' }] }), 'caldeiraria');
+  assert.equal(OpPdf.areaProvavel({ operacoes: [{ setor: 'MANDRILHADORA FOREST' }, { setor: 'AJUSTADOR' }] }), 'usinagem');
+  assert.equal(OpPdf.areaProvavel({ operacoes: [] }), 'usinagem');
+});
