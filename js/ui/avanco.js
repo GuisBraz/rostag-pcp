@@ -120,8 +120,12 @@ export function render() {
 // A planilha de volta: mesma aba, com o avanço por peças e o resumo corrigido.
 function baixar(_a, _b, btn) {
   if (!aberto || !aberto.doc) return;
-  const doc = aberto.doc, projetoId = aberto.projetoId;
-  comBotaoOcupado(btn, garantirXlsx().then(function (XLSX) {
+  comBotaoOcupado(btn, exportarPlanilha(aberto.doc, aberto.projetoId));
+}
+
+// Gera o .xlsx da lista de avanço (doc lido de dados/avanco.js) com o avanço por peças.
+export function exportarPlanilha(doc, projetoId) {
+  return garantirXlsx().then(function (XLSX) {
     const r = Avanco.preencher(doc.matriz.map(function (l) { return l.slice(); }), doc.merges, opsDoProjeto(projetoId));
     if (!r) throw new Error('avanco-ilegivel');
     const ws = XLSX.utils.aoa_to_sheet(r.matriz.map(function (l) { return l.map(function (v) { return v == null ? null : v; }); }));
@@ -142,7 +146,7 @@ function baixar(_a, _b, btn) {
     const p = buscarProjeto(projetoId);
     const nome = ('AVANÇO - ' + ((p && p.commessa) || doc.commessa || 'projeto')).replace(/[\\/:*?"<>|]+/g, '-');
     XLSX.writeFile(wb, nome + '.xlsx');
-  }).catch(function (e) { console.warn(e); toast(T('av.erroBaixar'), { tipo: 'erro' }); }));
+  }).catch(function (e) { console.warn(e); toast(T('av.erroBaixar'), { tipo: 'erro' }); });
 }
 
 document.addEventListener('input', function (e) {

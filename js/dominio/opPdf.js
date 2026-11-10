@@ -17,6 +17,25 @@
 import { chave, texto, numero } from './planilha.js';
 
 const TOLERANCIA_Y = 3;
+const MAX_TEXTO = 1500;
+
+/**
+ * Posição de um pedaço de texto na página, já "desgirada": x cresce no sentido
+ * da leitura e y de cima para baixo. A OP impressa em retrato sai girada 90°
+ * dentro da página (o texto fica de lado); aqui ela volta a ser lida normal.
+ * transform: a matriz do PDF.js [a, b, c, d, e, f]; largura/altura da página.
+ */
+export function posicao(transform, largura, altura) {
+  const a = transform[0], b = transform[1], e = transform[4], f = transform[5];
+  if (Math.abs(b) > Math.abs(a)) {
+    return b > 0 ? { x: f, y: e } : { x: altura - f, y: largura - e };   // girado 90° para um lado ou para o outro
+  }
+  if (a < 0) return { x: largura - e, y: f };                             // de cabeça para baixo
+  return { x: e, y: altura - f };
+}
+
+// Linhas fixas do formulário (não são a instrução da operação).
+const FIXAS = /^(LIDER$|LERTODAOP|ASSDATA|CERTIFICARSEFORAMEXECUTADAS|PCDATAASSINATURA$|PCDATA$|DATAASSINATURA$|ASSINATURA$|DATA$|PC$|RECEBIDODE|ENVIADOPARA$)/;
 
 // Agrupa os pedaços em linhas (de cima para baixo), cada uma em ordem de x.
 export function linhasDaPagina(itens) {
@@ -52,7 +71,7 @@ const NUM_BR = /\d{1,3}(?:\.\d{3})*,\d+|\d+,\d+|\d+/g;
 export function lerPagina(itens) {
   const linhas = linhasDaPagina(itens);
   const r = { numero: '', commessa: '', cliente: '', setor: '', operacao: '', etapa: '', produto: '', desenho: '',
-    descricao: '', qtd: null, um: '', pesoUnit: null, horas: null, emissao: '' };
+    descricao: '', qtd: null, um: '', pesoUnit: null, horas: null, emissao: '', texto: '' };
   let iDados = -1;
   linhas.forEach(function (l, i) {
     const tudo = l.partes.join(' ');
@@ -92,7 +111,17 @@ export function lerPagina(itens) {
     r.pesoUnit = nums[1] == null ? null : nums[1];
     r.horas = nums[2] == null ? null : nums[2];
     const prox = linhas[iDados + 1];
-    if (prox && prox.y - l.y < 30) r.descricao = prox.partes.join(' ');
+    let inicioTexto = iDados + 1;
+    if (prox && prox.y - l.y < 30) { r.descricao = prox.partes.join(' '); inicioTexto = iDados + 2; }
+    // o texto da instrução: as linhas depois da peça, sem as linhas fixas do formulário
+    const instrucao = [];
+    linhas.slice(inicioTexto).forEach(function (ln) {
+      const t = ln.partes.join(' ').trim();
+      const k = chave(t);
+      if (!k || FIXAS.test(k) || (/ETAPA$/.test(k) && k.length <= 20) || /^\d+$/.test(k)) return;
+      instrucao.push(t);
+    });
+    r.texto = instrucao.join('\n').slice(0, MAX_TEXTO);
   }
   return r;
 }
@@ -110,7 +139,7 @@ export function lerOp(paginas) {
   const base = lidas[0];
   const numeros = Array.from(new Set(lidas.map(function (p) { return p.numero; })));
   const operacoes = lidas.map(function (p, i) {
-    return { n: p.operacao || String(i + 1).padStart(2, '0'), setor: p.setor.slice(0, 60), horas: p.horas == null ? 0 : p.horas, etapa: p.etapa.slice(0, 40) };
+    return { n: p.operacao || String(i + 1).padStart(2, '0'), setor: p.setor.slice(0, 60), horas: p.horas == null ? 0 : p.horas, etapa: p.etapa.slice(0, 40), texto: p.texto || '' };
   }).slice(0, 60);
   const horas = Math.round(operacoes.reduce(function (s, o) { return s + (o.horas || 0); }, 0) * 100) / 100;
   const primeiro = function (k) { const p = lidas.find(function (x) { return x[k] != null && x[k] !== ''; }); return p ? p[k] : (base[k] == null ? '' : base[k]); };

@@ -16,12 +16,11 @@ import { abrirModal, fecharModal } from './modal.js';
 import { toast } from './toast.js';
 import { persistir, redesenhar } from './app.js';
 
-const CAMPOS_FORM = ['commessa', 'cliente', 'descricao', 'tipoServico', 'om', 'dataSolicitacao', 'pcpInicio', 'pcpFim', 'prodFim', 'entrega'];
+const CAMPOS_FORM = ['commessa', 'cliente', 'descricao', 'om', 'dataSolicitacao', 'pcpInicio', 'pcpFim', 'prodInicio', 'prodFim', 'entrega'];
 let editandoId = null;
 
 function limparForm() {
   CAMPOS_FORM.forEach(function (c) { const el = $('f-' + c); el.value = ''; el.classList.remove('invalid'); el.removeAttribute('aria-invalid'); });
-  $('f-prodInicio').value = '';
   $('f-erro').textContent = '';
 }
 
@@ -59,7 +58,6 @@ function preencherOpcoesMembros(gpSelecionado, gpNomeAtual, tecSelecionado, tecN
 function atualizarPreviews() {
   const ent = $('f-entrega').value;
   $('f-status-preview').value = ent ? STATUS_LABEL(Projeto.status({ status: 'ativo', entrega: ent })) : '—';
-  $('f-prodInicio').value = $('f-pcpFim').value || '';
 }
 
 // Lista padrão da equipe (Configurações → Geral), se houver.
@@ -87,6 +85,8 @@ export function abrirEditarProjeto(campoFoco) {
   limparForm();
   editandoId = p.id;
   CAMPOS_FORM.forEach(function (c) { $('f-' + c).value = (p[c] === '—' ? '' : (p[c] || '')); });
+  // projeto antigo sem o início da produção: mostra o que vale hoje (o fim do PCP)
+  if (!p.prodInicio && p.prodFim && p.pcpFim) $('f-prodInicio').value = p.pcpFim;
   $('modal-projeto-title').textContent = T('fm.editar');
   $('f-submit').textContent = T('fm.salvarAlt');
   $('fm-checklist-nota').textContent = '';
@@ -107,7 +107,7 @@ function salvarProjeto() {
     el.classList.remove('invalid'); el.removeAttribute('aria-invalid');
     d[c] = el.value.trim();
   });
-  ['dataSolicitacao', 'pcpInicio', 'pcpFim', 'prodFim'].forEach(function (c) { d[c] = d[c] || null; });
+  ['dataSolicitacao', 'pcpInicio', 'pcpFim', 'prodInicio', 'prodFim'].forEach(function (c) { d[c] = d[c] || null; });
   d.responsavelUid = $('f-responsavel').value || null;
   d.tecnico = nomeSelecionado($('f-responsavel')) || '';
   d.gpUid = $('f-gp').value || null;

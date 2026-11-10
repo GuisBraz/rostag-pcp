@@ -164,6 +164,23 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   `op.destino` (Gerência, GP e técnico do projeto); sem destino gravado, peça
   com pintura marcada vai para Pintura.
 
+## 4.2 Página do projeto do técnico e Todas as OPs
+
+- **Cartões no projeto (só técnico):** **Checklist** (abre e fecha o cronograma
+  do PCP), **Planilha de avanço** (tela cheia: espelho da aba, com as colunas de
+  avanço preenchidas ao vivo; subir, baixar e "apagar lista e OPs") e **Ordens de
+  Produção** (tela cheia: as OPs do projeto, importar PDF e OP manual; clicar
+  abre o roteiro com o texto de cada operação).
+- O técnico não tem mais a aba **Fábrica**: tudo do projeto fica no projeto.
+- **PDF da OP por projeto:** a OP é procurada só no projeto escolhido; PDF de
+  outra commessa é recusado. PDF impresso em retrato (texto girado 90°) é lido
+  normalmente; o texto das instruções vai para `operacoes[].texto`.
+- **Todas as OPs** (antes "OPs Finalizadas"): Em andamento, Em RNC, Expedição,
+  Montagem mecânica, Pintura e Sem destino — só projetos em andamento.
+- **Excluir projeto** apaga junto as OPs e a lista de avanço (as RNCs ficam).
+- **Início da produção** (`prodInicio`) é escolhido pelo GP, independente do
+  PCP; sem ele, vale o fim do PCP. O tipo de serviço saiu do projeto.
+
 ## 5. Notificações
 
 | # | Evento | Quem recebe | Origem |

@@ -27,7 +27,7 @@ function limparErros() {
   $('opm-aviso').textContent = '';
 }
 
-export function abrirOpManual(opId) {
+export function abrirOpManual(opId, projetoFixo) {
   const lista = projetosPermitidos();
   const op = opId ? estado.ops.find(function (o) { return o.id === opId; }) : null;
   if (opId && (!op || statusOp(op) !== 'aberta')) return;
@@ -38,11 +38,13 @@ export function abrirOpManual(opId) {
   if (op && !lista.some(function (p) { return p.id === op.projetoId; })) {
     sel.innerHTML += '<option value="' + esc(op.projetoId) + '">' + esc(op.commessa) + '</option>';
   }
-  sel.value = op ? op.projetoId : (estado.filtroFab.projeto && lista.some(function (p) { return p.id === estado.filtroFab.projeto; }) ? estado.filtroFab.projeto : (lista[0] ? lista[0].id : ''));
+  const fixo = !op && projetoFixo && lista.some(function (p) { return p.id === projetoFixo; }) ? projetoFixo : null;
+  sel.value = op ? op.projetoId : (fixo || (estado.filtroFab.projeto && lista.some(function (p) { return p.id === estado.filtroFab.projeto; }) ? estado.filtroFab.projeto : (lista[0] ? lista[0].id : '')));
   $('opm-area').value = op ? op.area : ($('opm-area').value || 'caldeiraria');
   CAMPOS.forEach(function (k) { $('opm-' + k).value = op && op[k] != null ? op[k] : ''; });
   // na edição a peça (projeto, área, desenho e posição) não muda
   ['projeto', 'area', 'desenho', 'posicao'].forEach(function (k) { $('opm-' + k).disabled = !!op; });
+  if (fixo) $('opm-projeto').disabled = true;
   $('opm-titulo').textContent = T(op ? 'opm.tituloEditar' : 'opm.tituloNova');
   $('opm-outra').style.display = op ? 'none' : '';
   limparErros();
@@ -91,6 +93,7 @@ document.addEventListener('input', function (e) {
 
 registrarAcoes({
   abrirOpManual: function (id) { abrirOpManual(id || null); },
+  novaOpProjeto: function (projetoId) { abrirOpManual(null, projetoId); },
   salvarOpManual: function (_a, _b, btn) { salvar(false, btn); },
   salvarOpManualOutra: function (_a, _b, btn) { salvar(true, btn); }
 });

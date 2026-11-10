@@ -15,12 +15,15 @@ import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes } from './dom.js';
 import { abrirModal, fecharModal, confirmar, pedirTexto } from './modal.js';
 import { toast } from './toast.js';
-import { persistir, redesenhar } from './app.js';
+import { persistir, redesenhar, avisoErro } from './app.js';
 import { irPara } from './rota.js';
 import { renderProjetos } from './projetos.js';
 import { renderNotificacoes } from './notificacoes.js';
 import { souGerencia, veAreasProjeto, renderAreasProjeto } from './gerencia.js';
 import * as Pedidos from './pedidos.js';
+import { renderCartoesTecnico } from './projetoTecnico.js';
+import * as Ops from '../dados/ops.js';
+import * as DadosAvanco from '../dados/avanco.js';
 
 function janela(rot, corpo, obs, corObs) {
   return '<div class="rot">' + rot + '</div><div class="datas">' + corpo + '</div>' +
@@ -77,7 +80,7 @@ export function renderDetalhe() {
       '<button type="button" class="btn btn-outline btn-mini" data-acao="abrirAvanco" data-arg="' + esc(p.id) + '">' + esc(T('av.abrir')) + '</button></div>'
     : '<div class="hint-inline">' + esc(T('d.semOps')) + ' <button type="button" class="link-btn" data-acao="abrirAvanco" data-arg="' + esc(p.id) + '">' + esc(T('av.abrir')) + '</button></div>';
   $('janela-producao').innerHTML = janela(esc(T('d.janelaProd')) + ' <span class="pill-prod prod-' + sitProd + '">' + esc(T('prod.' + sitProd)) + '</span>',
-    p.pcpFim ? br(p.pcpFim) + ' → ' + br(p.prodFim) : '—', obsProd, corProd) + avanco;
+    Producao.inicio(p) ? br(Producao.inicio(p)) + ' → ' + br(p.prodFim) : '—', obsProd, corProd) + avanco;
 
   // --- entrega ---
   const dEnt = difDias(h, p.entrega);
@@ -97,7 +100,6 @@ export function renderDetalhe() {
 
   // --- informações gerais ---
   let info = linha(T('d.solicitacao'), br(p.dataSolicitacao)) +
-    linha(T('d.tipoServico'), esc(p.tipoServico || '—')) +
     linha(T('d.om'), esc(p.om || '—')) +
     linha(T('d.tarefasConcluidas'), esc(T('d.deN', p.checklist.filter(function (i) { return i.done; }).length, p.checklist.length)));
   if (c.proxima && !parado) info += linha(T('d.proximaTarefa'), esc(c.proxima.t) + ' <span class="hint-inline">(' + br(c.proxima.fim) + ')</span>');
@@ -135,7 +137,7 @@ export function renderDetalhe() {
   const evs = [];
   if (p.dataSolicitacao) evs.push({ d: p.dataSolicitacao, t: T('h.solicitado') });
   if (p.pcpInicio) evs.push({ d: p.pcpInicio, t: T('h.inicioPcp') });
-  const nomeCampo = { pcpInicio: T('d.inicioPcp'), pcpFim: T('d.fimPcp'), prodFim: T('d.fimProd'), entrega: T('d.entregaCampo') };
+  const nomeCampo = { pcpInicio: T('d.inicioPcp'), pcpFim: T('d.fimPcp'), prodInicio: T('d.inicioProd'), prodFim: T('d.fimProd'), entrega: T('d.entregaCampo') };
   p.reagendamentos.forEach(function (r) {
     if (!r.em) return;
     evs.push({ d: r.em, t: T('h.movido', nomeCampo[r.campo] || r.campo, br(r.de), br(r.para)) +
@@ -154,6 +156,7 @@ export function renderDetalhe() {
 
   // --- cronograma: Gerência e GP acompanham (só leitura); o técnico edita o checklist ---
   if (veAreasProjeto()) { renderAreasProjeto(p); return; }
+  renderCartoesTecnico(p);
   $('detail-progress-bar').style.width = pr + '%';
   $('detail-progress-pct').textContent = pr + '%';
   // não redesenha a lista de tarefas enquanto alguém digita a duração de uma delas
@@ -251,26 +254,26 @@ function reabrirProjeto() {
 function excluirProjeto() {
   if (!Auth.souGPouCoordenador()) return;
   const p = projetoAtual();
-  confirmar(T('q.excluir', p.commessa), { titulo: T('btn.excluir'), textoOk: T('btn.excluir'), perigo: true }).then(function (ok) {
+  const ops = opsDoProjeto(p.id);
+  confirmar(T('q.excluirTudo', p.commessa, ops.length), { titulo: T('btn.excluir'), textoOk: T('btn.excluir'), perigo: true }).then(function (ok) {
     if (!ok) return;
-    const copia = JSON.parse(JSON.stringify(p));
-    estado.projetos = estado.projetos.filter(function (x) { return x.id !== p.id; });
-    irPara('projetos');
-    redesenhar();
-    toast(T('t.excluido', copia.commessa), { acao: { label: T('btn.desfazer'), fn: function () {
-      if (buscarProjeto(copia.id)) return;
-      estado.projetos.push(copia);
+    // primeiro as OPs e a lista de avanço (as regras conferem o projeto), depois o projeto
+    // — sem desfazer: as OPs apagadas não voltam
+    Ops.apagarVarias(ops.map(function (o) { return o.id; })).then(function () {
+      return DadosAvanco.apagar(p.id).catch(function (e) { console.warn('lista de avanço não apagada:', e); });
+    }).then(function () {
+      estado.projetos = estado.projetos.filter(function (x) { return x.id !== p.id; });
+      irPara('projetos');
       redesenhar();
-      toast(T('t.exclusaoDesfeita'));
+      toast(T('t.excluidoTudo', p.commessa, ops.length));
       persistir().catch(function () {});
-    } } });
-    persistir().catch(function () {});
+    }).catch(function (e) { avisoErro(e); });
   });
 }
 
 /* --------------------------------------------------------- reagendar */
-/* Reprogramar: quem decide é o GP (ou o gerente). O fim do PCP puxa junto o
-   início da produção; o fim da produção só muda se for escolhido aqui. */
+/* Reprogramar: quem decide é o GP (ou o gerente). Cada data muda sozinha —
+   a produção não é atrelada ao PCP. */
 function abrirReagendar() {
   const p = projetoAtual();
   if (Projeto.aguardandoCronograma(p)) { abrirEditarProjeto('f-pcpInicio'); return; }
@@ -281,7 +284,8 @@ function abrirReagendar() {
 }
 function atualizarDataReagendar() {
   const p = projetoAtual();
-  if (p) $('reagendar-data').value = p[$('reagendar-campo').value] || '';
+  const campo = $('reagendar-campo').value;
+  if (p) $('reagendar-data').value = p[campo] || (campo === 'prodInicio' ? Producao.inicio(p) || '' : '');
 }
 export function fecharReagendar() { const box = $('reagendar-box'); if (box) box.style.display = 'none'; }
 export function reagendarAberto() { return $('reagendar-box').style.display === 'flex'; }
@@ -289,9 +293,9 @@ function confirmarReagendar() {
   const p = projetoAtual();
   const campo = Projeto.CAMPOS_DATA.indexOf($('reagendar-campo').value) >= 0 ? $('reagendar-campo').value : 'pcpFim';
   const nova = $('reagendar-data').value;
-  const nomes = { pcpInicio: T('d.inicioPcp'), pcpFim: T('d.fimPcp'), prodFim: T('d.fimProd'), entrega: T('d.entregaCampo') };
+  const nomes = { pcpInicio: T('d.inicioPcp'), pcpFim: T('d.fimPcp'), prodInicio: T('d.inicioProd'), prodFim: T('d.fimProd'), entrega: T('d.entregaCampo') };
   if (!nova) { toast(T('t.escolhaData'), { tipo: 'erro' }); return; }
-  const novas = { pcpInicio: p.pcpInicio, pcpFim: p.pcpFim, prodFim: p.prodFim, entrega: p.entrega };
+  const novas = { pcpInicio: p.pcpInicio, pcpFim: p.pcpFim, prodInicio: p.prodInicio || null, prodFim: p.prodFim, entrega: p.entrega };
   novas[campo] = nova;
   const v = Projeto.validarCronograma(novas);
   if (!v.ok) { toast(v.msg, { tipo: 'erro' }); return; }

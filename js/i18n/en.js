@@ -129,7 +129,7 @@ export default {
 
   'f.ano':'YEAR', 'f.mes':'MONTH', 'f.anoMesNota':'Year and month filter by delivery date.',
   'f.solicDe':'REQUESTED FROM', 'f.entregaAte':'DELIVERY UNTIL', 'f.descricaoProj':'PROJECT DESCRIPTION',
-  'f.gpRealizado':'PM (OWNER)', 'f.tipo':'SERVICE TYPE', 'f.statusProj':'PROJECT STATUS',
+  'f.gpRealizado':'PM (OWNER)','f.statusProj':'PROJECT STATUS',
   'f.pcp':'PCP SITUATION', 'f.pcpAtrasada':'With overdue task', 'f.pcpChegando':'With task due soon',
   'f.pcpConcluida':'PCP complete', 'f.buscar':'SEARCH (JOB ORDER, CLIENT, DESCRIPTION, WO)', 'f.buscarPh':'search...',
   'f.gp':'PM',
@@ -149,7 +149,7 @@ export default {
   'd.entregue':'Delivered on {0} — {1} late', 'd.entregueAdiantado':'Delivered on {0} — {1} early',
   'd.cancelado':'Cancelled on {0}', 'd.entregaAtraso':'{0} late on delivery.',
   'd.entregaHoje':'Delivery is today.', 'd.entregaFaltam':'{0} to go.',
-  'd.infoTitulo':'General information', 'd.solicitacao':'Requested', 'd.tipoServico':'Service type',
+  'd.infoTitulo':'General information', 'd.solicitacao':'Requested',
   'd.om':'Work order', 'd.tarefasConcluidas':'Tasks completed', 'd.proximaTarefa':'Next task',
   'd.cicloTotal':'Total cycle', 'd.paradoTotal':'Total time on hold', 'd.paradoAgora':'On hold since',
   'd.historico':'HISTORY', 'd.deN':'{0} of {1}',
@@ -183,7 +183,7 @@ export default {
   'fm.novo':'New project', 'fm.editar':'Edit project',
   'fm.incluir':'+ Add project', 'fm.salvarAlt':'Save changes',
   'fm.commessa':'JOB ORDER / CODE *', 'fm.cliente':'CLIENT', 'fm.descricao':'DESCRIPTION *',
-  'fm.tipo':'SERVICE TYPE', 'fm.gp':'PM', 'fm.om':'WORK ORDER', 'fm.opcional':'(optional)',
+'fm.gp':'PM', 'fm.om':'WORK ORDER', 'fm.opcional':'(optional)',
   'fm.responsavel':'ASSIGNEE (PLANNER)', 'fm.semResponsavel':'— nobody assigned —',
   'fm.semGp':'— select —',
   'fm.dataSolic':'REQUEST DATE', 'fm.janelaPcp':'PCP window',
@@ -296,7 +296,7 @@ export default {
   'q.cancelar':'Cancel "{0}"? It has been on hold for {1}.',
   'q.importar':'Import {0}? This replaces the {1} current project(s) of this team.',
 
-  'csv.cab':['Job order','Client','Description','Service type','PM','WO','Requested','PCP start','PCP end',
+  'csv.cab':['Job order','Client','Description','PM','WO','Requested','PCP start','PCP end',
              'PCP projected','PCP situation','Delivery','Status','Progress %','Delivered on','Cycle (days)',
              'Days on hold','Reschedules'],
 
@@ -414,9 +414,11 @@ export default {
   'av.kTotal':'TOTAL PROGRESS', 'av.kRnc':'PIECES IN NCR', 'av.f.todos':'All', 'av.f.abertos':'In production', 'av.f.rnc':'With NCR', 'av.f.concluidos':'Done',
   'av.f.servico':'Service / heat tr.', 'av.f.comerciais':'Purchased', 'av.cObs':'Notes', 'av.baixar':'⭳ Download progress sheet',
   'cg.setoresTit':'Work order PDF sectors', 'cg.naoMaquina':'Not a machine', 'cg.semEscolha':'— choose —',
-  'nav.ordens':'Work Orders', 'nav.finalizadas':'Finished Orders', 'nav.cargaMaquina':'Machine Load',
+  'nav.ordens':'Work Orders', 'nav.finalizadas':'All work orders', 'nav.cargaMaquina':'Machine Load',
   'prog.col.emAberto':'Open', 'prog.col.programada':'At the shop', 'prog.col.baixaCq':'QC approved — finish', 'prog.col.rnc':'NCR — awaiting disposition',
   'prog.finalizar':'✔ Finish work order', 'prog.programar':'Schedule', 'prog.aguardando':'Waiting to be scheduled',
   'fin.g.expedicao':'Shipping', 'fin.g.montagem':'Mechanical assembly', 'fin.g.pintura':'Painting', 'fin.g.semDestino':'No destination',
   'fin.romaneio':'⭳ Export packing list',
+  'tec.checklist':'CHECKLIST', 'tec.planilha':'PROGRESS SHEET', 'tec.ops':'WORK ORDERS', 'esp.subir':'⭱ Upload sheet',
+  'lops.pdf':'⭱ Work order PDFs', 'lops.manual':'✎ New work order', 'fin.g.andamento':'In progress', 'fin.g.rnc':'In NCR', 'fin.ops':'work orders',
 };

@@ -79,7 +79,8 @@ export function gravarPlanilha(projeto, comparacao) {
 export function gravarPdf(opId, pdf) {
   return colOps().doc(opId).update({
     operacoes: pdf.operacoes.map(function (o) {
-      return { n: String(o.n || '').slice(0, 6), setor: String(o.setor || '').slice(0, 60), horas: Number(o.horas) || 0, etapa: String(o.etapa || '').slice(0, 40) };
+      return { n: String(o.n || '').slice(0, 6), setor: String(o.setor || '').slice(0, 60), horas: Number(o.horas) || 0, etapa: String(o.etapa || '').slice(0, 40),
+        texto: String(o.texto || '').slice(0, 1500) };
     }).slice(0, 60),
     pdfEm: agoraIso(), pdfPorUid: Auth.uid(), atualizadoEm: agoraIso()
   });
@@ -94,6 +95,17 @@ export function aprovar(opId) {
 }
 
 export function apagar(opId) { return colOps().doc(opId).delete(); }
+
+// Apaga várias OPs (excluir o projeto, apagar a lista e as OPs dele), em lotes.
+export function apagarVarias(ids) {
+  const envios = [];
+  for (let i = 0; i < ids.length; i += LOTE_MAX) {
+    const lote = db().batch();
+    ids.slice(i, i + LOTE_MAX).forEach(function (id) { lote.delete(colOps().doc(id)); });
+    envios.push(lote.commit());
+  }
+  return Promise.all(envios).then(function () { return ids.length; });
+}
 
 // Projeto trocou de GP ou de técnico: as OPs dele acompanham (quem vê muda junto).
 export function sincronizarDesignacao(projeto, ops) {

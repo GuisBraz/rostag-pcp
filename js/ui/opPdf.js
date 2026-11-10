@@ -5,12 +5,14 @@
    a carga máquina. Os dados da peça continuam os da planilha: o que não
    bater só aparece como aviso na conferência.
 --------------------------------------------------------------------------- */
-import { estado } from '../estado.js';
+import { estado, buscarProjeto } from '../estado.js';
 import { esc, numeroBr } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as OpPdf from '../dominio/opPdf.js';
 import { chave } from '../dominio/planilha.js';
 import * as Producao from '../dominio/producao.js';
+import * as Projeto from '../dominio/projeto.js';
+import * as Auth from '../dados/auth.js';
 import * as Ops from '../dados/ops.js';
 import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
 import { abrirModal, fecharModal } from './modal.js';
@@ -21,14 +23,31 @@ import { garantirPdfJs } from './bibliotecas.js';
 const MAX_ARQUIVOS = 40;
 const MAX_BYTES = 20 * 1024 * 1024;
 let lidos = [];   // [{ arquivo, pdf, op, situacao, divergencias }]
+let projetoFixo = null;
 
-export function abrirImportarPdf() {
+// Projetos em que dá para importar: os mesmos da planilha (Gerência: todos os abertos).
+function projetosPermitidos() {
+  return estado.projetos.filter(function (p) {
+    return Projeto.aberto(p) && (Auth.souGerente() || p.responsavelUid === Auth.uid());
+  }).sort(function (a, b) { return String(a.commessa).localeCompare(String(b.commessa), 'pt-BR', { numeric: true }); });
+}
+function projetoAtualId() { return projetoFixo || $('oppdf-projeto').value; }
+
+// projetoId: aberto de dentro do projeto (fica fixo). Sem ele, escolhe na lista.
+export function abrirImportarPdf(projetoId) {
+  const lista = projetosPermitidos();
+  if (!lista.length) { toast(T('fab.semProjetos'), { tipo: 'erro' }); return; }
+  projetoFixo = projetoId && lista.some(function (p) { return p.id === projetoId; }) ? projetoId : null;
+  const sel = $('oppdf-projeto');
+  sel.innerHTML = lista.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.commessa + ' — ' + p.descricao) + '</option>'; }).join('');
+  if (projetoFixo) sel.value = projetoFixo;
+  sel.disabled = !!projetoFixo;
   lidos = [];
   $('oppdf-arquivo').value = '';
   $('oppdf-lista').innerHTML = '';
   $('oppdf-erro').textContent = '';
   $('oppdf-gravar').disabled = true;
-  abrirModal('modal-oppdf', { foco: 'oppdf-arquivo', aoFechar: function () { lidos = []; } });
+  abrirModal('modal-oppdf', { foco: 'oppdf-arquivo', aoFechar: function () { lidos = []; projetoFixo = null; } });
 }
 
 // Texto de cada página com a posição (y de cima para baixo).
@@ -40,7 +59,7 @@ function paginasDoPdf(lib, dados) {
       cadeia = cadeia.then(function () { return doc.getPage(n); }).then(function (pg) {
         const vp = pg.getViewport({ scale: 1 });
         return pg.getTextContent().then(function (tc) {
-          paginas.push(tc.items.map(function (it) { return { x: it.transform[4], y: vp.height - it.transform[5], s: it.str }; }));
+          paginas.push(tc.items.map(function (it) { const p = OpPdf.posicao(it.transform, vp.width, vp.height); return { x: p.x, y: p.y, s: it.str }; }));
         });
       });
     }
@@ -48,9 +67,14 @@ function paginasDoPdf(lib, dados) {
   });
 }
 
+// Só procura a OP dentro do projeto escolhido: outra commessa nunca se mistura.
 function acharOp(numero) {
-  const k = chave(numero);
-  return estado.ops.find(function (o) { return chave(o.numero) === k && Producao.statusOp(o) !== 'morta'; }) || null;
+  const k = chave(numero), pid = projetoAtualId();
+  return estado.ops.find(function (o) { return o.projetoId === pid && chave(o.numero) === k && Producao.statusOp(o) !== 'morta'; }) || null;
+}
+function commessaDiferente(pdf) {
+  const p = buscarProjeto(projetoAtualId());
+  return !!(p && pdf.commessa && p.commessa && chave(pdf.commessa) !== chave(p.commessa));
 }
 
 function lerArquivos(ev) {
@@ -68,12 +92,13 @@ function lerArquivos(ev) {
         return arq.arrayBuffer().then(function (buf) { return paginasDoPdf(lib, new Uint8Array(buf)); }).then(function (paginas) {
           const pdf = OpPdf.lerOp(paginas);
           if (!pdf.ok) { lidos.push({ arquivo: arq.name, situacao: pdf.motivo }); return; }
-          const op = acharOp(pdf.numero);
+          const outra = commessaDiferente(pdf);
+          const op = outra ? null : acharOp(pdf.numero);
           const repetido = lidos.some(function (l) { return l.pdf && l.pdf.numero === pdf.numero; });
           lidos.push({
             arquivo: arq.name, pdf: pdf, op: op,
-            situacao: repetido ? 'repetido' : (op ? 'ok' : 'naoEncontrada'),
-            divergencias: op ? OpPdf.divergencias(pdf, op) : []
+            situacao: outra ? 'outraCommessa' : (repetido ? 'repetido' : (op ? 'ok' : 'naoEncontrada')),
+            divergencias: op ? OpPdf.divergencias(pdf, op).filter(function (d) { return d.campo !== 'commessa'; }) : []
           });
         }).catch(function (e) { console.warn(e); lidos.push({ arquivo: arq.name, situacao: 'erro' }); });
       });
@@ -101,7 +126,8 @@ function mostrar() {
     const opers = '<b>' + p.operacoes.length + '</b> · ' + esc(numeroBr(p.horas)) + ' h' +
       '<div class="hint-txt">' + esc(Array.from(new Set(p.operacoes.map(function (x) { return x.setor; }))).join(', ')) + '</div>';
     let conf;
-    if (l.situacao !== 'ok') conf = '✕ ' + esc(T('pdf.sit.' + l.situacao));
+    if (l.situacao === 'outraCommessa') conf = '✕ ' + esc(T('pdf.sit.outraCommessa', p.commessa, (buscarProjeto(projetoAtualId()) || {}).commessa || ''));
+    else if (l.situacao !== 'ok') conf = '✕ ' + esc(T('pdf.sit.' + l.situacao));
     else if (l.divergencias.length) {
       conf = '⚠ ' + esc(T('pdf.divergeTit')) + '<ul>' + l.divergencias.map(function (d) {
         return '<li>' + esc(T('pdf.diverge', rotuloCampo(d.campo), valorCampo(d.campo, d.pdf), valorCampo(d.campo, d.op))) + '</li>';
@@ -128,8 +154,13 @@ function gravar(_a, _b, btn) {
   }).catch(function (e) { avisoErro(e, 'pdf.erroGravar'); }));
 }
 
+// trocar o projeto na lista lê de novo os arquivos já escolhidos
+document.addEventListener('change', function (e) {
+  if (e.target && e.target.id === 'oppdf-projeto' && $('oppdf-arquivo').files.length) lerArquivos({ target: $('oppdf-arquivo') });
+});
+
 registrarAcoes({
-  addOpsPdf: abrirImportarPdf,
+  addOpsPdf: function (projetoId) { abrirImportarPdf(projetoId || null); },
   lerPdfsOp: lerArquivos,
   gravarPdfsOp: gravar
 });

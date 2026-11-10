@@ -3,11 +3,10 @@
    programador finalizar), organizadas por projeto. Clicar abre a janela
    com tudo da OP. Projeto atrasado: as OPs dele ganham a borda vermelha.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto } from '../estado.js';
+import { estado, buscarProjeto, opVisivel } from '../estado.js';
 import { esc, br, numeroBr, compararNatural } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Prog from '../dominio/programacao.js';
-import * as Projeto from '../dominio/projeto.js';
 import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes } from './dom.js';
 import { naFila, pillSituacao, classeAtraso } from './opDetalhe.js';
@@ -27,9 +26,7 @@ export function renderOrdens() {
   const fila = naFila();
   const base = estado.ops.filter(function (o) {
     if (area && o.area !== area) return false;
-    if (!Prog.emProducao(o)) return false;
-    const p = buscarProjeto(o.projetoId);
-    if (p && !Projeto.aberto(p)) return false;
+    if (!Prog.emProducao(o) || !opVisivel(o)) return false;
     if (busca && [o.numero, o.desenho, o.descricao, o.commessa, o.produto].join(' ').toLowerCase().indexOf(busca) < 0) return false;
     return true;
   });

@@ -1062,3 +1062,30 @@ tr.op-proj-atrasado { box-shadow: none !important; }
   .opd-linha { grid-template-columns: 110px 1fr; }
   .ord-prazo { margin-left: 0; }
 }
+
+/* ---- página do projeto do técnico, planilha em espelho e lista de OPs ---- */
+.tec-coluna { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.tec-areas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.esp-topo-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.esp-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.esp-resumo { margin-bottom: 10px; }
+.esp-wrap { overflow: auto; max-height: calc(100vh - 210px); border: 1px solid var(--line); border-radius: 8px; background: var(--bg-panel); }
+.esp-tab { border-collapse: collapse; font-size: 11.5px; table-layout: fixed; }
+.esp-tab td { border: 1px solid var(--line-soft); padding: 4px 6px; color: var(--ink); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.esp-tab tr.esp-topo td { background: var(--bg-panel-alt); font-weight: 600; }
+.esp-tab tr.esp-grupo td { background: #1F3864; color: #fff; font-weight: 800; text-align: center; letter-spacing: .03em; }
+.esp-tab tr.esp-cab td { background: #D9E1F2; color: #1F2937; font-weight: 700; text-align: center; white-space: normal; position: sticky; top: 0; z-index: 2; font-size: 10.5px; }
+.esp-tab tr.esp-item:hover td { background: var(--bg-panel-alt); }
+.esp-tab tr.esp-comercial td { color: var(--ink-dim); font-style: italic; }
+.esp-tab td.esp-num { text-align: right; font-family: var(--mono); }
+.esp-tab td.esp-flag { text-align: center; }
+.esp-tab td.esp-obs { color: var(--amber-ink); white-space: normal; }
+.esp-tab td.esp-vivo { background: var(--bg-panel-alt); font-weight: 700; }
+.esp-tab td.esp-vivo.esp-ok { background: var(--green-bg); color: var(--green); }
+.esp-rodape { margin-top: 8px; }
+.lops-tabela { max-height: calc(100vh - 260px); overflow: auto; }
+.opd-texto { white-space: pre-wrap; font-size: 12px; color: var(--ink-dim); margin-top: 3px; line-height: 1.45; }
+.fin-botoes { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.fin-rnc .fin-n { color: var(--rust); }
+@media (max-width: 1300px) { .fin-botoes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .tec-areas, .fin-botoes { grid-template-columns: 1fr; } }

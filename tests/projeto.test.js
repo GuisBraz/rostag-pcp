@@ -28,11 +28,13 @@ test('validar: obrigatórios, ordem das datas e commessa repetida', () => {
   assert.ok(Projeto.validar(base, existentes, 'a').ok, 'editando o próprio projeto não acusa duplicado');
 });
 
-test('cronograma macro: datas opcionais na criação, PCP em par, produção depois do PCP', () => {
+test('cronograma macro: datas opcionais na criação, PCP em par, produção independente do PCP', () => {
   const semDatas = { commessa: '2026-002', descricao: 'Novo', entrega: '2026-03-01' };
   assert.ok(Projeto.validar(semDatas, [], null).ok, 'gerente cria sem cronograma');
   assert.equal(Projeto.validar(Object.assign({}, semDatas, { pcpInicio: '2026-01-05' }), [], null).ok, false);
-  assert.equal(Projeto.validar(com({ prodFim: '2026-01-20' }), [], null).ok, false, 'produção antes do fim do PCP');
+  // a produção não é atrelada ao PCP: o GP escolhe; só não termina antes de começar
+  assert.ok(Projeto.validar(com({ prodInicio: '2026-01-10', prodFim: '2026-01-20' }), [], null).ok, 'produção pode sobrepor o PCP');
+  assert.equal(Projeto.validar(com({ prodInicio: '2026-02-10', prodFim: '2026-02-01' }), [], null).ok, false, 'fim antes do início da produção');
   assert.ok(Projeto.validar(com({ prodFim: '2026-02-20' }), [], null).ok);
 });
 

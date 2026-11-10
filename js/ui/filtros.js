@@ -36,7 +36,6 @@ export function filtrarDash() {
     if (f.entregaAte && p.entrega > f.entregaAte) return false;
     if (desc && p.descricao.toLowerCase().indexOf(desc) < 0) return false;
     if (f.gp && p.gp !== f.gp) return false;
-    if (f.tipo && p.tipoServico !== f.tipo) return false;
     if (f.status && Projeto.status(p) !== f.status) return false;
     return casaPcp(p, f.pcp);
   });
@@ -48,7 +47,6 @@ export function filtrarProj() {
     if (f.status && Projeto.status(p) !== f.status) return false;
     if (!casaPcp(p, f.pcp)) return false;
     if (f.gp && p.gp !== f.gp) return false;
-    if (f.tipo && p.tipoServico !== f.tipo) return false;
     if (busca) {
       const alvo = (p.commessa + ' ' + p.cliente + ' ' + p.descricao + ' ' + p.om).toLowerCase();
       if (alvo.indexOf(busca) < 0) return false;
@@ -75,12 +73,9 @@ function preencherDatalist(id, valores) {
   if (el) el.innerHTML = valores.map(function (v) { return '<option value="' + esc(v) + '"></option>'; }).join('');
 }
 export function refreshOpcoes() {
-  const gps = unicos('gp'), tipos = unicos('tipoServico'), clientes = unicos('cliente');
+  const gps = unicos('gp'), clientes = unicos('cliente');
   preencherSelect('df-gp', gps, estado.filtroDash.gp);
-  preencherSelect('df-tipo', tipos, estado.filtroDash.tipo);
   preencherSelect('pf-gp', gps, estado.filtroProj.gp);
-  preencherSelect('pf-tipo', tipos, estado.filtroProj.tipo);
-  preencherDatalist('dl-tipo', tipos);
   preencherDatalist('dl-cliente', clientes);
 
   const anos = {};

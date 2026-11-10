@@ -411,7 +411,10 @@ service cloud.firestore {
             || ((gerente || papel in ['gp', 'tecnico', 'planejador']) && dadosOk(papel, gerente, k, d, r)));
         }
         allow update: if membroDe(equipeId) && atualizacaoOk();
+        // apagar: Gerência; o GP do projeto (ao excluir o projeto, as OPs vão
+        // junto); o técnico só a OP aberta dos projetos dele
         allow delete: if souGerenteDe(equipeId)
+          || (souPapel(equipeId, 'gp') && projeto(equipeId, resource.data.projetoId).get('gpUid', null) == request.auth.uid)
           || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid && resource.data.status == 'aberta');
       }
 
@@ -495,7 +498,10 @@ service cloud.firestore {
           && request.resource.data.larguras is list && request.resource.data.larguras.size() <= 60
           && request.resource.data.arquivo is string && request.resource.data.arquivo.size() <= 160
           && request.resource.data.opPintura is string && request.resource.data.opPintura.size() <= 40;
-        allow delete: if souGerenteDe(equipeId);
+        // apagar a lista: Gerência, GP do projeto (excluir o projeto) e técnico do projeto (subir de novo)
+        allow delete: if souGerenteDe(equipeId)
+          || (souPapel(equipeId, 'gp') && projeto(equipeId, projetoId).get('gpUid', null) == request.auth.uid)
+          || (souTecnicoDe(equipeId) && projeto(equipeId, projetoId).get('responsavelUid', null) == request.auth.uid);
       }
 
       // Configuração da fábrica (carga fábrica): capacidade da caldeiraria em

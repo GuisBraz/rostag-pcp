@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------------------
-   Produção — a etapa depois do PCP. Começa no fim do PCP (datas atreladas)
-   e termina em prodFim; o avanço sai das peças que o CQ aprovou.
+   Produção — começa em prodInicio (o GP escolhe; sem ela, no fim do PCP) e
+   termina em prodFim; o avanço sai das peças que o CQ aprovou.
 --------------------------------------------------------------------------- */
 import { hoje, difDias } from '../nucleo/fmt.js';
 
@@ -65,7 +65,9 @@ export function estatisticas(ops) {
   return r;
 }
 
-export function inicio(p) { return p.pcpFim || null; }
+// Início da produção: o GP escolhe (independente do PCP); projeto antigo,
+// sem a data, continua começando no fim do PCP.
+export function inicio(p) { return (p && (p.prodInicio || p.pcpFim)) || null; }
 
 // Planejada → Em produção → Atrasada → Concluída. Sem fim definido: 'semData'.
 // Projeto paralisado para inteiro: a produção fica 'parada', não atrasa.
@@ -74,8 +76,8 @@ export function situacao(p, stats, h) {
   const st = stats || estatisticas([]);
   if (st.total > 0 && st.aprovadas === st.total) return 'concluida';
   if (p.status === 'paralisado') return 'parada';
-  if (!p.prodFim || !p.pcpFim) return 'semData';
-  if (h < p.pcpFim) return 'planejada';
+  if (!p.prodFim || !inicio(p)) return 'semData';
+  if (h < inicio(p)) return 'planejada';
   if (h > p.prodFim) return 'atrasada';
   return 'andamento';
 }

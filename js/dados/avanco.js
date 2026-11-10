@@ -36,3 +36,6 @@ export function salvar(projeto, lista) {
   if (lista.matriz.length > Avanco.MAX_LINHAS || JSON.stringify(dados).length > Avanco.MAX_BYTES) return Promise.reject(new Error('avanco-grande'));
   return doc(projeto.id).set(dados);
 }
+
+// Apaga a lista de avanço do projeto (subir de novo ou excluir o projeto).
+export function apagar(projetoId) { return doc(projetoId).delete(); }

@@ -59,3 +59,31 @@ test('divergências entre o PDF e a OP da planilha (a planilha manda)', () => {
   assert.deepEqual(OpPdf.divergencias(pdf, op), [{ campo: 'pesoUnit', pdf: 3131.1, op: 318.3 }]);
   assert.deepEqual(OpPdf.divergencias(pdf, Object.assign({}, op, { pesoUnit: 3131.1, produto: '' })), []);
 });
+
+test('texto girado 90° (OP impressa em retrato) volta para a leitura normal', () => {
+  // horizontal: x = e, y = altura - f
+  assert.deepEqual(OpPdf.posicao([13, 0, 0, 13, 239, 534], 842, 595), { x: 239, y: 61 });
+  // girado: a linha passa a ser o "e" e a leitura segue o "f"
+  assert.deepEqual(OpPdf.posicao([0, 13, -13, 0, 62, 251], 595, 842), { x: 251, y: 62 });
+  assert.deepEqual(OpPdf.posicao([0, -13, 13, 0, 62, 251], 595, 842), { x: 591, y: 533 });
+});
+
+test('instrução da operação: só o texto, sem as linhas fixas do formulário', () => {
+  const pg = [
+    { x: 236, y: 48, s: 'ORDEM DE PRODUÇÃO' }, { x: 436, y: 48, s: '09990101001' },
+    { x: 56, y: 99, s: 'SETOR:' }, { x: 136, y: 99, s: 'AJUSTADOR' },
+    { x: 56, y: 168, s: '09990101001' }, { x: 126, y: 168, s: '8000000001' }, { x: 186, y: 168, s: 'DES. 1234567' },
+    { x: 529, y: 168, s: '1,00' }, { x: 586, y: 168, s: 'PC' }, { x: 646, y: 168, s: '10,00' }, { x: 689, y: 168, s: '2,00' },
+    { x: 126, y: 183, s: 'EIXO' },
+    { x: 56, y: 219, s: 'SEGUNDA ETAPA:' }, { x: 56, y: 249, s: 'LIDER:' },
+    { x: 56, y: 264, s: 'LER TODA OP JUNTO AO OPERADOR PARA ESCLARECIMENTO;' },
+    { x: 56, y: 279, s: 'ASS:_______DATA__/__/____HORAS INICIAL____:' },
+    { x: 56, y: 309, s: 'Rebarbar e devolver para aguardar a segunda etapa.' },
+    { x: 56, y: 324, s: 'Abrir roscas conforme desenho.' },
+    { x: 56, y: 354, s: 'CERTIFICAR SE FORAM EXECUTADAS TODAS AS TAREFAS;' },
+    { x: 36, y: 450, s: 'PC' }, { x: 56, y: 450, s: 'Data' }, { x: 101, y: 450, s: 'Assinatura' }
+  ];
+  const r = OpPdf.lerOp([pg]);
+  assert.equal(r.operacoes[0].etapa, 'SEGUNDA ETAPA');
+  assert.equal(r.operacoes[0].texto, 'Rebarbar e devolver para aguardar a segunda etapa.\nAbrir roscas conforme desenho.');
+});

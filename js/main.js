@@ -123,6 +123,7 @@ function escutarEquipe() {
 /* ------------------------------------------------------------ sessão */
 function aplicarRestricoesPapel() {
   const papel = Auth.papel();
+  estado.leProjetos = Papeis.leProjetos(papel);
   const gestor = Papeis.gereProjetos(papel);
   const veProjetos = Papeis.veProjetos(papel);
   document.body.classList.toggle('visao-planejador', !gestor);
@@ -139,7 +140,7 @@ function aplicarRestricoesPapel() {
   const leProjetos = Papeis.leProjetos(papel);
   const area = Papeis.areaDoProgramador(papel);
   [['painel', leProjetos || Papeis.ehCQ(papel) || !Auth.membro()], ['projetos', veProjetos], ['linha', leProjetos],
-    ['carga', Papeis.veCarga(papel) && area !== 'caldeiraria'], ['fabrica', area !== 'usinagem'],
+    ['carga', Papeis.veCarga(papel) && area !== 'caldeiraria'], ['fabrica', area !== 'usinagem' && papel !== 'tecnico'],
     ['ordens', !!area || Papeis.ehGerente(papel)], ['finalizadas', Auth.membro()]].forEach(function (x) {
     const b = document.querySelector('.side-item[data-tab="' + x[0] + '"]');
     if (b) b.style.display = x[1] ? '' : 'none';

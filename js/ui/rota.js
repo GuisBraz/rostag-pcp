@@ -31,7 +31,7 @@ export function abaPermitida(aba) {
   const papel = Auth.papel();
   const area = Papeis.areaDoProgramador(papel);
   if (aba === 'config' || aba === 'notificacoes' || aba === 'finalizadas') return true;
-  if (aba === 'fabrica') return area !== 'usinagem';
+  if (aba === 'fabrica') return area !== 'usinagem' && papel !== 'tecnico';   // o técnico vê as OPs dentro do projeto
   if (aba === 'ordens') return !!area || Papeis.ehGerente(papel);
   if (aba === 'rnc') return Papeis.veRnc(papel) || Papeis.ehCQ(papel) || !!area;
   if (aba === 'painel' && Papeis.ehCQ(papel)) return true;
@@ -39,7 +39,7 @@ export function abaPermitida(aba) {
   if (aba === 'painel' || aba === 'linha') return Papeis.leProjetos(papel);
   return Papeis.veProjetos(papel);
 }
-export function abaInicial() { const p = Auth.papel(); return !Auth.membro() || Papeis.leProjetos(p) || Papeis.ehCQ(p) ? 'painel' : 'fabrica'; }
+export function abaInicial() { const p = Auth.papel(); return !Auth.membro() || Papeis.leProjetos(p) || Papeis.ehCQ(p) ? 'painel' : 'finalizadas'; }
 
 export function irPara(aba, arg) {
   const nova = '#/' + aba + (arg ? '/' + encodeURIComponent(arg) : '');

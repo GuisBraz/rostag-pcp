@@ -771,7 +771,7 @@ describe('planilha de avanço completa, PDF da OP e RNC por peças', () => {
     await assertFails(como(P).doc('equipes/E1/avanco/doP').set(lista({ campoEstranho: 1 })));
     await assertFails(como(P).doc('equipes/E1/avanco/doP').set(lista({ linhas: 'x' })));
     await semear('equipes/E1/avanco/doP', lista());
-    await assertFails(como(P).doc('equipes/E1/avanco/doP').delete());
+    await assertFails(como(T).doc('equipes/E1/avanco/doP').delete());      // técnico de outro projeto
     await assertSucceeds(como(M).doc('equipes/E1/avanco/doP').delete());
   });
   test('OP da planilha leva produto, observação e marcas; o PDF grava as operações', async () => {
@@ -876,5 +876,26 @@ describe('programação, finalizar e destino', () => {
     for (const tipo of ['opAprovada', 'opFinalizada']) {
       await assertSucceeds(como(Q).collection('notificacoes').add({ paraUid: U, tipo, mensagem: 'm', projetoId: 'doP', equipeId: 'E1', deUid: Q, deNome: 'Q', lida: false, criadoEm: 'x' }));
     }
+  });
+});
+
+describe('excluir projeto leva as OPs e a lista de avanço', () => {
+  test('GP do projeto apaga as OPs dele (qualquer situação); técnico só as abertas', async () => {
+    await semear('equipes/E1/ops/op8', op({ numero: '888', status: 'aprovada', finalizadoPorUid: Q }));
+    await assertSucceeds(como(G).doc('equipes/E1/ops/op8').delete());          // GP do projeto doP
+    await assertFails(como(G).doc('equipes/E1/ops/op2').delete());            // op2 é do projeto doT (outro GP)
+    await semear('equipes/E1/ops/op9', op({ numero: '999', status: 'aprovada', finalizadoPorUid: Q }));
+    await assertFails(como(P).doc('equipes/E1/ops/op9').delete());            // técnico: aprovada não
+    await assertSucceeds(como(P).doc('equipes/E1/ops/op1').delete());         // aberta sim
+    await assertFails(como(U).doc('equipes/E1/ops/op2').delete());
+  });
+  test('lista de avanço: Gerência, GP e técnico do projeto apagam', async () => {
+    const lista = { projetoId: 'doP', commessa: 'c', arquivo: 'a', aba: 'b', opPintura: '', linhas: [], merges: [], larguras: [], enviadoEm: 'x', enviadoPorUid: P, enviadoPorNome: 'P' };
+    for (const uid of [G, P, M]) {
+      await semear('equipes/E1/avanco/doP', lista);
+      await assertSucceeds(como(uid).doc('equipes/E1/avanco/doP').delete());
+    }
+    await semear('equipes/E1/avanco/doP', lista);
+    for (const uid of [T, U, Q]) await assertFails(como(uid).doc('equipes/E1/avanco/doP').delete());
   });
 });

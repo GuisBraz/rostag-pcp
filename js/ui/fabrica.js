@@ -2,7 +2,7 @@
    Fábrica — lista de OPs (por situação), avanço por projeto e a planilha
    de OPs (técnico). A baixa do CQ e a RNC ficam em qualidade.js.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, opsDoProjeto } from '../estado.js';
+import { estado, buscarProjeto, opsDoProjeto, opVisivel } from '../estado.js';
 import { esc, br, dataDoInstante, dataHora, compararNatural, numeroBr } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Papeis from '../dominio/papeis.js';
@@ -74,6 +74,7 @@ function opsSemVisao() {
   const area = Auth.areaProgramador() || f.area;
   const busca = f.busca.trim().toLowerCase();
   return estado.ops.filter(function (o) {
+    if (!opVisivel(o)) return false;
     if (area && o.area !== area) return false;
     if (f.projeto && o.projetoId !== f.projeto) return false;
     if (f.cliente && o.cliente !== f.cliente) return false;
@@ -230,13 +231,17 @@ function projetosParaPlanilha() {
   }).sort(function (a, b) { return compararNatural(a.commessa, b.commessa); });
 }
 
-function abrirPlanilha() {
+// projetoFixo: aberto de dentro do projeto — a planilha só pode ir para ele.
+export function abrirPlanilha(projetoFixo) {
   const lista = projetosParaPlanilha();
   if (!lista.length) { toast(T('fab.semProjetos'), { tipo: 'erro' }); return; }
   lida = null;
   const sel = $('planilha-projeto');
   sel.innerHTML = lista.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.commessa + ' — ' + p.descricao) + '</option>'; }).join('');
-  if (estado.filtroFab.projeto && lista.some(function (p) { return p.id === estado.filtroFab.projeto; })) sel.value = estado.filtroFab.projeto;
+  const fixo = typeof projetoFixo === 'string' && lista.some(function (p) { return p.id === projetoFixo; }) ? projetoFixo : null;
+  if (fixo) sel.value = fixo;
+  else if (estado.filtroFab.projeto && lista.some(function (p) { return p.id === estado.filtroFab.projeto; })) sel.value = estado.filtroFab.projeto;
+  sel.disabled = !!fixo;
   $('planilha-arquivo').value = '';
   $('planilha-resumo').innerHTML = '';
   $('planilha-erro').textContent = '';
@@ -348,6 +353,7 @@ function enviarPlanilha(_a, _b, btn) {
   }).then(function () {
     fecharModal('modal-planilha');
     toast(T('fab.gravadas', c.novas.length, c.atualizadas.length));
+    document.dispatchEvent(new CustomEvent('rostag:planilhaGravada', { detail: p.id }));
     estado.filtroFab.projeto = p.id;
     if (p.gpUid && mudouOps) Auth.criarNotificacao(p.gpUid, 'planilhaOps', T('notif.planilha', p.commessa, c.novas.length, c.atualizadas.length), p.id);
     renderFabrica();
@@ -380,7 +386,7 @@ document.addEventListener('click', function (e) {
 registrarAcoes({
   toggleAddOps: function (_a, _b, el) { alternarPopup('addops-panel', el); },
   filtrarFabrica: filtrarFabrica,
-  abrirPlanilha: abrirPlanilha,
+  abrirPlanilha: function (id) { abrirPlanilha(id || null); },
   lerPlanilha: lerPlanilha,
   enviarPlanilha: enviarPlanilha,
   visaoFabrica: function (v) { estado.filtroFab.visao = v; renderFabrica(); }

@@ -63,7 +63,7 @@ const OBRIGATORIOS = [
   { campo: 'descricao', rot: 'fm.descricaoN' },
   { campo: 'entrega', rot: 'fm.entregaN' }
 ];
-export const LIMITES = { commessa: 40, cliente: 80, descricao: 160, tipoServico: 60, om: 40 };
+export const LIMITES = { commessa: 40, cliente: 80, descricao: 160, om: 40 };
 
 // Fonte única de verdade: usada pelo formulário e pela importação.
 // Datas do cronograma são opcionais na criação, mas vêm em conjunto.
@@ -73,7 +73,7 @@ export function validar(d, projetos, idEditando) {
     return { ok: false, campos: faltando.map(function (o) { return o.campo; }),
       msg: T('fm.faltou', faltando.map(function (o) { return T(o.rot); }).join(', ')) };
   }
-  const datas = ['pcpInicio', 'pcpFim', 'prodFim', 'entrega', 'dataSolicitacao'].filter(function (c) { return d[c] && !dataValida(d[c]); });
+  const datas = ['pcpInicio', 'pcpFim', 'prodInicio', 'prodFim', 'entrega', 'dataSolicitacao'].filter(function (c) { return d[c] && !dataValida(d[c]); });
   if (datas.length) return { ok: false, campos: datas, msg: T('fm.errData') };
   const longos = Object.keys(LIMITES).filter(function (c) { return d[c] && String(d[c]).length > LIMITES[c]; });
   if (longos.length) return { ok: false, campos: longos, msg: T('fm.errLongo') };
@@ -89,10 +89,11 @@ export function validar(d, projetos, idEditando) {
 }
 
 // Ordem das datas do cronograma macro. Tudo vazio vale (aguardando cronograma);
-// o PCP vem em par (início e fim); o fim da Produção pode vir depois.
+// o PCP vem em par (início e fim). A produção é independente do PCP (o GP
+// decide): só não pode terminar antes de começar.
 // Passar da entrega não bloqueia — vira aviso (avisosCronograma).
 export function validarCronograma(d) {
-  const algum = d.pcpInicio || d.pcpFim || d.prodFim;
+  const algum = d.pcpInicio || d.pcpFim || d.prodInicio || d.prodFim;
   if (!algum) return { ok: true };
   const faltam = ['pcpInicio', 'pcpFim'].filter(function (c) { return !d[c]; });
   if (faltam.length) {
@@ -101,8 +102,8 @@ export function validarCronograma(d) {
   if (d.pcpFim < d.pcpInicio) {
     return { ok: false, campos: ['pcpFim', 'pcpInicio'], msg: T('fm.errPcpFim', br(d.pcpFim), br(d.pcpInicio)) };
   }
-  if (d.prodFim && d.prodFim < d.pcpFim) {
-    return { ok: false, campos: ['prodFim', 'pcpFim'], msg: T('fm.errProdFim', br(d.prodFim), br(d.pcpFim)) };
+  if (d.prodInicio && d.prodFim && d.prodFim < d.prodInicio) {
+    return { ok: false, campos: ['prodFim', 'prodInicio'], msg: T('fm.errProdFim', br(d.prodFim), br(d.prodInicio)) };
   }
   return { ok: true };
 }
@@ -127,7 +128,7 @@ export function distribuirTarefas(p) {
 }
 
 // Datas do cronograma macro que entram no histórico de reprogramação.
-export const CAMPOS_DATA = ['pcpInicio', 'pcpFim', 'prodFim', 'entrega'];
+export const CAMPOS_DATA = ['pcpInicio', 'pcpFim', 'prodInicio', 'prodFim', 'entrega'];
 
 // Registra no histórico o que mudou entre as datas antigas e as novas.
 export function registrarReprogramacao(p, novas, quem, motivo) {
@@ -204,6 +205,7 @@ export function migrarProjeto(bruto) {
   o.om = o.om || '';
   o.dataSolicitacao = dataValida(o.dataSolicitacao) ? o.dataSolicitacao : null;
   o.responsavelUid = o.responsavelUid || null;
+  o.prodInicio = dataValida(o.prodInicio) ? o.prodInicio : null;
   o.prodFim = dataValida(o.prodFim) ? o.prodFim : null;
   delete o.setor;                                   // campo removido do app
 
@@ -222,7 +224,7 @@ export function migrarProjeto(bruto) {
     // vir depois do PCP (atraso agora é aviso, não erro)
   }
   delete o.inicio; delete o.prazo;
-  if (o.prodFim && o.pcpFim && o.prodFim < o.pcpFim) o.prodFim = o.pcpFim;
+  if (!o.prodInicio && o.prodFim && o.pcpFim && o.prodFim < o.pcpFim) o.prodFim = o.pcpFim;
 
   if (['ativo', 'paralisado', 'concluido', 'cancelado'].indexOf(o.status) < 0) o.status = 'ativo';
   o.paralisacoes = (Array.isArray(o.paralisacoes) ? o.paralisacoes : [])

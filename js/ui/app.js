@@ -20,6 +20,8 @@ import { render as renderAvanco } from './avanco.js';
 import { render as renderOpDetalhe } from './opDetalhe.js';
 import { renderJanelas as renderJanelasFinalizadas, renderFinalizadas } from './finalizadas.js';
 import { renderOrdens } from './ordens.js';
+import { render as renderListaOps } from './listaOps.js';
+import { renderEspelho } from './projetoTecnico.js';
 import { renderNotificacoes } from './notificacoes.js';
 import { renderCarga } from './carga.js';
 import { renderFabrica, renderRnc, atualizarContadorRnc } from './fabrica.js';
@@ -92,6 +94,8 @@ export function redesenhar() {
   renderAvanco();
   renderOpDetalhe();
   renderJanelasFinalizadas();
+  renderListaOps();
+  renderEspelho();
 }
 
 export function atualizarInfoArmazenamento() {

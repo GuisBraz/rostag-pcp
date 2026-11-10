@@ -41,7 +41,7 @@ function exportarCSV() {
   const cab = T('csv.cab');
   const linhas = estado.projetos.map(function (p) {
     const c = Cronograma.calcular(p);
-    return [p.commessa, p.cliente, p.descricao, p.tipoServico, p.gp, p.om,
+    return [p.commessa, p.cliente, p.descricao, p.gp, p.om,
       br(p.dataSolicitacao), br(p.pcpInicio), br(p.pcpFim), br(c.fimPrevisto), SIT_LABEL(Projeto.situacaoPcp(p)),
       br(p.entrega), STATUS_LABEL(Projeto.status(p)), Projeto.progresso(p), br(p.concluidoEm),
       Projeto.ciclo(p) == null ? '' : Projeto.ciclo(p), Projeto.diasParadoTotal(p), p.reagendamentos.length

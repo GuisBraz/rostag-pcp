@@ -9,12 +9,11 @@
    máquina com início e fim calculados (como no MS Project), horas reais,
    baixa do CQ (finalizar) e RNC.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto } from '../estado.js';
+import { estado, buscarProjeto, opVisivel } from '../estado.js';
 import { esc, br, hoje, numeroBr, difDias, compararNatural } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Prog from '../dominio/programacao.js';
 import * as Carga from '../dominio/carga.js';
-import * as Projeto from '../dominio/projeto.js';
 import * as Auth from '../dados/auth.js';
 import * as DadosProg from '../dados/programacao.js';
 import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
@@ -28,7 +27,7 @@ function projetosPorId() { const r = {}; estado.projetos.forEach(function (p) { 
 function ativas() { return (estado.maquinas || []).filter(function (m) { return m.ativa !== false; }); }
 function podeProgramar(area) { return Auth.souGerente() || Auth.areaProgramador() === area; }
 function prazoDe(o) { const p = buscarProjeto(o.projetoId); return p ? p.prodFim || null : null; }
-function projetoVivo(o) { const p = buscarProjeto(o.projetoId); return !p || Projeto.aberto(p); }
+function projetoVivo(o) { return opVisivel(o); }
 function ordenar(a, b) { return compararNatural(a.commessa, b.commessa) || compararNatural(a.numero, b.numero); }
 function diasEspera(o) { const d = String(o.desprogramadaEm || o.criadoEm || '').slice(0, 10); return d ? difDias(d, hoje()) : 0; }
 

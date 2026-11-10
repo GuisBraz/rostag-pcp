@@ -1,11 +1,12 @@
 /* ---------------------------------------------------------------------------
    Estado da interface, compartilhado entre as telas.
 --------------------------------------------------------------------------- */
+import * as Projeto from './dominio/projeto.js';
 export const estado = {
   projetos: [],
   carregado: false,          // primeira leitura da equipe já chegou
-  filtroDash: { ano: '', mes: '', solicDe: '', entregaAte: '', descricao: '', gp: '', tipo: '', status: '', pcp: '' },
-  filtroProj: { busca: '', status: '', pcp: '', gp: '', tipo: '' },
+  filtroDash: { ano: '', mes: '', solicDe: '', entregaAte: '', descricao: '', gp: '', status: '', pcp: '' },
+  filtroProj: { busca: '', status: '', pcp: '', gp: '' },
   ordem: { campo: 'entrega', dir: 1 },
   ordemVisivel: [],          // ids na ordem da lista — usado pelo ↑/↓ no detalhe
   idDetalhe: null,
@@ -17,8 +18,17 @@ export const estado = {
   setores: {},               // setor do PDF da OP → máquina (config/setores)
   rncs: [],                  // registros de não conformidade que este cargo enxerga
   checklistPadrao: null,     // config/checklist da equipe ({itens, atualizadoEm, porNome}); null = lista de fábrica
-  filtroFab: { visao: '', area: '', projeto: '', cliente: '', busca: '' }
+  filtroFab: { visao: '', area: '', projeto: '', cliente: '', busca: '' },
+  leProjetos: false          // o cargo lê projetos (sem o projeto da OP = projeto excluído)
 };
+
+// OP de projeto em andamento? Projeto concluído, cancelado ou excluído some
+// das telas de OPs. Quem não lê projetos (CQ) vê todas.
+export function opVisivel(o) {
+  const p = buscarProjeto(o.projetoId);
+  if (p) return Projeto.aberto(p);
+  return !estado.leProjetos;
+}
 
 export function buscarProjeto(id) {
   return estado.projetos.find(function (p) { return p.id === id; }) || null;

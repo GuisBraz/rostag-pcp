@@ -10,6 +10,7 @@
 import { hoje, addDias, fds } from '../nucleo/fmt.js';
 import { inicioSemana } from './semana.js';
 import * as Projeto from './projeto.js';
+import * as Producao from './producao.js';
 
 export const SEMANAS_PADRAO = 8;
 export const DIAS_UTEIS_SEMANA = 5;
@@ -35,8 +36,9 @@ function diasUteis(de, ate) {
 // null quando o projeto não tem as datas (aguardando cronograma).
 export function janelaRestante(p, h) {
   h = h || hoje();
-  if (!p || !p.pcpFim || !p.prodFim) return null;
-  const ini = p.pcpFim > h ? p.pcpFim : h;
+  const comeco = Producao.inicio(p);
+  if (!p || !comeco || !p.prodFim) return null;
+  const ini = comeco > h ? comeco : h;
   if (p.prodFim < h) return { inicio: h, fim: h, vencida: true };
   return { inicio: ini, fim: p.prodFim < ini ? ini : p.prodFim, vencida: false };
 }

@@ -104,8 +104,11 @@ export function render() {
   if (Array.isArray(o.operacoes) && o.operacoes.length) {
     html += '<div class="panel-title opd-sec">' + esc(T('opd.roteiro')) + '</div><div class="table-wrap"><table class="opd-tab"><thead><tr><th>Nº</th><th>' +
       esc(T('opd.setor')) + '</th><th>' + esc(T('opd.etapa')) + '</th><th class="num">h</th></tr></thead><tbody>' +
-      o.operacoes.map(function (x) { return '<tr><td class="mono">' + esc(x.n) + '</td><td>' + esc(x.setor) + '</td><td>' + esc(x.etapa || '') + '</td><td class="num">' + numeroBr(x.horas) + '</td></tr>'; }).join('') +
-      '</tbody></table></div>';
+      o.operacoes.map(function (x) {
+        return '<tr><td class="mono">' + esc(x.n) + '</td><td><b>' + esc(x.setor) + '</b>' +
+          (x.texto ? '<div class="opd-texto">' + esc(x.texto) + '</div>' : '') + '</td><td>' + esc(x.etapa || '') + '</td><td class="num">' + numeroBr(x.horas) + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      (o.operacoes.some(function (x) { return x.texto; }) ? '' : '<div class="hint-txt">' + esc(T('opd.semTexto')) + '</div>');
   }
   if (rncs.length) {
     html += '<div class="panel-title opd-sec">' + esc(T('opd.rncs')) + '</div>' + rncs.map(function (r) {

@@ -437,7 +437,7 @@ function renderPlanejamento(p, st) {
   const corSit = { atrasada: '--rust', concluida: '--green', andamento: '--violet', parada: '--amber-ink' }[sit] || '--ink-dim';
   $('plan-conteudo').innerHTML =
     '<div class="ano-resumo ac-kpis">' +
-      kpi(T('ar.inicioProd'), br(p.pcpFim)) + kpi(T('ar.fimProd'), br(p.prodFim)) +
+      kpi(T('ar.inicioProd'), br(Producao.inicio(p))) + kpi(T('ar.fimProd'), br(p.prodFim)) +
       kpi(T('ac.situacao'), '<span class="ac-sit" style="color:var(' + corSit + ')">' + esc(T('prod.' + sit)) + '</span>') +
       kpi(T('ar.totalOps'), String(st.total)) +
     '</div>' +

@@ -9,6 +9,7 @@ import { esc, br, brCurto, hoje } from '../nucleo/fmt.js';
 import { T, plural } from '../i18n/index.js';
 import * as Carga from '../dominio/carga.js';
 import * as Projeto from '../dominio/projeto.js';
+import * as Producao from '../dominio/producao.js';
 import * as Auth from '../dados/auth.js';
 import * as DadosCarga from '../dados/carga.js';
 import { kpi } from './componentes.js';
@@ -161,7 +162,7 @@ function renderCaldeiraria() {
       const p = pp.projeto;
       return '<tr><td><b class="mono">' + esc(p.commessa) + '</b><div class="hint-txt">' + esc(p.descricao) + '</div></td>' +
         '<td class="num">' + fmtNum(pp.kg) + '</td><td class="num">' + pp.ops + '</td>' +
-        '<td>' + (p.pcpFim && p.prodFim ? br(p.pcpFim) + ' → ' + br(p.prodFim) : '<span class="hint-txt">' + esc(T('cg.semDatas')) + '</span>') + '</td></tr>';
+        '<td>' + (Producao.inicio(p) && p.prodFim ? br(Producao.inicio(p)) + ' → ' + br(p.prodFim) : '<span class="hint-txt">' + esc(T('cg.semDatas')) + '</span>') + '</td></tr>';
     }).join('') + '</table>' + (r.semJanela ? '<div class="hint-txt">' + esc(T('cg.semJanelaKg', fmtNum(r.semJanela))) + '</div>' : '')
     : '<div class="empty-state">' + esc(T('cg.semOpsCald')) + '</div>';
 

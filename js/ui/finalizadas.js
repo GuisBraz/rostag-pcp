@@ -5,7 +5,9 @@
    das peças (o que está disponível para embarque) e exporta o romaneio
    (só as disponíveis). Gerência, GP e técnico do projeto dão o destino.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto } from '../estado.js';
+import { estado, buscarProjeto, opVisivel } from '../estado.js';
+import * as Prog from '../dominio/programacao.js';
+import './listaOps.js';
 import { esc, br, hoje, dataHora, numeroBr } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Fin from '../dominio/finalizadas.js';
@@ -21,7 +23,8 @@ import { garantirXlsx } from './bibliotecas.js';
 const ICONE = { expedicao: '🚚', montagem: '🔧', pintura: '🎨', semDestino: '❔' };
 let aberto = { grupo: null, projetoId: null };
 
-function projetoAberto(pid) { const p = buscarProjeto(pid); return !p || Projeto.aberto(p); }
+// Só projetos em andamento (concluído, cancelado ou excluído some).
+function projetoAberto(pid) { const p = buscarProjeto(pid); return p ? Projeto.aberto(p) : !estado.leProjetos; }
 function pecasAtuais() { return Fin.pecas(estado.ops); }
 
 function podeDestinar(projetoId) {
@@ -35,7 +38,16 @@ function podeDestinar(projetoId) {
 export function renderFinalizadas() {
   const lista = pecasAtuais();
   const c = Fin.contagem(lista, projetoAberto);
-  $('fin-botoes').innerHTML = Fin.GRUPOS.map(function (g) {
+  // OPs em andamento e em RNC (dos projetos em andamento)
+  const fila = Prog.opsNaFila(estado.maquinas);
+  const vivas = estado.ops.filter(opVisivel).map(function (o) { return Prog.situacao(o, o.area === 'usinagem' && fila.has(o.id)); });
+  const nAndamento = vivas.filter(function (s) { return s === 'emAberto' || s === 'programada' || s === 'baixaCq'; }).length;
+  const nRnc = vivas.filter(function (s) { return s === 'rnc'; }).length;
+  $('fin-botoes').innerHTML = [['andamento', '⚙', nAndamento, 'fin.ops'], ['rnc', '⚠', nRnc, 'fin.ops']].map(function (x) {
+    return '<button type="button" class="card fin-botao fin-' + x[0] + '" data-acao="abrirListaOpsGrupo" data-arg="' + x[0] + '">' +
+      '<span class="fin-icone" aria-hidden="true">' + x[1] + '</span><span class="fin-rot">' + esc(T('fin.g.' + x[0])) + '</span>' +
+      '<span class="fin-n">' + x[2] + '</span><span class="hint-txt">' + esc(T(x[3])) + '</span></button>';
+  }).join('') + Fin.GRUPOS.map(function (g) {
     return '<button type="button" class="card fin-botao fin-' + g + '" data-acao="abrirFinGrupo" data-arg="' + g + '">' +
       '<span class="fin-icone" aria-hidden="true">' + ICONE[g] + '</span><span class="fin-rot">' + esc(T('fin.g.' + g)) + '</span>' +
       '<span class="fin-n">' + c[g] + '</span><span class="hint-txt">' + esc(T('fin.pecasProntas')) + '</span></button>';
