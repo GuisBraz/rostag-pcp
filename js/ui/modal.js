@@ -14,6 +14,9 @@ export function abrirModal(id, opcoes) {
   const el = $(id);
   if (!el || el.classList.contains('open')) return;
   pilha.push({ id: id, aoFechar: o.aoFechar || null, focoAnterior: document.activeElement });
+  // a janela que abre por último fica sempre por cima (ex.: "Subir planilha"
+  // aberta de dentro da planilha de avanço em tela cheia)
+  el.style.zIndex = String(50 + pilha.length);
   el.classList.add('open');
   const foco = o.foco ? $(o.foco) : el.querySelector('input:not([type=hidden]):not([disabled]), textarea, select, button.btn-primary');
   setTimeout(function () { if (foco && el.classList.contains('open')) foco.focus(); }, 30);
@@ -24,6 +27,7 @@ export function fecharModal(id) {
   if (i < 0) { if (id && $(id)) $(id).classList.remove('open'); return; }
   const item = pilha.splice(i, 1)[0];
   $(item.id).classList.remove('open');
+  $(item.id).style.zIndex = '';
   if (item.aoFechar) { try { item.aoFechar(); } catch (e) { console.error(e); } }
   if (item.focoAnterior && item.focoAnterior.focus && document.contains(item.focoAnterior)) item.focoAnterior.focus();
 }
