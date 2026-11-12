@@ -12,6 +12,7 @@ import { esc, br, brCurto, hoje, addDias, dataDoInstante, horaDoInstante } from 
 import { T } from '../i18n/index.js';
 import * as Alertas from '../dominio/alertas.js';
 import * as Prog from '../dominio/programacao.js';
+import * as Servicos from '../dominio/servicos.js';
 import { agendasAtuais, agendaPorOp } from './programacao.js';
 import * as Semana from '../dominio/semana.js';
 import * as Auth from '../dados/auth.js';
@@ -61,7 +62,7 @@ const CATEGORIA = {
   planilhaOps: 'fabrica', rnc: 'fabrica', chat: 'conversa', observacao: 'conversa', opAprovada: 'fabrica', opFinalizada: 'fabrica',
   pedido: 'projeto', pedidoAprovado: 'projeto', pedidoRecusado: 'projeto'
 };
-function categoriaDe(n) { return n.real ? (CATEGORIA[n.tipo] || 'conversa') : (/^(prod|prog)-/.test(n.tipo) ? 'fabrica' : 'prazos'); }
+function categoriaDe(n) { return n.real ? (CATEGORIA[n.tipo] || 'conversa') : (/^(prod|prog|serv)-/.test(n.tipo) ? 'fabrica' : 'prazos'); }
 
 function mapReal(n) {
   const tipo = TIPOS_REAIS.indexOf(n.tipo) >= 0 ? n.tipo : 'observacao';
@@ -77,7 +78,7 @@ function alertasCalculados() {
   if (!Auth.podeEntrar()) return [];
   const semana = Semana.inicioSemana(hoje()), equipeId = Auth.equipeAtualId();
   const novos = [];
-  const lista = Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops }).concat(avisosProgramador()).map(function (n) {
+  const lista = Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops }).concat(avisosProgramador()).concat(avisosServicos()).map(function (n) {
     const chave = Semana.chaveAlerta(semana, equipeId, n.id);
     const st = estadoAlertas && estadoAlertas[chave];
     if (estadoAlertas && !st && !registrando.has(chave)) {
@@ -104,6 +105,21 @@ function avisosProgramador() {
       id: a.id, tipo: a.tipo, nivel: a.nivel, projetoId: a.projetoId, ordem: a.ordem, origem: 'sistema', quando: a.data || h,
       titulo: T('n.' + a.tipo, a.commessa, a.numero || ''),
       meta: T('n.' + a.tipo + 'M', a.n || 0, a.data ? br(a.data) : '', Prog.DIAS_SEM_PROGRAMACAO)
+    };
+  });
+}
+
+// Avisos de cobrança do técnico: serviço externo com o prazo do fornecedor
+// chegando (hoje) ou vencido e peças ainda na rua.
+function avisosServicos() {
+  if (!estado.servicosDocs || !estado.servicosDocs.length) return [];
+  const h = hoje(), proj = {};
+  estado.projetos.forEach(function (p) { proj[p.id] = p; });
+  return Servicos.avisos(estado.servicosDocs, proj, Auth.uid(), h).map(function (a) {
+    return {
+      id: a.id, tipo: a.tipo, nivel: a.nivel, projetoId: a.projetoId, origem: 'sistema', quando: a.previsto,
+      titulo: T('n.serv-cobrar', a.commessa, a.tipoServico, a.peca),
+      meta: T(a.atrasoDias > 0 ? 'n.serv-cobrarAtrasoM' : 'n.serv-cobrarM', a.naRua, a.fornecedor || '—', br(a.previsto), a.atrasoDias)
     };
   });
 }

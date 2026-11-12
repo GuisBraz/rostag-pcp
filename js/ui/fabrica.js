@@ -8,6 +8,7 @@ import { T } from '../i18n/index.js';
 import * as Papeis from '../dominio/papeis.js';
 import * as Planilha from '../dominio/planilha.js';
 import * as Avanco from '../dominio/avanco.js';
+import * as Servicos from '../dominio/servicos.js';
 import * as DadosAvanco from '../dados/avanco.js';
 import * as Producao from '../dominio/producao.js';
 import * as Projeto from '../dominio/projeto.js';
@@ -272,7 +273,10 @@ function listaDaPlanilha(XLSX, wb) {
     if (!Planilha.acharCabecalho(matriz)) continue;
     const merges = (ws['!merges'] || []).filter(function (x) { return x.s.r < matriz.length && x.s.c < Avanco.MAX_COLUNAS; });
     const larguras = (ws['!cols'] || []).slice(0, Avanco.MAX_COLUNAS).map(function (c) { return c ? (c.wch || (c.wpx ? Math.round(c.wpx / 7) : null)) : null; });
-    return { aba: nome, matriz: matriz, merges: merges, larguras: larguras };
+    // aba SERVIÇOS (serviços externos da lista), quando existir
+    const abaServ = wb.SheetNames.find(function (n) { return Planilha.chave(n).indexOf('SERVIC') >= 0; });
+    const servicos = abaServ ? Servicos.lerAba(matrizDaAba(XLSX, wb.Sheets[abaServ])) : [];
+    return { aba: nome, matriz: matriz, merges: merges, larguras: larguras, servicos: servicos };
   }
   return null;
 }
@@ -325,7 +329,8 @@ function mostrarResumo() {
   ];
   if (lida.ignoradas) itens.push(T('fab.rIgnoradas', lida.ignoradas));
   const comerciais = lida.itens.filter(function (i) { return i.comercial; }).length;
-  itens.unshift(T('fab.rLista', lida.itens.length, comerciais) + (lida.lista.opPintura ? ' · ' + T('fab.rPintura', lida.lista.opPintura) : ''));
+  itens.unshift(T('fab.rLista', lida.itens.length, comerciais) + (lida.lista.opPintura ? ' · ' + T('fab.rPintura', lida.lista.opPintura) : '') +
+    (lida.lista.servicos.length ? ' · ' + T('fab.rServicos', lida.lista.servicos.length) : ''));
   let html = '<ul>' + itens.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
   if (lida.erros.length) {
     html += '<div class="planilha-erros"><b>' + esc(T('fab.rErros', lida.erros.length)) + '</b><ul>' +

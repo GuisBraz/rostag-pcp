@@ -124,3 +124,35 @@ test('migrar aceita lista crua e backup exportado', () => {
   assert.equal(Projeto.migrar({ schema: 4, projetos: [{ id: 'a' }, { id: 'b' }] }).length, 2);
   assert.throws(() => Projeto.migrar({ nada: true }));
 });
+
+test('checklist novo: dias divididos pelo peso, somando a janela do PCP', () => {
+  const nomes = ['Análise de escopo', 'Criar lista de avanço', 'SC itens críticos', 'Criar LM', 'Aproveitamento de laminados', 'SC laminados',
+    'Aproveitamento de chapas', 'SC chapas', 'Detalhamento de dobra (quando aplicável)', 'SC dobra (quando aplicável)',
+    'Criar ordem de produção', 'Imprimir as OPs', 'Criar plano de pintura', 'Entregar os documentos'];
+  const d20 = Projeto.dividirDias(nomes, 20);
+  assert.equal(d20.reduce((a, b) => a + b, 0), 20);
+  [1, 3, 6, 10].forEach(function (i) { assert.ok(d20[i] >= 2, nomes[i] + ' é pesada'); });
+  assert.ok(d20.every(function (d) { return d >= 1; }));
+  const d8 = Projeto.dividirDias(nomes, 8);           // menos dias que tarefas
+  assert.equal(d8.reduce((a, b) => a + b, 0), 8);
+  [1, 3, 6, 10].forEach(function (i) { assert.ok(d8[i] >= 1); });
+  assert.equal(Projeto.dividirDias(nomes, 2).reduce((a, b) => a + b, 0), 2);
+  assert.equal(Projeto.pesoTarefa('Criar LM'), 3);
+  assert.equal(Projeto.pesoTarefa('SC laminados'), 1);
+});
+
+test('migrar checklist: mantém o que já foi feito e não mexe em PCP concluído', () => {
+  const nomes = ['Análise de escopo', 'Criar lista de avanço', 'Criar LM', 'Entregar os documentos'];
+  const p = { pcpInicio: '2026-11-02', pcpFim: '2026-11-13', paralisacoes: [], checklist: [
+    { t: 'Análise de escopo e desenhos', dias: 2, done: true, doneAt: '2026-11-03', obs: 'ok', obsEm: 'x' },
+    { t: 'Criar lista de materiais', dias: 2, done: false, doneAt: null, obs: '', obsEm: null },
+    { t: 'Imprimir book em A3', dias: 2, done: true, doneAt: '2026-11-04', obs: '', obsEm: null }] };
+  assert.equal(Projeto.migrarChecklist(p, nomes), true);
+  assert.deepEqual(p.checklist.map((i) => i.t), nomes);
+  assert.deepEqual([p.checklist[0].done, p.checklist[0].obs], [true, 'ok']);
+  assert.equal(p.checklist[2].done, false);
+  assert.equal(p.checklist.reduce((a, i) => a + i.dias, 0), 10);   // 10 dias úteis
+  assert.equal(Projeto.migrarChecklist(p, nomes), false);           // já está na lista nova
+  const pronto = { pcpInicio: '2026-01-05', pcpFim: '2026-01-09', paralisacoes: [], checklist: [{ t: 'Velha', dias: 5, done: true, doneAt: '2026-01-09' }] };
+  assert.equal(Projeto.migrarChecklist(pronto, nomes), false);
+});

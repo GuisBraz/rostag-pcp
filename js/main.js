@@ -18,6 +18,7 @@ import * as Ops from './dados/ops.js';
 import * as DadosRncs from './dados/rncs.js';
 import * as DadosChecklist from './dados/checklist.js';
 import * as DadosProg from './dados/programacao.js';
+import * as DadosComerciais from './dados/comerciais.js';
 import * as Cronograma from './dominio/cronograma.js';
 import * as Projeto from './dominio/projeto.js';
 import * as Papeis from './dominio/papeis.js';
@@ -26,13 +27,15 @@ import { estado, buscarProjeto, limparFiltros } from './estado.js';
 import { $, iniciarDespachante } from './ui/dom.js';
 import { iniciarModais, fecharTodos } from './ui/modal.js';
 import { toast } from './ui/toast.js';
-import { redesenhar, atualizarChip, renderTudo } from './ui/app.js';
+import { redesenhar, atualizarChip, renderTudo, persistir } from './ui/app.js';
+import { CHECKLIST_PADRAO, CHECKLIST_PADRAO_DESDE } from './dominio/constantes.js';
 import { aplicarRota, irPara, abaInicial } from './ui/rota.js';
 import { aplicarTema, aplicarIdioma, aplicarPrefs, renderChecklistInfo } from './ui/preferencias.js';
 import { renderAtalhos, iniciarAtalhos } from './ui/atalhos.js';
 import { escutarNotificacoes, pararNotificacoes } from './ui/notificacoes.js';
 import { pararInscricaoChat } from './ui/detalhe.js';
 import { iniciarSidebar } from './ui/sidebar.js';
+import { registrarServiceWorker } from './ui/atualizacao.js';
 import { atualizarBadge } from './ui/filtros.js';
 import { mostrarViewAcesso, mostrarTelaAcesso, convitePendente, consumirConviteSeHouver } from './ui/acesso.js';
 import { atualizarSeletorEquipe, atualizarSemEquipe } from './ui/minhasEquipes.js';
@@ -53,6 +56,7 @@ function aoReceberProjetos(lista) {
   estado.projetos = Auth.papel() === 'tecnico' ? lista.filter(function (p) { return !Projeto.aguardandoCronograma(p); }) : lista;
   estado.carregado = true;
   Cronograma.invalidar();
+  migrarChecklistsUmaVez();
   if (primeira) {
     aplicarRota();
     if (estado.rotaPendente) {
@@ -62,6 +66,30 @@ function aoReceberProjetos(lista) {
     }
   }
   redesenhar();
+}
+
+// Checklist padrão novo (CHECKLIST_PADRAO): troca nos projetos com o PCP em
+// andamento que a pessoa pode editar, uma vez por sessão. Projeto com PCP
+// concluído fica como está (Projeto.migrarChecklist decide).
+let checklistMigrado = false;
+function migrarChecklistsUmaVez() {
+  if (checklistMigrado) return;
+  const papel = Auth.papel();
+  if (['gerente_pcp', 'gp', 'tecnico'].indexOf(papel) < 0) return;
+  checklistMigrado = true;
+  const uid = Auth.uid();
+  const meus = estado.projetos.filter(function (p) {
+    if (!Projeto.aberto(p)) return false;
+    if (papel === 'gerente_pcp') return true;
+    return papel === 'gp' ? p.gpUid === uid : p.responsavelUid === uid;
+  });
+  const mudaram = meus.filter(function (p) { return Projeto.migrarChecklist(p, CHECKLIST_PADRAO.slice()); });
+  if (mudaram.length) { Cronograma.invalidar(); persistir().catch(function () {}); }
+}
+function migrarChecklistPadraoDaEquipe(c) {
+  if (!c || !Papeis.gereProjetos(Auth.papel())) return;
+  if (String(c.atualizadoEm || '') >= CHECKLIST_PADRAO_DESDE) return;   // já salva depois da troca: é escolha da equipe
+  DadosChecklist.salvar(CHECKLIST_PADRAO.map(function (t) { return { t: t, dias: 0 }; }), c.atualizadoEm || null).catch(function (e) { console.warn('checklist padrão não atualizado:', e); });
 }
 
 function aoFalharProjetos(e) {
@@ -79,6 +107,7 @@ function aoReceberOps(lista) {
 function escutarEquipe() {
   equipeCarregada = Auth.equipeAtualId();
   papelCarregado = Auth.papel();
+  checklistMigrado = false;
   estado.projetos = [];
   estado.carregado = false;
   estado.ops = [];
@@ -105,7 +134,7 @@ function escutarEquipe() {
   else DadosRncs.pararEscuta();
   // checklist padrão: só quem cria projeto (Gerência e GP) precisa
   estado.checklistPadrao = null;
-  if (Papeis.gereProjetos(papelCarregado)) DadosChecklist.escutar(function (c) { estado.checklistPadrao = c; renderChecklistInfo(); });
+  if (Papeis.gereProjetos(papelCarregado)) DadosChecklist.escutar(function (c) { estado.checklistPadrao = c; renderChecklistInfo(); migrarChecklistPadraoDaEquipe(c); });
   else DadosChecklist.pararEscuta();
   estado.maquinas = []; estado.cfgFabrica = {}; estado.setores = {}; estado.terceirizadas = [];
   // terceirizadas da caldeiraria: quem programa a caldeiraria (e a Gerência)
@@ -116,6 +145,10 @@ function escutarEquipe() {
   } else {
     DadosCarga.pararEscuta();
   }
+  // serviços externos: o técnico é avisado para cobrar o fornecedor
+  estado.servicosDocs = [];
+  if (papelCarregado === 'tecnico' || papelCarregado === 'planejador') DadosComerciais.escutarServicos(function (l) { estado.servicosDocs = l; redesenhar(); });
+  else DadosComerciais.pararServicos();
   // equipe de antes dos cargos novos: o gerente converte os papéis uma vez
   Auth.migrarPapeisEquipe().then(function (n) { if (n) toast(T('cfg.papeisMigrados', n)); });
 }
@@ -171,6 +204,7 @@ function sairDoApp() {
   Ops.pararEscuta();
   DadosRncs.pararEscuta();
   DadosChecklist.pararEscuta();
+  DadosComerciais.pararServicos();
   pararInscricaoChat();
   fecharTodos();
   equipeCarregada = null;
@@ -225,13 +259,6 @@ function atualizarSessao() {
 }
 
 /* -------------------------------------------------------------- boot */
-function registrarServiceWorker() {
-  if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('sw.js').catch(function (e) { console.info('service worker não registrado:', e && e.message); });
-  });
-}
-
 function bootar() {
   prefs.tema = temaInicial();
   aplicarTema();

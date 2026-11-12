@@ -121,9 +121,8 @@ export function distribuirTarefas(p) {
   if (!temCronograma(p) || !p.checklist || !p.checklist.length) return false;
   if (p.checklist.some(function (i) { return Number(i.dias) > 0 || i.done; })) return false;
   const total = Cronograma.duracaoUtil(p.pcpInicio, p.pcpFim, p.paralisacoes);
-  const n = p.checklist.length;
-  const base = Math.floor(total / n), sobra = total - base * n;
-  p.checklist.forEach(function (i, k) { i.dias = Math.min(DIAS_MAX_TAREFA, base + (k < sobra ? 1 : 0)); });
+  const dias = dividirDias(p.checklist.map(function (i) { return i.t; }), total);
+  p.checklist.forEach(function (i, k) { i.dias = dias[k]; });
   return true;
 }
 
@@ -149,6 +148,82 @@ export function novoId() {
 }
 
 /* ------------------------------------------------- checklist padrão do PCP */
+function chaveTarefa(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+// Tarefas que costumam levar mais tempo pesam 3 na divisão dos dias; as outras, 1.
+const PESADAS = /CRIARLM|LISTADEMATERIAIS|LISTADEAVANCO|APROVEITAMENTODECHAPAS|DETALHAMENTODECHAPAS|DETALHARASPOSICOES|ORDEMDEPRODUCAO|ORDENSDEPRODUCAO/;
+export function pesoTarefa(t) { return PESADAS.test(chaveTarefa(t)) ? 3 : 1; }
+
+/**
+ * Divide "total" dias úteis entre as tarefas pelo peso: a primeira começa no
+ * início do PCP e a última termina no fim (a soma é o total). Com menos dias
+ * que tarefas, as leves ficam com 0 (dividem o dia) e as pesadas com 1.
+ */
+export function dividirDias(nomes, total) {
+  const pesos = nomes.map(pesoTarefa);
+  const n = nomes.length;
+  if (!n) return [];
+  total = Math.max(0, Math.round(total || 0));
+  const minimo = pesos.map(function (w) { return total >= n ? 1 : (w > 1 ? 1 : 0); });
+  let base = minimo.reduce(function (a, b) { return a + b; }, 0);
+  if (base > total) {   // nem as pesadas cabem: 1 dia para as primeiras pesadas
+    let resta = total;
+    return pesos.map(function (w) { if (w > 1 && resta > 0) { resta--; return 1; } return 0; });
+  }
+  const sobra = total - base, somaPesos = pesos.reduce(function (a, b) { return a + b; }, 0);
+  const exato = pesos.map(function (w) { return sobra * w / somaPesos; });
+  const dias = exato.map(function (x, i) { return minimo[i] + Math.floor(x); });
+  let falta = total - dias.reduce(function (a, b) { return a + b; }, 0);
+  // o que sobra do arredondamento vai para as maiores frações (pesadas primeiro no empate)
+  const ordem = exato.map(function (x, i) { return i; }).sort(function (a, b) { return (exato[b] - Math.floor(exato[b])) - (exato[a] - Math.floor(exato[a])) || pesos[b] - pesos[a] || a - b; });
+  for (let k = 0; falta > 0; k = (k + 1) % n) { dias[ordem[k]]++; falta--; }
+  return dias.map(function (d) { return Math.min(DIAS_MAX_TAREFA, d); });
+}
+
+// Equivalências entre a lista antiga e a nova (o que já foi marcado não se perde).
+const EQUIVALENTES = {
+  ANALISEDEESCOPO: ['ANALISEDEESCOPOEDESENHOS'],
+  SCITENSCRITICOS: ['SOLICITARITENSCRITICOSQUANDOAPLICAVEL', 'SOLICITARITENSCRITICOS'],
+  CRIARLM: ['CRIARLISTADEMATERIAIS'],
+  APROVEITAMENTODELAMINADOS: ['CRIARAPROVEITAMENTODELAMINADOS'],
+  SCLAMINADOS: ['EMITIRSCDELAMINADOS'],
+  APROVEITAMENTODECHAPAS: ['DETALHARASPOSICOESEMCHAPAS', 'CRIARAPROVEITAMENTODECHAPAS'],
+  SCCHAPAS: ['EMITIRSCDASCHAPAS', 'EMITIRSCDECHAPAS'],
+  DETALHAMENTODEDOBRAQUANDOAPLICAVEL: ['CRIARCROQUIDEDOBRAQUANDOAPLICAVEL'],
+  SCDOBRAQUANDOAPLICAVEL: ['EMITIRSCDEDOBRAQUANDOAPLICAVEL'],
+  CRIARORDEMDEPRODUCAO: ['CRIARASORDENSDEPRODUCAO'],
+  IMPRIMIRASOPS: ['IMPRIMIRASOPS'],
+  ENTREGAROSDOCUMENTOS: ['ENTREGAROSDOCUMENTOSPARAARESPONSAVELOPPGMEPP']
+};
+
+/**
+ * Troca o checklist do projeto pela lista nova, se o PCP ainda não terminou.
+ * Tarefas equivalentes levam o que já estava marcado (feito, data, observação);
+ * os dias são redistribuídos pelo peso. Devolve true se mudou.
+ */
+export function migrarChecklist(p, nomesNovos) {
+  if (!p || !Array.isArray(p.checklist)) return false;
+  const atual = p.checklist.map(function (i) { return chaveTarefa(i.t); });
+  const novos = nomesNovos.map(chaveTarefa);
+  if (atual.length === novos.length && atual.every(function (k, i) { return k === novos[i]; })) return false;
+  if (temCronograma(p) && p.checklist.length && Cronograma.calcular(p).concluido) return false;   // PCP já concluído: fica como está
+  const usados = {};
+  const acha = function (k) {
+    const alvos = [k].concat(EQUIVALENTES[k] || []);
+    for (let i = 0; i < p.checklist.length; i++) {
+      if (!usados[i] && alvos.indexOf(atual[i]) >= 0) { usados[i] = true; return p.checklist[i]; }
+    }
+    return null;
+  };
+  const total = temCronograma(p) ? Cronograma.duracaoUtil(p.pcpInicio, p.pcpFim, p.paralisacoes) : 0;
+  const dias = dividirDias(nomesNovos, total);
+  p.checklist = nomesNovos.map(function (t, i) {
+    const velho = acha(novos[i]);
+    return { t: t, dias: temCronograma(p) ? dias[i] : 0, done: !!(velho && velho.done), doneAt: velho ? velho.doneAt || null : null,
+      obs: velho ? velho.obs || '' : '', obsEm: velho ? velho.obsEm || null : null };
+  });
+  return true;
+}
 export const MAX_TAREFAS_PADRAO = 60;
 export const MAX_TEXTO_TAREFA = 120;
 

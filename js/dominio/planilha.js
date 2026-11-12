@@ -53,7 +53,10 @@ const COLUNAS = {
   acab: function (k) { return k === 'ACAB' || k === 'ACABAMENTO'; },
   avTotal: function (k) { return k.indexOf('AVANCOTOTAL') === 0; },
   avUsi: function (k) { return k.indexOf('AVANCOUSI') === 0; },
-  obs: function (k) { return k.indexOf('OBSERVA') === 0; }
+  obs: function (k) { return k.indexOf('OBSERVA') === 0; },
+  sc: function (k) { return k === 'SC' || k === 'SCITEM' || k === 'NSC' || k.indexOf('SOLICITACAO') === 0; },
+  pc: function (k) { return k === 'PC' || k === 'PCITEM' || k === 'NPC' || k.indexOf('PEDIDO') === 0; },
+  fornecedor: function (k) { return k.indexOf('FORNECEDOR') === 0; }
 };
 
 export { chave, texto };

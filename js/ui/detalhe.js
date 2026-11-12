@@ -24,6 +24,7 @@ import * as Pedidos from './pedidos.js';
 import { renderCartoesTecnico } from './projetoTecnico.js';
 import * as Ops from '../dados/ops.js';
 import * as DadosAvanco from '../dados/avanco.js';
+import * as DadosComerciais from '../dados/comerciais.js';
 
 function janela(rot, corpo, obs, corObs) {
   return '<div class="rot">' + rot + '</div><div class="datas">' + corpo + '</div>' +
@@ -261,6 +262,8 @@ function excluirProjeto() {
     // — sem desfazer: as OPs apagadas não voltam
     Ops.apagarVarias(ops.map(function (o) { return o.id; })).then(function () {
       return DadosAvanco.apagar(p.id).catch(function (e) { console.warn('lista de avanço não apagada:', e); });
+    }).then(function () {
+      return DadosComerciais.apagarDoProjeto(p.id);
     }).then(function () {
       estado.projetos = estado.projetos.filter(function (x) { return x.id !== p.id; });
       irPara('projetos');

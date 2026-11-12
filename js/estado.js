@@ -17,6 +17,7 @@ export const estado = {
   cfgFabrica: {},            // capacidade da caldeiraria (carga fábrica)
   setores: {},               // setor do PDF da OP → máquina (config/setores)
   rncs: [],                  // registros de não conformidade que este cargo enxerga
+  servicosDocs: [],          // serviços externos dos projetos (avisos de cobrança do técnico)
   checklistPadrao: null,     // config/checklist da equipe ({itens, atualizadoEm, porNome}); null = lista de fábrica
   filtroFab: { visao: '', area: '', projeto: '', cliente: '', busca: '' },
   leProjetos: false          // o cargo lê projetos (sem o projeto da OP = projeto excluído)

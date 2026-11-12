@@ -1,8 +1,10 @@
 /* ---------------------------------------------------------------------------
    Página do projeto do técnico de processo: tudo do projeto dentro dele.
      Checklist           → abre e fecha o cronograma do PCP (começa fechado)
-     Planilha de avanço  → tela cheia: espelho da planilha com o avanço ao vivo
+     Planilha de avanço  → tela cheia: a lista do projeto (sem os comerciais)
      Ordens de Produção  → tela cheia: as OPs do projeto (roteiro do PDF)
+     Itens comerciais    → tela cheia: pedidos de compra e chegadas (comerciais.js)
+     Serviços            → tela cheia: envios e retornos dos serviços externos (servicos.js)
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto, opsDoProjeto } from '../estado.js';
 import { esc, numeroBr, dataHora } from '../nucleo/fmt.js';
@@ -20,9 +22,12 @@ import { toast } from './toast.js';
 import { avisoErro } from './app.js';
 import './listaOps.js';
 import { abrirPlanilha } from './fabrica.js';
+import { resumoCartao as resumoComerciais } from './comerciais.js';
+import { resumoCartao as resumoServicos } from './servicos.js';
 import { exportarPlanilha } from './avanco.js';
 
-let checklistAberto = false;
+let checklistAberto = false;   // começa fechado toda vez que se entra num projeto (rota.js)
+export function fecharChecklist() { checklistAberto = false; }
 let espelho = null;   // { projetoId, doc }
 
 function cartao(acao, arg, titulo, valorHtml, detalhe, corVal, ativo) {
@@ -33,11 +38,12 @@ function cartao(acao, arg, titulo, valorHtml, detalhe, corVal, ativo) {
     '<div class="ger-area-det">' + esc(detalhe) + '</div></button>';
 }
 
-// Os três cartões no topo da página do projeto (só para o técnico).
+// Os cartões no topo da página do projeto (só para o técnico).
 export function renderCartoesTecnico(p) {
   const c = Projeto.aguardandoCronograma(p) ? null : Cronograma.calcular(p);
   const atrasadas = c ? c.itens.filter(function (i) { return i.situacao === 'atrasada'; }).length : 0;
   const st = Producao.estatisticas(opsDoProjeto(p.id));
+  const com = resumoComerciais(p.id), serv = resumoServicos(p.id);
   $('tec-areas').innerHTML =
     cartao('alternarChecklist', p.id, T('tec.checklist'), c ? Projeto.progresso(p) + '<small>%</small>' : '—',
       !c ? T('sit.aguardando') : (atrasadas ? T('ar.procAtrasadas', plural(atrasadas, 'ar.ativ', 'ar.ativs')) : T('ar.procOk')),
@@ -45,7 +51,9 @@ export function renderCartoesTecnico(p) {
     cartao('abrirEspelho', p.id, T('tec.planilha'), st.total ? st.pct + '<small>%</small>' : '—',
       st.total ? T('tec.planilhaDet', numeroBr(st.pecasFeitas), numeroBr(st.pecas)) : T('tec.semPlanilha'), st.total ? '--violet' : '--ink-faint') +
     cartao('abrirListaOpsProjeto', p.id, T('tec.ops'), String(st.total),
-      st.total ? T('tec.opsDet', st.abertas, st.retrabalho) : T('d.semOps'), st.retrabalho ? '--rust' : '--ink');
+      st.total ? T('tec.opsDet', st.abertas, st.retrabalho) : T('d.semOps'), st.retrabalho ? '--rust' : '--ink') +
+    cartao('abrirComerciais', p.id, T('tec.comerciais'), com ? com.valor : '—', com ? com.detalhe : T('com.abrir'), com ? com.cor : '--ink-faint') +
+    cartao('abrirServicos', p.id, T('tec.servicos'), serv ? serv.valor : '—', serv ? serv.detalhe : T('serv.abrir'), serv ? serv.cor : '--ink-faint');
   $('tec-checklist-card').hidden = !checklistAberto;
 }
 
@@ -53,80 +61,63 @@ export function renderCartoesTecnico(p) {
 function podeMexer(p) { return !!p && Projeto.aberto(p) && (Auth.souGerente() || p.responsavelUid === Auth.uid()); }
 
 function abrirEspelho(projetoId) {
+  projetoId = projetoId || estado.idDetalhe;
+  if (!projetoId) return;
   espelho = { projetoId: projetoId, doc: undefined };
   abrirModal('modal-espelho', { aoFechar: function () { espelho = null; } });
   renderEspelho();
-  DadosAvanco.ler(projetoId).then(function (doc) {
+  DadosAvanco.lerGuardada(projetoId).then(function (doc) {
     if (!espelho || espelho.projetoId !== projetoId) return;
     espelho.doc = doc;
     renderEspelho();
   }).catch(function (e) { console.warn(e); if (espelho) { espelho.doc = null; $('esp-corpo').innerHTML = '<div class="empty-state">' + esc(T('av.erroLer')) + '</div>'; } });
 }
 
-function valorCelula(v, ehPct) {
-  if (v == null || v === '') return '';
-  if (typeof v === 'number') return ehPct ? Math.round(v * 100) + '%' : numeroBr(v);
-  return esc(v);
+// Colunas da planilha personalizada: [rótulo, campo do item ou função]
+const MARCA = function (v) { return v ? '<span class="pl-marca" aria-label="✓">●</span>' : ''; };
+const COLUNAS = [
+  ['pl.rev', function (i) { return esc(i.rev); }, 'pl-c'],
+  ['pl.desenho', function (i) { return esc(i.desenho); }, 'mono'],
+  ['pl.posicao', function (i) { return esc(i.posicao); }, 'pl-c'],
+  ['pl.descricao', function (i) {
+    return '<span class="pl-desc">' + esc(i.descricao) + '</span>' +
+      (i.obs ? ' <span class="pl-obs" title="' + esc(i.obs) + '" aria-label="' + esc(T('pl.obs') + ': ' + i.obs) + '" tabindex="0">💬</span>' : '');
+  }, 'pl-descricao'],
+  ['pl.qtd', function (i) { return i.qtd == null ? '' : numeroBr(i.qtd); }, 'num'],
+  ['pl.pesoUnit', function (i) { return i.pesoUnit == null ? '' : numeroBr(i.pesoUnit); }, 'num'],
+  ['pl.pesoTotal', function (i) { return i.pesoTotal == null ? '' : numeroBr(i.pesoTotal); }, 'num'],
+  ['pl.comercial', function (i) { return MARCA(i.comercial); }, 'pl-c'],
+  ['pl.cald', function (i) { return MARCA(i.cald); }, 'pl-c'],
+  ['pl.usinagem', function (i) { return MARCA(i.usin); }, 'pl-c'],
+  ['pl.pintura', function (i) { return MARCA(i.marcas && i.marcas.pintura); }, 'pl-c'],
+  ['pl.oxidacao', function (i) { return MARCA(i.marcas && i.marcas.oxidacao); }, 'pl-c'],
+  ['pl.servicos', function (i) { return MARCA(i.marcas && i.marcas.servicoExterno); }, 'pl-c'],
+  ['pl.ttat', function (i) { return MARCA(i.marcas && i.marcas.ttat); }, 'pl-c'],
+  ['pl.produto', function (i) { return esc(i.produto); }, 'mono'],
+  ['pl.opCald', function (i) { return esc(i.opCald); }, 'mono'],
+  ['pl.opUsin', function (i) { return esc(i.opUsin); }, 'mono']
+];
+
+// A lista do projeto do jeito do site: só as peças (os comerciais têm o cartão deles).
+function tabelaPlanilha(itens) {
+  const pecas = itens.filter(function (i) { return !i.comercial; });
+  if (!pecas.length) return '<div class="empty-state">' + esc(T('pl.vazia')) + '</div>';
+  const pos = pecas.map(function (i) { return String(i.posicao || '').trim(); });
+  return '<div class="table-wrap pl-wrap"><table class="ord-tab pl-tab"><thead><tr>' +
+    COLUNAS.map(function (c) { return '<th class="' + c[2] + '">' + esc(T(c[0])) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    pecas.map(function (i, n) {
+      const conjunto = !pos[n] || pos.some(function (o) { return pos[n] && o.indexOf(pos[n] + '.') === 0; });
+      return '<tr class="' + (conjunto ? 'pl-conjunto' : '') + (i.nivel ? ' pl-nivel' + Math.min(i.nivel, 3) : '') + '">' +
+        COLUNAS.map(function (c) { return '<td class="' + c[2] + '">' + c[1](i) + '</td>'; }).join('') + '</tr>';
+    }).join('') + '</tbody></table></div>';
 }
 
-// A aba como no Excel: cabeçalho em dois níveis, células mescladas, marcas e o avanço por peças.
-function tabelaEspelho(doc, ops) {
-  const m = doc.matriz;
-  const lidos = Avanco.itens(m);
-  if (!lidos) return '<div class="empty-state">' + esc(T('av.erroLer')) + '</div>';
-  const h = lidos.cabecalho.linha, c = lidos.cabecalho.cols;
-  const r = Avanco.preencher(m.map(function (l) { return l.slice(); }), doc.merges, ops);
-  const vivo = {};
-  (r ? r.celulas : []).forEach(function (x) { vivo[x.r + '|' + x.c] = x; });
-  const ncols = Math.min(Avanco.MAX_COLUNAS, m.reduce(function (n, l) { return Math.max(n, l.length); }, 0));
-  const span = {}, coberto = {};
-  (doc.merges || []).forEach(function (g) {
-    span[g.s.r + '|' + g.s.c] = { r: g.e.r - g.s.r + 1, c: g.e.c - g.s.c + 1 };
-    for (let i = g.s.r; i <= g.e.r; i++) for (let j = g.s.c; j <= g.e.c; j++) if (i !== g.s.r || j !== g.s.c) coberto[i + '|' + j] = true;
-  });
-  const comerciais = {};
-  lidos.itens.forEach(function (it) { if (it.comercial) comerciais[it.linha] = true; });
-  const flags = [c.fCald, c.fUsin, c.fPintura, c.fOxidacao, c.fServico, c.fTtat, c.comercial].filter(function (x) { return x != null; });
-  // largura de cada coluna: a da planilha; sem ela, uma padrão pelo tipo da coluna
-  const padrao = {};
-  padrao[c.descricao] = 240; padrao[c.obs] = 240; padrao[c.desenho] = 90; padrao[c.produto] = 96;
-  padrao[c.opCald] = 104; padrao[c.opUsin] = 104; padrao[c.item] = 44; padrao[c.posicao] = 64;
-  flags.forEach(function (j) { padrao[j] = 54; });
-  const larg = [];
-  for (let j = 0; j < ncols; j++) {
-    const w = (doc.larguras || [])[j];
-    larg.push(w ? Math.max(40, Math.min(360, Math.round(w * 7.5))) : (padrao[j] || 74));
-  }
-  let html = '<table class="esp-tab" style="width:' + larg.reduce(function (t, w) { return t + w; }, 0) + 'px"><colgroup>';
-  for (let j = 0; j < ncols; j++) html += '<col style="width:' + larg[j] + 'px">';
-  html += '</colgroup><tbody>';
-  m.forEach(function (linha, i) {
-    const classe = i < h - 1 ? 'esp-topo' : (i === h - 1 ? 'esp-grupo' : (i === h ? 'esp-cab' : 'esp-item' + (comerciais[i] ? ' esp-comercial' : '')));
-    html += '<tr class="' + classe + '">';
-    for (let j = 0; j < ncols; j++) {
-      const k = i + '|' + j;
-      if (coberto[k]) continue;
-      const sp = span[k];
-      const x = vivo[k];
-      const v = x ? x.v : linha[j];
-      const ehPct = (x && x.z === '0%') || (j === c.avUsi && i > h);
-      const cls = [];
-      if (x) cls.push('esp-vivo' + (Number(x.v) > 0 ? ' esp-ok' : ''));
-      if (i > h && flags.indexOf(j) >= 0) cls.push('esp-flag');
-      if (typeof v === 'number') cls.push('esp-num');
-      if (j === c.obs && i > h && v) cls.push('esp-obs');
-      html += '<td' + (sp ? (sp.c > 1 ? ' colspan="' + sp.c + '"' : '') + (sp.r > 1 ? ' rowspan="' + sp.r + '"' : '') : '') + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + '>' + valorCelula(v, ehPct) + '</td>';
-    }
-    html += '</tr>';
-  });
-  return html + '</tbody></table>';
-}
+function kpi(rotulo, valor) { return '<div class="card kpi pl-kpi"><div class="label">' + esc(rotulo) + '</div><div class="value-row"><span class="value">' + valor + '</span></div></div>'; }
 
 export function renderEspelho() {
   if (!espelho || !$('modal-espelho').classList.contains('open')) return;
   const p = buscarProjeto(espelho.projetoId);
   const ops = opsDoProjeto(espelho.projetoId);
-  const st = Producao.estatisticas(ops);
   $('esp-titulo').textContent = T('esp.titulo', (p && p.commessa) || '');
   $('esp-sub').textContent = (p && p.descricao) || '';
   const mexe = podeMexer(p), doc = espelho.doc;
@@ -134,12 +125,16 @@ export function renderEspelho() {
     (mexe ? '<button type="button" class="btn btn-outline" data-acao="abrirPlanilha" data-arg="' + esc(espelho.projetoId) + '">' + esc(T('esp.subir')) + '</button>' : '') +
     (doc ? '<button type="button" class="btn btn-outline" data-acao="baixarEspelho">' + esc(T('av.baixar')) + '</button>' : '') +
     (mexe && (doc || ops.length) ? '<button type="button" class="btn btn-danger" data-acao="apagarListaOps">' + esc(T('esp.apagar')) + '</button>' : '');
-  $('esp-resumo').textContent = st.total ? T('esp.resumo', st.pct, numeroBr(st.pecasFeitas), numeroBr(st.pecas), numeroBr(st.caldeiraria.pecasFeitas), numeroBr(st.caldeiraria.pecas),
-    numeroBr(st.usinagem.pecasFeitas), numeroBr(st.usinagem.pecas), numeroBr(st.pecasRnc)) : '';
+  $('esp-resumo').innerHTML = '';
   if (doc === undefined) { $('esp-corpo').innerHTML = '<div class="hint-txt">' + esc(T('av.carregando')) + '</div>'; return; }
   if (!doc) { $('esp-corpo').innerHTML = '<div class="empty-state">' + esc(T(mexe ? 'esp.semListaSubir' : 'av.semLista')) + '</div>'; $('esp-rodape').textContent = ''; return; }
-  $('esp-corpo').innerHTML = '<div class="esp-wrap">' + tabelaEspelho(doc, ops) + '</div>';
-  $('esp-rodape').textContent = T('av.enviada', doc.enviadoPorNome || '—', dataHora(doc.enviadoEm), doc.arquivo || '') + ' · ' + T('esp.legenda');
+  const lidos = Avanco.itens(doc.matriz);
+  if (!lidos) { $('esp-corpo').innerHTML = '<div class="empty-state">' + esc(T('av.erroLer')) + '</div>'; return; }
+  const r = Avanco.resumoPecas(lidos.itens);
+  $('esp-resumo').innerHTML = '<div class="pl-kpis">' + kpi(T('pl.kPecas'), numeroBr(r.pecas)) + kpi(T('pl.kPeso'), numeroBr(r.peso) + '<small> kg</small>') +
+    kpi(T('pl.kUsinagem'), numeroBr(r.usinagem)) + kpi(T('pl.kCaldeiraria'), numeroBr(r.caldeiraria)) + '</div>';
+  $('esp-corpo').innerHTML = tabelaPlanilha(lidos.itens);
+  $('esp-rodape').textContent = T('av.enviada', doc.enviadoPorNome || '—', dataHora(doc.enviadoEm), doc.arquivo || '');
 }
 
 // Apagar a lista e as OPs do projeto (para subir de novo). O técnico apaga as

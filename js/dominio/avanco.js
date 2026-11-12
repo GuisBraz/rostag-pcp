@@ -74,10 +74,33 @@ export function itens(matriz) {
       comercial: c.comercial != null && marcado(l[c.comercial]),
       cald: !!opCald || (c.fCald != null && marcado(l[c.fCald])),
       usin: !!opUsin || (c.fUsin != null && marcado(l[c.fUsin])),
-      marcas: marcasDa(l, c), produto: cel(l, 'produto'), opCald: opCald, opUsin: opUsin, obs: cel(l, 'obs')
+      marcas: marcasDa(l, c), produto: cel(l, 'produto'), opCald: opCald, opUsin: opUsin, obs: cel(l, 'obs'),
+      rev: cel(l, 'rev'), sc: cel(l, 'sc').replace(/\D/g, ''), pc: cel(l, 'pc').replace(/\D/g, ''), fornecedor: cel(l, 'fornecedor')
     });
   }
   return { cabecalho: cab, itens: lista };
+}
+
+/**
+ * Resumo do topo da planilha personalizada (sem os comerciais): peças, peso,
+ * peças de usinagem e de caldeiraria. Conta só as peças finais — o conjunto
+ * (posição com filhas, "18" de "18.1") já soma o peso delas.
+ */
+export function resumoPecas(lista) {
+  const nc = (lista || []).filter(function (i) { return !i.comercial; });
+  const pos = nc.map(function (i) { return texto(i.posicao); });
+  const r = { pecas: 0, peso: 0, usinagem: 0, caldeiraria: 0 };
+  nc.forEach(function (i, n) {
+    const p = pos[n];
+    if (p && pos.some(function (o) { return o.indexOf(p + '.') === 0; })) return;
+    const q = Number(i.qtd) || 0;
+    r.pecas += q;
+    r.peso += Number(i.pesoTotal) || 0;
+    if (i.usin) r.usinagem += q;
+    if (i.cald) r.caldeiraria += q;
+  });
+  r.peso = Math.round(r.peso * 10) / 10;
+  return r;
 }
 
 // OP "de pintura" do projeto, quando a planilha traz no resumo do topo.
