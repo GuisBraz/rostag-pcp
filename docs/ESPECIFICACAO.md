@@ -300,8 +300,10 @@ Sistema (quando apareceu, quando foi lido) fica em
 - `equipes/{id}/config/setores`: `mapa {SETOR: idDaMaquina | ''}`; programador
   de usinagem e Gerência gravam.
 - `equipes/{id}/rncs/{id}`: os campos do R02, `opId`, `projetoId`, `area`,
-  `gpUid`, `tecnicoUid`, `situacao` (`aberta`/`encerrada`). Só o CQ grava;
-  ninguém apaga.
+  `gpUid`, `tecnicoUid`, `situacao` (`aberta`/`encerrada`). O CQ grava tudo;
+  Gerência, o GP e o técnico do projeto gravam só a disposição
+  (`disposicao`, `dispResponsavel`, `dispData`) enquanto a RNC está aberta, e o
+  CQ é avisado. Ninguém apaga.
 - Projeto: `pedido {tipo, motivo, porUid, porNome, em}` enquanto espera a
   Gerência; `motivoCancelamento`. Equipe: `papeisMigrados`.
 - `equipes/{id}/config/checklist`: checklist padrão do PCP da equipe (`itens [{t, dias}]`, `atualizadoEm`, `porUid`, `porNome`); Gerência e GP gravam. Sem ele vale a lista de fábrica.

@@ -785,4 +785,8 @@ export default {
   'n.serv-cobrar':'{0}: cobrar {1} — {2}', 'n.serv-cobrarM':'{0} peça(s) com {1}: o prazo vence hoje ({2}).',
   'n.serv-cobrarAtrasoM':'{0} peça(s) com {1}: prazo venceu em {2} ({3} dia(s) de atraso). Cobre o fornecedor.',
   'versao.nova':'Uma versão nova do site foi publicada.', 'versao.recarregar':'Recarregar',
+  'rf.tituloDisposicao':'Disposição da RNC {0}', 'rf.salvarDisposicao':'Gravar disposição', 'rf.disposicaoSalva':'Disposição da RNC {0} gravada. O CQ foi avisado.',
+  'rf.notaDisposicao':'Escreva a disposição/correção. A reinspeção e o destino da OP continuam com o CQ.',
+  'notif.rncDisposicao':'RNC {0} (OP {1} · {2}): disposição dada por {3} — {4}',
+  'rf.campo.disposicao':'disposição',
 };

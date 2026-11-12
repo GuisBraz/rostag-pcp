@@ -456,6 +456,15 @@ service cloud.firestore {
         allow update: if souPapel(equipeId, 'cq')
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(camposForm())
           && textosOk(request.resource.data);
+        // disposição: Gerência, o GP e o técnico do projeto, enquanto a RNC está aberta
+        allow update: if (souGerenteDe(equipeId)
+            || (souPapel(equipeId, 'gp') && resource.data.gpUid == request.auth.uid)
+            || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid))
+          && resource.data.situacao == 'aberta'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['disposicao', 'dispResponsavel', 'dispData', 'atualizadoEm'])
+          && request.resource.data.disposicao is string && request.resource.data.disposicao.size() <= 3000
+          && request.resource.data.dispResponsavel is string && request.resource.data.dispResponsavel.size() <= 60
+          && request.resource.data.dispData is string && request.resource.data.dispData.size() <= 10;
         allow delete: if false;
       }
 

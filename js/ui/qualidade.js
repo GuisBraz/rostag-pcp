@@ -70,13 +70,24 @@ function cqAprovar() {
 }
 
 /* --------------------------------------------------- formulário da RNC */
-// modo: 'nova' (CQ abrindo) · 'editar' (CQ: disposição, reinspeção...) · 'ver' (só leitura)
+// modo: 'nova' (CQ abrindo) · 'editar' (CQ: disposição, reinspeção...) ·
+// 'disposicao' (Gerência, GP e técnico do projeto: só a disposição) · 'ver' (só leitura)
 let form = null;   // { modo, op, rnc }
 
 const CAMPOS_TEXTO = ['numero', 'produto', 'desenho', 'rev', 'commessa', 'op', 'qtd', 'tag', 'item', 'setorOutros',
   'inspetor', 'qtdNc', 'dispResponsavel', 'reOp', 'reInspetor', 'reResponsavel'];
 const CAMPOS_AREA = ['descricao', 'disposicao', 'observacoes'];
 const CAMPOS_DATA = ['data', 'dispData', 'reData'];
+
+const CAMPOS_DISPOSICAO = ['disposicao', 'dispResponsavel', 'dispData'];
+
+// Quem dá a disposição (além do CQ): Gerência, o GP e o técnico do projeto, com a RNC aberta.
+function podeDispor(r) {
+  if (!r || r.situacao === 'encerrada') return false;
+  const papel = Auth.papel(), eu = Auth.uid();
+  return Auth.souGerente() || (papel === 'gp' && r.gpUid === eu) || (papel === 'tecnico' && r.tecnicoUid === eu);
+}
+function modoPara(r) { return Auth.souCQ() ? 'editar' : (podeDispor(r) ? 'disposicao' : 'ver'); }
 
 function preencher(r, somenteLeitura) {
   CAMPOS_TEXTO.concat(CAMPOS_AREA).concat(CAMPOS_DATA).forEach(function (k) {
@@ -106,17 +117,22 @@ export function abrirFormRnc(modo, op, rnc) {
   form = { modo: modo, op: op, rnc: rnc };
   const base = rnc || Rnc.rascunho(op, hoje(), Auth.nomeExibicao());
   if (modo === 'nova') base.numero = base.numero || Rnc.proximoNumero(estado.rncs);
-  preencher(base, modo === 'ver');
-  $('rnc-form-titulo').textContent = T(modo === 'nova' ? 'rf.tituloNova' : (modo === 'ver' ? 'rf.tituloVer' : 'rf.tituloEditar'), base.numero || '');
+  preencher(base, modo === 'ver' || modo === 'disposicao');
+  if (modo === 'disposicao') {
+    CAMPOS_DISPOSICAO.forEach(function (k) { $('rf-' + k).disabled = false; });
+    if (!$('rf-dispResponsavel').value) $('rf-dispResponsavel').value = Auth.nomeExibicao() || '';
+    if (!$('rf-dispData').value) $('rf-dispData').value = hoje();
+  }
+  $('rnc-form-titulo').textContent = T(modo === 'nova' ? 'rf.tituloNova' : (modo === 'ver' ? 'rf.tituloVer' : (modo === 'disposicao' ? 'rf.tituloDisposicao' : 'rf.tituloEditar')), base.numero || '');
   $('rnc-form-sub').textContent = op ? descricaoOp(op) : (rnc ? T('cq.opDesc', rnc.op, T('area.' + rnc.area), rnc.commessa, rnc.desenho, rnc.item || '—') : '');
   $('rnc-form-erro').textContent = '';
-  $('rnc-form-nota').textContent = modo === 'nova' ? T('rf.notaNova') : (modo === 'editar' ? T('rf.notaEditar') : '');
+  $('rnc-form-nota').textContent = modo === 'nova' ? T('rf.notaNova') : (modo === 'editar' ? T('rf.notaEditar') : (modo === 'disposicao' ? T('rf.notaDisposicao') : ''));
   $('rnc-form-salvar').style.display = modo === 'ver' ? 'none' : '';
-  $('rnc-form-salvar').textContent = T(modo === 'nova' ? 'rf.salvarNova' : 'rf.salvar');
+  $('rnc-form-salvar').textContent = T(modo === 'nova' ? 'rf.salvarNova' : (modo === 'disposicao' ? 'rf.salvarDisposicao' : 'rf.salvar'));
   // a reinspeção só faz sentido depois da RNC aberta
   document.getElementById('rnc-form').classList.toggle('rnc-sem-reinspecao', modo === 'nova');
   fecharModal('modal-baixa');
-  abrirModal('modal-rnc-form', { foco: modo === 'editar' ? 'rf-disposicao' : 'rf-descricao', aoFechar: function () { form = null; } });
+  abrirModal('modal-rnc-form', { foco: modo === 'editar' || modo === 'disposicao' ? 'rf-disposicao' : 'rf-descricao', aoFechar: function () { form = null; } });
 }
 
 function cqNovaRnc() { if (baixaOp) abrirFormRnc('nova', baixaOp, null); }
@@ -128,6 +144,7 @@ function cqReinspecionar() {
 
 function salvarFormRnc(_a, _b, btn) {
   if (!form || form.modo === 'ver') return;
+  if (form.modo === 'disposicao') { salvarDisposicao(btn); return; }
   const dados = coletar();
   const opDaRnc = form.op || (form.rnc && opPorId(form.rnc.opId));
   const v = Rnc.validar(dados, opDaRnc ? opDaRnc.qtd : null);
@@ -166,6 +183,21 @@ function salvarFormRnc(_a, _b, btn) {
       if (r.efeito && (r.efeito.opStatus === 'aprovada' || r.efeito.opStatus === 'desvio')) avisarProgramador(op);
     }).catch(function (e) { avisoErro(e, 'cq.erro'); }));
   });
+}
+
+// Gerência, GP ou técnico grava só a disposição; o CQ é avisado para seguir com a reinspeção.
+function salvarDisposicao(btn) {
+  const r = form.rnc, dados = {};
+  CAMPOS_DISPOSICAO.forEach(function (k) { dados[k] = $('rf-' + k).value.trim(); });
+  $('rf-disposicao').classList.toggle('invalid', !dados.disposicao);
+  if (!dados.disposicao) { $('rnc-form-erro').textContent = T('rf.faltou', T('rf.campo.disposicao')); $('rf-disposicao').focus(); return; }
+  comBotaoOcupado(btn, Rncs.salvarDisposicao(r, dados).then(function () {
+    fecharModal('modal-rnc-form');
+    toast(T('rf.disposicaoSalva', r.numero));
+    return Auth.uidsPorPapel(['cq']).then(function (cq) {
+      return Auth.notificarVarios(cq, 'rnc', T('notif.rncDisposicao', r.numero, r.op || '', r.commessa || '', Auth.nomeExibicao() || '', dados.disposicao.slice(0, 200)), r.projetoId);
+    }).catch(function (e) { console.warn('CQ não avisado:', e); });
+  }).catch(function (e) { avisoErro(e, 'cq.erro'); }));
 }
 
 function baixarPdfRnc(_a, _b, btn) {
@@ -218,7 +250,7 @@ function verRnc(id) {
   const r = rncPorId(id);
   if (!r) return;
   const op = opPorId(r.opId);
-  abrirFormRnc(Auth.souCQ() ? 'editar' : 'ver', op, r);
+  abrirFormRnc(modoPara(r), op, r);
 }
 function pdfRncDireto(id, _b, btn) {
   const r = rncPorId(id);
@@ -238,6 +270,6 @@ registrarAcoes({
   verRncDaOp: function (opId) {
     const o = opPorId(opId);
     const r = o && (rncPorId(o.rncAtualId) || rncsDaOp(o.id).pop());
-    if (r) abrirFormRnc(Auth.souCQ() ? 'editar' : 'ver', o, r);
+    if (r) abrirFormRnc(modoPara(r), o, r);
   }
 });

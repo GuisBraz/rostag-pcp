@@ -474,4 +474,8 @@ export default {
   'n.serv-cobrar':'{0}: follow up {1} — {2}', 'n.serv-cobrarM':'{0} part(s) at {1}: due today ({2}).',
   'n.serv-cobrarAtrasoM':'{0} part(s) at {1}: was due {2} ({3} day(s) late). Follow up with the supplier.',
   'versao.nova':'A new version of the site was published.', 'versao.recarregar':'Reload',
+  'rf.tituloDisposicao':'NCR {0} disposition', 'rf.salvarDisposicao':'Save disposition', 'rf.disposicaoSalva':'NCR {0} disposition saved. QC was notified.',
+  'rf.notaDisposicao':'Write the disposition/correction. Reinspection and the work order outcome stay with QC.',
+  'notif.rncDisposicao':'NCR {0} (WO {1} · {2}): disposition by {3} — {4}',
+  'rf.campo.disposicao':'disposition',
 };
