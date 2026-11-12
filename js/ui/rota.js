@@ -16,6 +16,7 @@ import { renderTelaNotificacoes } from './notificacoes.js';
 import { renderCarga } from './carga.js';
 import { renderOrdens } from './ordens.js';
 import { renderFinalizadas } from './finalizadas.js';
+import { fecharChecklist } from './projetoTecnico.js';
 import * as Auth from '../dados/auth.js';
 import * as Papeis from '../dominio/papeis.js';
 
@@ -90,7 +91,7 @@ export function aplicarRota() {
     $('projetos-list-view').style.display = existe ? 'none' : 'block';
     $('projeto-detail-view').style.display = existe ? 'block' : 'none';
     renderProjetos();
-    if (existe) { fecharReagendar(); renderDetalhe(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    if (existe) { fecharReagendar(); fecharChecklist(); renderDetalhe(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     // link para um projeto que ainda não chegou do servidor: tenta de novo quando os dados chegarem
     if (arg && !existe && !estado.carregado) estado.rotaPendente = arg;
   } else {

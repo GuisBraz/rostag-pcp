@@ -20,7 +20,7 @@ export function ler(projetoId) {
 }
 
 /**
- * Grava a aba inteira. lista: { matriz, merges, larguras, arquivo, aba, opPintura }.
+ * Grava a aba inteira. lista: { matriz, merges, larguras, arquivo, aba, opPintura, servicos }.
  * Rejeita com Error('avanco-grande') se não couber num documento.
  */
 export function salvar(projeto, lista) {
@@ -29,13 +29,32 @@ export function salvar(projeto, lista) {
     arquivo: String(lista.arquivo || '').slice(0, 160), aba: String(lista.aba || '').slice(0, 60),
     opPintura: String(lista.opPintura || '').slice(0, 40),
     linhas: Avanco.paraGravar(lista.matriz),
+    servicos: (lista.servicos || []).slice(0, 300).map(function (x) {
+      const r = {};
+      ['tipo', 'servico', 'peca', 'desenho', 'posicao', 'sc', 'pc', 'fornecedor', 'obs'].forEach(function (k) { r[k] = String(x[k] || '').slice(0, k === 'servico' || k === 'obs' ? 200 : 80); });
+      return r;
+    }),
     merges: (lista.merges || []).slice(0, 400).map(function (m) { return { s: { r: m.s.r, c: m.s.c }, e: { r: m.e.r, c: m.e.c } }; }),
     larguras: (lista.larguras || []).slice(0, Avanco.MAX_COLUNAS).map(function (w) { return Number(w) || null; }),
     enviadoEm: agoraIso(), enviadoPorUid: Auth.uid(), enviadoPorNome: String(Auth.nomeExibicao() || '').slice(0, 60)
   };
   if (lista.matriz.length > Avanco.MAX_LINHAS || JSON.stringify(dados).length > Avanco.MAX_BYTES) return Promise.reject(new Error('avanco-grande'));
+  esquecer(projeto.id);
   return doc(projeto.id).set(dados);
 }
 
 // Apaga a lista de avanço do projeto (subir de novo ou excluir o projeto).
-export function apagar(projetoId) { return doc(projetoId).delete(); }
+export function apagar(projetoId) { esquecer(projetoId); return doc(projetoId).delete(); }
+
+// Leitura guardada por projeto (cartões e janelas da página do projeto leem a
+// mesma planilha uma vez só). Subir ou apagar a lista limpa a guardada.
+const guardadas = {};
+export function lerGuardada(projetoId) {
+  const k = Auth.equipeAtualId() + '/' + projetoId;
+  // vale por 2 minutos: outra pessoa pode ter subido a planilha de novo
+  if (!guardadas[k] || Date.now() - guardadas[k].t > 120000) {
+    guardadas[k] = { t: Date.now(), p: ler(projetoId).catch(function (e) { delete guardadas[k]; throw e; }) };
+  }
+  return guardadas[k].p;
+}
+export function esquecer(projetoId) { delete guardadas[Auth.equipeAtualId() + '/' + projetoId]; }

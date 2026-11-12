@@ -908,3 +908,51 @@ describe('OP extra (fora da planilha) criada pelo PDF', () => {
     await assertFails(como(U).doc('equipes/E1/ops/extra3').set(op({ numero: '02099903001', origem: 'pdf', operacoes, criadoPorUid: U })));
   });
 });
+
+describe('itens comerciais, valores e serviços do projeto', () => {
+  const com = (extra) => ({ projetoId: 'doP', commessa: '2026-001', itens: { 'C|23|PORCA': { pc: '057577', chegadas: [{ qtd: 2, em: '2026-11-12' }] } },
+    pedidos: { '057577': { fornecedor: 'F' } }, atualizadoEm: 'x', porUid: P, ...extra });
+  const val = (extra) => ({ projetoId: 'doP', itens: { 'C|23|PORCA': { valorUnit: 4.5, valorTotal: 72 } }, pedidos: {}, atualizadoEm: 'x', porUid: P, ...extra });
+  const serv = (extra) => ({ projetoId: 'doP', commessa: '2026-001', itens: { 'S|1|9|TTAT': { envios: [{ qtd: 1, em: '2026-11-12', prazo: 3, tipoPrazo: 'uteis' }], retornos: [] } },
+    atualizadoEm: 'x', porUid: P, ...extra });
+
+  test('comerciais e serviços: técnico, GP do projeto e Gerência gravam; toda a equipe lê', async () => {
+    await assertSucceeds(como(P).doc('equipes/E1/comerciais/doP').set(com()));
+    await assertSucceeds(como(G).doc('equipes/E1/comerciais/doP').set(com({ porUid: G })));
+    await assertSucceeds(como(M).doc('equipes/E1/servicos/doP').set(serv({ porUid: M })));
+    await assertSucceeds(como(P).doc('equipes/E1/servicos/doP').set(serv()));
+    for (const uid of [C, M, G, P, T, U, K, Q]) {
+      await assertSucceeds(como(uid).doc('equipes/E1/comerciais/doP').get());
+      await assertSucceeds(como(uid).doc('equipes/E1/servicos/doP').get());
+    }
+    await assertSucceeds(como(Q).collection('equipes/E1/servicos').get());
+    await assertFails(como(Y).doc('equipes/E1/comerciais/doP').get());
+  });
+  test('comerciais e serviços: outro técnico e programadores não gravam; formato conferido', async () => {
+    for (const uid of [T, U, K, Q]) {
+      await assertFails(como(uid).doc('equipes/E1/comerciais/doP').set(com({ porUid: uid })));
+      await assertFails(como(uid).doc('equipes/E1/servicos/doP').set(serv({ porUid: uid })));
+    }
+    await assertFails(como(P).doc('equipes/E1/comerciais/doP').set(com({ porUid: M })));
+    await assertFails(como(P).doc('equipes/E1/comerciais/doP').set(com({ projetoId: 'doT' })));
+    await assertFails(como(P).doc('equipes/E1/comerciais/doP').set(com({ valor: 10 })));
+    await assertFails(como(P).doc('equipes/E1/servicos/doP').set(serv({ itens: 'x' })));
+    await semear('equipes/E1/servicos/doP', serv());
+    await assertFails(como(T).doc('equipes/E1/servicos/doP').delete());
+    await assertSucceeds(como(G).doc('equipes/E1/servicos/doP').delete());
+  });
+  test('valores: só Gerência, GP e técnico do projeto leem e gravam', async () => {
+    await assertSucceeds(como(P).doc('equipes/E1/comerciaisValores/doP').set(val()));
+    for (const uid of [C, M, G, P]) await assertSucceeds(como(uid).doc('equipes/E1/comerciaisValores/doP').get());
+    for (const uid of [T, U, K, Q, Y]) await assertFails(como(uid).doc('equipes/E1/comerciaisValores/doP').get());
+    for (const uid of [T, U, Q]) await assertFails(como(uid).doc('equipes/E1/comerciaisValores/doP').set(val({ porUid: uid })));
+    await assertFails(como(U).collection('equipes/E1/comerciaisValores').get());
+    await assertFails(como(P).doc('equipes/E1/comerciaisValores/doP').set(val({ commessa: 'x' })));
+  });
+  test('lista de avanço leva a aba SERVIÇOS', async () => {
+    const lista = { projetoId: 'doP', commessa: '2026-001', arquivo: 'A.xls', aba: 'AVANÇO', opPintura: '', linhas: [], merges: [], larguras: [],
+      servicos: [{ tipo: 'TTAT', desenho: '1', posicao: '9' }], enviadoEm: 'x', enviadoPorUid: P, enviadoPorNome: 'P' };
+    await assertSucceeds(como(P).doc('equipes/E1/avanco/doP').set(lista));
+    await assertFails(como(P).doc('equipes/E1/avanco/doP').set({ ...lista, servicos: 'x' }));
+  });
+});

@@ -492,7 +492,8 @@ service cloud.firestore {
         allow create, update: if (souGerenteDe(equipeId)
             || (souTecnicoDe(equipeId) && projeto(equipeId, projetoId).get('responsavelUid', null) == request.auth.uid))
           && request.resource.data.keys().hasOnly(['projetoId', 'commessa', 'arquivo', 'aba', 'opPintura', 'linhas', 'merges',
-               'larguras', 'enviadoEm', 'enviadoPorUid', 'enviadoPorNome'])
+               'larguras', 'servicos', 'enviadoEm', 'enviadoPorUid', 'enviadoPorNome'])
+          && request.resource.data.get('servicos', []) is list && request.resource.data.get('servicos', []).size() <= 300
           && request.resource.data.projetoId == projetoId
           && request.resource.data.enviadoPorUid == request.auth.uid
           && request.resource.data.linhas is list && request.resource.data.linhas.size() <= 1500
@@ -504,6 +505,39 @@ service cloud.firestore {
         allow delete: if souGerenteDe(equipeId)
           || (souPapel(equipeId, 'gp') && projeto(equipeId, projetoId).get('gpUid', null) == request.auth.uid)
           || (souTecnicoDe(equipeId) && projeto(equipeId, projetoId).get('responsavelUid', null) == request.auth.uid);
+      }
+
+      // Itens comerciais e serviços externos do projeto: toda a equipe lê;
+      // gravam e apagam Gerência, o GP e o técnico do projeto.
+      match /comerciais/{projetoId} {
+        allow read: if membroDe(equipeId);
+        allow create, update: if vejoProjeto(equipeId, projeto(equipeId, projetoId))
+          && request.resource.data.keys().hasOnly(['projetoId', 'commessa', 'itens', 'pedidos', 'atualizadoEm', 'porUid'])
+          && request.resource.data.projetoId == projetoId
+          && request.resource.data.porUid == request.auth.uid
+          && request.resource.data.itens is map && request.resource.data.itens.size() <= 800
+          && request.resource.data.pedidos is map && request.resource.data.pedidos.size() <= 200;
+        allow delete: if vejoProjeto(equipeId, projeto(equipeId, projetoId));
+      }
+      match /servicos/{projetoId} {
+        allow read: if membroDe(equipeId);
+        allow create, update: if vejoProjeto(equipeId, projeto(equipeId, projetoId))
+          && request.resource.data.keys().hasOnly(['projetoId', 'commessa', 'itens', 'atualizadoEm', 'porUid'])
+          && request.resource.data.projetoId == projetoId
+          && request.resource.data.porUid == request.auth.uid
+          && request.resource.data.itens is map && request.resource.data.itens.size() <= 800;
+        allow delete: if vejoProjeto(equipeId, projeto(equipeId, projetoId));
+      }
+      // Valores dos comerciais (do pedido de compra): só Gerência, o GP e o
+      // técnico do projeto leem e gravam — programadores e CQ não veem.
+      match /comerciaisValores/{projetoId} {
+        allow read, delete: if vejoProjeto(equipeId, projeto(equipeId, projetoId));
+        allow create, update: if vejoProjeto(equipeId, projeto(equipeId, projetoId))
+          && request.resource.data.keys().hasOnly(['projetoId', 'itens', 'pedidos', 'atualizadoEm', 'porUid'])
+          && request.resource.data.projetoId == projetoId
+          && request.resource.data.porUid == request.auth.uid
+          && request.resource.data.itens is map && request.resource.data.itens.size() <= 800
+          && request.resource.data.pedidos is map && request.resource.data.pedidos.size() <= 200;
       }
 
       // Configuração da fábrica (carga fábrica): capacidade da caldeiraria em

@@ -322,6 +322,11 @@
         <div class="card panel-pad area-painel" id="area-processos" role="tabpanel">
           <div class="panel-title" data-i18n="ac.titulo">Acompanhamento das atividades</div>
           <div class="panel-note" data-i18n="ac.nota">Andamento do cronograma do PCP feito pelo técnico de processo.</div>
+          <div class="esp-acoes ac-atalhos">
+            <button type="button" class="btn btn-outline" data-acao="abrirEspelho" data-i18n="ac.planilha">Planilha de avanço</button>
+            <button type="button" class="btn btn-outline" data-acao="abrirComerciais" data-i18n="ac.comerciais">Itens comerciais</button>
+            <button type="button" class="btn btn-outline" data-acao="abrirServicos" data-i18n="ac.servicos">Serviços</button>
+          </div>
           <div id="ac-resumo"></div>
           <div id="ac-gantt"></div>
         </div>
@@ -898,6 +903,128 @@
   </div>
 </div>
 
+<!-- ==================== ITENS COMERCIAIS (TELA CHEIA) ==================== -->
+<div class="modal-overlay tela-cheia" id="modal-comerciais" role="dialog" aria-modal="true" aria-labelledby="com-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="com-titulo">Itens comerciais</h2><div class="hint-txt" id="com-sub"></div></div>
+      <div class="esp-topo-acoes"><div id="com-acoes" class="esp-acoes"></div>
+        <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-comerciais" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button></div>
+    </div>
+    <div class="modal-body">
+      <div class="av-barra">
+        <div class="fab-visoes" id="com-filtros" role="tablist"></div>
+        <div class="ord-ferramentas"><input id="com-busca" class="av-busca" data-i18n-ph="com.buscaPh" placeholder="buscar item, SC, pedido, fornecedor..." aria-label="Buscar"></div>
+      </div>
+      <div class="hint" id="com-resumo" style="margin-bottom:8px;"></div>
+      <div id="com-corpo"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-com-item" role="dialog" aria-modal="true" aria-labelledby="comi-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="comi-titulo">Item</h2><div class="hint-txt" id="comi-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-com-item" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="campos-3">
+        <div class="field"><label for="comi-sc" data-i18n="com.c.sc">SC</label><input id="comi-sc" inputmode="numeric" maxlength="6" placeholder="036971"></div>
+        <div class="field"><label for="comi-pc" data-i18n="com.c.pc">PEDIDO</label><input id="comi-pc" inputmode="numeric" maxlength="6" placeholder="057577"></div>
+        <div class="field"><label for="comi-fornecedor" data-i18n="com.c.fornecedor">FORNECEDOR</label><input id="comi-fornecedor" maxlength="80"></div>
+      </div>
+      <div class="sub-titulo" data-i18n="com.chegadas">Chegadas</div>
+      <div id="comi-chegadas"></div>
+      <div class="campos-3">
+        <div class="field"><label for="comi-qtd" data-i18n="com.chegouQtd">CHEGOU (QTD)</label><input id="comi-qtd" type="number" min="0" step="any"></div>
+        <div class="field"><label for="comi-data" data-i18n="com.chegouEm">EM</label><input id="comi-data" type="date"></div>
+      </div>
+      <div class="hint-txt" data-i18n="com.chegadaNota">Deixe a quantidade vazia para só salvar SC, pedido e fornecedor.</div>
+      <div class="form-error" id="comi-erro"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-danger" id="comi-remover" data-acao="removerItemComercial" data-i18n="com.remover" hidden>Remover item</button>
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-com-item" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-acao="salvarItemComercial" data-i18n="btn.salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-com-pedido" role="dialog" aria-modal="true" aria-labelledby="ped-titulo">
+  <div class="modal-box modal-largo">
+    <div class="modal-header">
+      <h2 id="ped-titulo" data-i18n="com.ped.titulo">Importar pedido de compra (PDF)</h2>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-com-pedido" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint-txt" style="margin-bottom:12px;" data-i18n="com.ped.nota">Suba o PDF do pedido de compra. O site lê os itens da commessa deste projeto e liga cada um ao item da planilha pelo código do produto, depois pela SC. Confira antes de gravar.</div>
+      <div class="field"><label for="ped-arquivo" data-i18n="fab.arquivo">ARQUIVO</label><input type="file" id="ped-arquivo" accept=".pdf,application/pdf" data-change="lerPedidoPdf"></div>
+      <div id="ped-corpo"></div>
+      <div class="form-error" id="ped-erro"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-com-pedido" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="ped-gravar" data-acao="gravarPedido" disabled data-i18n="com.ped.gravar">Gravar pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SERVIÇOS (TELA CHEIA) ==================== -->
+<div class="modal-overlay tela-cheia" id="modal-servicos" role="dialog" aria-modal="true" aria-labelledby="serv-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="serv-titulo">Serviços</h2><div class="hint-txt" id="serv-sub"></div></div>
+      <div class="esp-topo-acoes">
+        <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-servicos" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button></div>
+    </div>
+    <div class="modal-body">
+      <div class="av-barra">
+        <div class="fab-visoes" id="serv-filtros" role="tablist"></div>
+        <div class="ord-ferramentas"><input id="serv-busca" class="av-busca" data-i18n-ph="serv.buscaPh" placeholder="buscar serviço, peça, fornecedor..." aria-label="Buscar"></div>
+      </div>
+      <div class="hint" id="serv-resumo" style="margin-bottom:8px;"></div>
+      <div id="serv-corpo"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-serv-mov" role="dialog" aria-modal="true" aria-labelledby="smov-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="smov-titulo">Serviço</h2><div class="hint-txt" id="smov-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-serv-mov" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="smov-hist"></div>
+      <div id="smov-env" class="smov-bloco">
+        <div class="sub-titulo" data-i18n="serv.envio">Envio ao fornecedor</div>
+        <div class="campos-3">
+          <div class="field"><label for="smov-env-data" data-i18n="serv.enviadoEm">ENVIADO EM</label><input id="smov-env-data" type="date"></div>
+          <div class="field"><label for="smov-env-qtd" data-i18n="serv.c.qtd">QTD</label><input id="smov-env-qtd" type="number" min="0" step="any"></div>
+          <div class="field"><label for="smov-env-fornecedor" data-i18n="serv.c.fornecedor">FORNECEDOR</label><input id="smov-env-fornecedor" maxlength="80"></div>
+        </div>
+        <div class="campos-3">
+          <div class="field"><label for="smov-env-prazo" data-i18n="serv.prazo">PRAZO (DIAS)</label><input id="smov-env-prazo" type="number" min="1" max="365" step="1"></div>
+          <div class="field"><label for="smov-env-tipo" data-i18n="serv.contagem">CONTAGEM</label>
+            <select id="smov-env-tipo"><option value="uteis" data-i18n="serv.uteis">Dias úteis</option><option value="corridos" data-i18n="serv.corridos">Dias corridos</option></select></div>
+          <div class="field smov-previsto"><span class="hint-txt" id="smov-env-previsto"></span></div>
+        </div>
+        <button type="button" class="btn btn-primary" data-acao="registrarEnvio" data-i18n="serv.registrarEnvio">Registrar envio</button>
+      </div>
+      <div id="smov-ret" class="smov-bloco" hidden>
+        <div class="sub-titulo" data-i18n="serv.retorno">Retorno</div>
+        <div class="campos-3">
+          <div class="field"><label for="smov-ret-data" data-i18n="serv.voltouEm">VOLTOU EM</label><input id="smov-ret-data" type="date"></div>
+          <div class="field"><label for="smov-ret-qtd" data-i18n="serv.c.qtd">QTD</label><input id="smov-ret-qtd" type="number" min="0" step="any"></div>
+        </div>
+        <button type="button" class="btn btn-outline" data-acao="registrarRetorno" data-i18n="serv.registrarRetorno">Registrar retorno</button>
+      </div>
+      <div class="form-error" id="smov-erro"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ==================== DETALHE DA OP ==================== -->
 <div class="modal-overlay" id="modal-op-detalhe" role="dialog" aria-modal="true" aria-labelledby="opd-titulo">
   <div class="modal-box modal-largo">
@@ -1424,6 +1551,12 @@
   <span>Carregando…</span>
 </div>
 
+<div id="aviso-versao" class="aviso-versao" role="status" hidden>
+  <span class="aviso-versao-ico" aria-hidden="true">⟳</span>
+  <span data-i18n="versao.nova">Uma versão nova do site foi publicada.</span>
+  <button type="button" class="btn btn-primary btn-mini" data-acao="recarregarVersao" data-i18n="versao.recarregar">Recarregar</button>
+  <button type="button" class="btn-x" data-acao="fecharAvisoVersao" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+</div>
 <div id="toasts" aria-live="polite"></div>
 </body>
 </html>

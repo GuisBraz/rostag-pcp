@@ -169,17 +169,50 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 ## 4.2 Página do projeto do técnico e Todas as OPs
 
 - **Cartões no projeto (só técnico):** **Checklist** (abre e fecha o cronograma
-  do PCP), **Planilha de avanço** (tela cheia: espelho da aba, com as colunas de
-  avanço preenchidas ao vivo; subir, baixar e "apagar lista e OPs") e **Ordens de
-  Produção** (tela cheia: as OPs do projeto, importar PDF e OP manual; clicar
-  abre o roteiro com o texto de cada operação).
+  do PCP; começa fechado toda vez que se entra no projeto), **Planilha de
+  avanço**, **Ordens de Produção** (tela cheia: as OPs do projeto, importar PDF e
+  OP manual; clicar abre o roteiro com o texto de cada operação), **Itens
+  comerciais** e **Serviços**. Gerência e GP abrem Planilha, Itens comerciais e
+  Serviços pelos botões do acompanhamento do projeto.
+- **Planilha de avanço (personalizada):** não é mais o espelho do Excel. Topo:
+  qtd de peças, peso total, qtd de usinagem e de caldeiraria (só peças finais —
+  o conjunto já soma as filhas; comerciais fora). Colunas: Revisão, Desenho,
+  Posição, Descrição (observação vira 💬), Qtd total, Peso unitário, Peso total,
+  Comercial, Cald, Usinagem, Pintura, Oxidação negra, Serviços externos, TTAT,
+  Produto, OP cald, OP usi. Sem colunas de avanço e sem as linhas comerciais.
+  Subir, baixar e "apagar lista e OPs" continuam.
+- **Itens comerciais:** as linhas "Comercial" da planilha com quantidade, SC,
+  pedido de compra, fornecedor, valor e chegada (parcial ou completa). O pedido
+  entra pelo **PDF do pedido de compra** (sistema da empresa): o site lê número,
+  fornecedor, emissão, comprador, total e os itens da commessa do projeto e liga
+  cada linha ao item da planilha pelo código do produto, depois pela SC (a mais
+  parecida) e, por fim, só sugere pela descrição; o técnico confere, escolhe à
+  mão, ignora ou cria item "fora da planilha". SC e pedido têm 6 dígitos (a SC
+  que quebra em duas linhas no PDF é juntada). A data de entrega do sistema não
+  é usada. **Valores** ficam num documento à parte que só Gerência, o GP e o
+  técnico do projeto leem (programadores e CQ não).
+- **Serviços:** usinagem externa, corte laser, dobra, TTAT… vindos da aba
+  SERVIÇOS da planilha e das peças marcadas com Serviço externo / TTAT. Situação
+  a enviar · enviado · parcial · voltou. O técnico registra o envio (data, qtd,
+  fornecedor e prazo em **dias úteis** — padrão — ou **corridos**) e o retorno;
+  os dois podem ser parciais. Sem nº de NF/romaneio e sem ligação automática
+  com a próxima etapa da OP.
+- **Checklist padrão novo (14 tarefas):** Análise de escopo, Criar lista de
+  avanço, SC itens críticos, Criar LM, Aproveitamento de laminados, SC
+  laminados, Aproveitamento de chapas, SC chapas, Detalhamento de dobra (quando
+  aplicável), SC dobra (quando aplicável), Criar ordem de produção, Imprimir as
+  OPs, Criar plano de pintura, Entregar os documentos. Os dias do PCP são
+  divididos com peso maior para Criar LM, Lista de avanço, Aproveitamento de
+  chapas e Ordem de produção (1ª tarefa no início do PCP, última no fim).
+  Projetos com PCP em andamento migram para a lista nova mantendo o que já foi
+  feito e as observações; PCP concluído fica como está.
 - O técnico não tem mais a aba **Fábrica**: tudo do projeto fica no projeto.
 - **PDF da OP por projeto:** a OP é procurada só no projeto escolhido; PDF de
   outra commessa é recusado. PDF impresso em retrato (texto girado 90°) é lido
   normalmente; o texto das instruções vai para `operacoes[].texto`.
 - **Todas as OPs** (antes "OPs Finalizadas"): Em andamento, Em RNC, Expedição,
   Montagem mecânica, Pintura e Sem destino — só projetos em andamento.
-- **Excluir projeto** apaga junto as OPs e a lista de avanço (as RNCs ficam).
+- **Excluir projeto** apaga junto as OPs, a lista de avanço, os comerciais e os serviços (as RNCs ficam).
 - **Início da produção** (`prodInicio`) é escolhido pelo GP, independente do
   PCP; sem ele, vale o fim do PCP. O tipo de serviço saiu do projeto.
 
@@ -204,6 +237,7 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 | 15 | PCP atrasado | GP e Gerente de PCP | Sistema |
 | 16 | Pedido para paralisar / cancelar | Gerentes | GP |
 | 17 | Pedido aprovado ou recusado (com motivo) | GP que pediu | Gerente |
+| 18 | Serviço externo: prazo do fornecedor vence hoje / venceu (cobrar) | técnico do projeto | Sistema |
 
 As de *Sistema* são calculadas pelas datas e aparecem com origem "Sistema".
 
@@ -250,7 +284,18 @@ Sistema (quando apareceu, quando foi lido) fica em
   reprovadas).
 - `equipes/{id}/avanco/{projetoId}`: a aba da planilha como valores
   (`linhas [{c: [...]}]`, `merges`, `larguras`), `arquivo`, `aba`,
-  `opPintura`, `enviadoEm/PorUid/PorNome`. Toda a equipe lê; Gerência e o
+  `opPintura`, `servicos` (linhas da aba SERVIÇOS), `enviadoEm/PorUid/PorNome`.
+  Toda a equipe lê; Gerência e o técnico do projeto gravam.
+- `equipes/{id}/comerciais/{projetoId}`: `itens {chave: {pc, sc, fornecedor,
+  produtoPc, descricaoPc, unidade, qtdPedido, chegadas [{qtd, em, porNome}]}}`,
+  `pedidos {numero: {fornecedor, emissao, comprador, importadoEm, porNome,
+  itens}}`. Toda a equipe lê; Gerência, GP e técnico do projeto gravam.
+- `equipes/{id}/comerciaisValores/{projetoId}`: `itens {chave: {pc, valorUnit,
+  valorTotal}}`, `pedidos {numero: {total}}`. Só Gerência, GP e técnico do
+  projeto leem e gravam.
+- `equipes/{id}/servicos/{projetoId}`: `itens {chave: {qtd, tipo, peca, desenho,
+  posicao, fornecedor, envios [{qtd, em, prazo, tipoPrazo, previsto,
+  fornecedor}], retornos [{qtd, em}]}}`. Toda a equipe lê; Gerência, GP e
   técnico do projeto gravam.
 - `equipes/{id}/config/setores`: `mapa {SETOR: idDaMaquina | ''}`; programador
   de usinagem e Gerência gravam.

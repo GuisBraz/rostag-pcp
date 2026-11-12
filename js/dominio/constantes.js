@@ -9,11 +9,11 @@ export const SIT_ORDEM = ['atrasada', 'chegando', 'andamento', 'parada', 'planej
 export const DIAS_MAX_TAREFA = 90;
 
 export const CHECKLIST_PADRAO = Object.freeze([
-  'Receber o Projeto', 'Análise de escopo e desenhos', 'Solicitar itens críticos (quando aplicável)', 'Criar lista de materiais',
-  'Criar aproveitamento de Laminados', 'Emitir SC de Laminados', 'Detalhar as posições em chapas', 'Emitir SC das chapas',
-  'Criar croqui de dobra (quando aplicável)', 'Emitir SC de dobra (quando aplicável)', 'Criar as ordens de produção', 'Imprimir book em A3',
-  "Imprimir as OP's", 'Verificar chegada da MP', 'Criar OP de Pintura', 'Verificar PC de serviços externos',
-  'Emitir NF para serviços internos', 'Criar plano de pintura', 'Emitir SC de pintura', 'Entregar os documentos para a responsável (OP, PGM e P.P)'
+  'Análise de escopo', 'Criar lista de avanço', 'SC itens críticos', 'Criar LM', 'Aproveitamento de laminados', 'SC laminados',
+  'Aproveitamento de chapas', 'SC chapas', 'Detalhamento de dobra (quando aplicável)', 'SC dobra (quando aplicável)',
+  'Criar ordem de produção', 'Imprimir as OPs', 'Criar plano de pintura', 'Entregar os documentos'
 ]);
+// A lista padrão mudou nesta data: listas da equipe salvas antes disso são trocadas uma vez.
+export const CHECKLIST_PADRAO_DESDE = '2026-11-12';
 
 export const VERSAO = '3.0';
