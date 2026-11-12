@@ -19,6 +19,7 @@ import { abrirModal, fecharModal } from './modal.js';
 import { toast } from './toast.js';
 import { avisoErro } from './app.js';
 export { renderRnc } from './qualidade.js';
+import { rncsEsperandoMim } from './qualidade.js';
 import { configurar as configurarOpManual } from './opManual.js';
 import { alternarPopup } from './app.js';
 import { garantirXlsx } from './bibliotecas.js';
@@ -218,7 +219,8 @@ export function renderFabrica() {
 export function atualizarContadorRnc() {
   const el = $('rnc-contador');
   if (!el) return;
-  const n = Papeis.veRnc(Auth.papel()) || Auth.souCQ() ? (estado.rncs || []).filter(function (r) { return r.situacao !== 'encerrada'; }).length : 0;
+  // as RNCs que esperam por mim: a disposição (Gerência, GP, técnico) ou o seguimento (CQ)
+  const n = rncsEsperandoMim();
   el.textContent = n > 99 ? '99+' : n;
   el.style.display = n ? '' : 'none';
 }

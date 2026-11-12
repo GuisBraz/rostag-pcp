@@ -19,6 +19,7 @@ import * as DadosRncs from './dados/rncs.js';
 import * as DadosChecklist from './dados/checklist.js';
 import * as DadosProg from './dados/programacao.js';
 import * as DadosComerciais from './dados/comerciais.js';
+import * as DadosTarefas from './dados/tarefas.js';
 import * as Cronograma from './dominio/cronograma.js';
 import * as Projeto from './dominio/projeto.js';
 import * as Papeis from './dominio/papeis.js';
@@ -145,6 +146,9 @@ function escutarEquipe() {
   } else {
     DadosCarga.pararEscuta();
   }
+  // tarefas avulsas: toda a equipe (cada um vê as suas em "Minhas tarefas")
+  estado.tarefas = [];
+  DadosTarefas.escutar(function (l) { estado.tarefas = l; redesenhar(); });
   // serviços externos: o técnico é avisado para cobrar o fornecedor
   estado.servicosDocs = [];
   if (papelCarregado === 'tecnico' || papelCarregado === 'planejador') DadosComerciais.escutarServicos(function (l) { estado.servicosDocs = l; redesenhar(); });
@@ -205,6 +209,7 @@ function sairDoApp() {
   DadosRncs.pararEscuta();
   DadosChecklist.pararEscuta();
   DadosComerciais.pararServicos();
+  DadosTarefas.pararEscuta();
   pararInscricaoChat();
   fecharTodos();
   equipeCarregada = null;

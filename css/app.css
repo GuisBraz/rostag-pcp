@@ -581,45 +581,6 @@ td.num { text-align: right; font-family: var(--mono); font-size: 11.5px; white-s
 .baixa-botoes .btn { padding: 14px 10px; font-size: 14px; justify-content: center; }
 @media (max-width: 480px) { .baixa-botoes { grid-template-columns: 1fr; } }
 
-/* A folha imita o papel: sempre clara, com a faixa azul do formulário. */
-.rnc-folha { --rf-azul: #DAE9F8; --rf-tinta: #111; --rf-linha: #9AA3AF;
-  max-width: 860px; margin: 10px auto 0; background: #fff; color: var(--rf-tinta); border: 1.5px solid #222;
-  font-family: 'Aptos Narrow', 'Arial Narrow', Arial, sans-serif; font-size: 13px; }
-.rnc-folha input, .rnc-folha textarea { color: var(--rf-tinta); background: transparent; border: none; border-bottom: 1px solid var(--rf-linha);
-  border-radius: 0; padding: 3px 4px; font-size: 13px; width: 100%; min-width: 0; font-family: inherit; }
-.rnc-folha input:focus, .rnc-folha textarea:focus { outline: 2px solid #2F5FDE; outline-offset: 0; background: #F5F9FF; }
-.rnc-folha input:disabled, .rnc-folha textarea:disabled { color: var(--rf-tinta); opacity: 1; -webkit-text-fill-color: var(--rf-tinta); }
-.rnc-folha .invalid { background: #FDE8E8 !important; border-bottom-color: #DC2626 !important; }
-.rnc-folha label { font-weight: 700; font-size: 11.5px; white-space: nowrap; color: var(--rf-tinta); }
-.rf-cab { display: grid; grid-template-columns: 150px 1fr 150px; align-items: stretch; border-bottom: 1.5px solid #222; }
-.rf-logo { display: flex; align-items: center; justify-content: center; padding: 8px; border-right: 1.5px solid #222; }
-.rf-logo img { max-width: 120px; height: auto; }
-.rf-titulo { display: flex; align-items: center; justify-content: center; text-align: center; background: var(--rf-azul); font-weight: 700; font-size: 20px; padding: 10px; }
-.rf-num { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 6px 10px; border-left: 1.5px solid #222; }
-.rf-num input { font-size: 16px; font-weight: 700; }
-.rf-linha { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 14px; padding: 8px 12px; border-bottom: 1px solid #222; }
-.rf-linha.rf-sem-borda { border-bottom: none; padding-left: 0; padding-right: 0; }
-.rf-c { display: flex; align-items: flex-end; gap: 6px; flex: 1 1 120px; min-width: 0; }
-.rf-c.rf-g2 { flex-grow: 2; } .rf-c.rf-g3 { flex-grow: 3; } .rf-c.rf-p { flex: 0 1 90px; }
-.rf-setores { align-items: center; }
-.rf-rot { font-weight: 700; font-size: 11.5px; margin-right: 4px; }
-.rnc-folha .rf-chk { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; font-size: 12px; cursor: pointer; }
-.rnc-folha .rf-chk input { width: 16px; height: 16px; border: 1.5px solid #222; accent-color: #16213E; }
-.rnc-folha .rf-outros { flex: 1 1 120px; width: auto; }
-.rf-bloco { padding: 8px 12px 10px; border-bottom: 1px solid #222; }
-.rnc-folha .rf-sec { display: block; font-weight: 700; font-size: 12.5px; margin-bottom: 4px; }
-.rf-faixa { background: var(--rf-azul); margin: -8px -12px 8px; padding: 6px 12px; text-align: center; letter-spacing: 0.04em; border-bottom: 1px solid #222; }
-.rnc-folha textarea.rf-pautado { resize: vertical; border: none; line-height: 24px; padding: 0 4px;
-  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 23px, var(--rf-linha) 23px, var(--rf-linha) 24px); background-attachment: local; }
-.rf-reinspecao .hint-txt { color: #5B6478; margin-top: 6px; }
-.rf-rodape { padding: 6px 12px; font-size: 10.5px; color: #555; }
-.rnc-sem-reinspecao .rf-reinspecao { display: none; }
-@media (max-width: 640px) {
-  .rf-cab { grid-template-columns: 90px 1fr; }
-  .rf-logo img { max-width: 76px; }
-  .rf-num { grid-column: 1 / -1; border-left: none; border-top: 1.5px solid #222; flex-direction: row; align-items: center; }
-  .rf-titulo { font-size: 15px; }
-}
 
 .planilha-resumo ul { margin: 6px 0 0 18px; padding: 0; font-size: 12.5px; line-height: 1.6; }
 .planilha-erros { margin-top: 10px; color: var(--rust); font-size: 12px; }
@@ -1164,3 +1125,53 @@ tr.lops-linha-fora td:first-child { box-shadow: inset 4px 0 0 var(--violet); }
 .aviso-versao-ico { font-size: 16px; }
 .aviso-versao .btn-x { color: #EDEAE3; }
 .aviso-versao .btn-x:hover { color: #fff; background: rgba(255,255,255,.12); }
+
+/* RNC em tela simples */
+.rnc-resumo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 16px; padding: 12px 14px; background: var(--bg-panel-alt); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; font-size: 12.5px; }
+.rnc-resumo span { display: block; font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--ink-faint); text-transform: uppercase; }
+.rnc-resumo b { font-weight: 600; }
+.rnc-resumo-peca { grid-column: 1 / -1; }
+@media (max-width: 560px) { .rnc-resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.rnc-bloco { border-top: 1px solid var(--line-soft); padding: 4px 0 10px; }
+.rnc-texto { white-space: pre-wrap; font-size: 13px; margin-bottom: 4px; }
+.rn-escolha { display: flex; gap: 16px; padding-top: 10px; font-size: 13px; }
+.rn-escolha label, .rn-opcao { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--ink); }
+.rn-escolha label { display: inline-flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; }
+.rn-escolha input, .rn-opcao input { width: auto; margin: 0; }
+.label-campo { display: block; font-size: 11px; font-weight: 700; color: var(--ink-faint); letter-spacing: .04em; }
+.rn-opcoes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+@media (max-width: 560px) { .rn-opcoes { grid-template-columns: 1fr; } }
+.rn-opcao { display: flex; gap: 8px; align-items: flex-start; border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; cursor: pointer; font-size: 13px; }
+.rn-opcao:has(input:checked) { border-color: var(--teal); background: var(--bg-panel-alt); }
+.rn-opcao > span { flex: 1; text-align: left; }
+.rn-opcao small { display: block; color: var(--ink-faint); font-size: 11.5px; margin-top: 2px; }
+.pill-rnc { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+.rnc-etapa-disposicao { background: var(--amber-bg); color: var(--amber-ink); }
+.rnc-etapa-cq { background: var(--violet-bg); color: var(--violet); }
+.rnc-etapa-encerrada { background: var(--bg-panel-alt); color: var(--ink-dim); border: 1px solid var(--line); }
+.rnc-clicavel { cursor: pointer; transition: border-color .1s ease; }
+.rnc-clicavel:hover { border-color: var(--teal); }
+.rnc-minha { border-left: 3px solid var(--amber); }
+.rnc-chamada { margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--teal); }
+#tab-rnc .actionbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+#tab-rnc .fab-visoes { margin-bottom: 0; }
+
+/* tarefas avulsas */
+.tar-abas { display: flex; align-items: center; }
+.tar-abas select { margin-left: auto; }
+.tar-lista { display: flex; flex-direction: column; }
+.tar-item { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; padding: 10px 2px; border-bottom: 1px solid var(--line-soft); }
+.tar-check { width: 18px; height: 18px; margin-top: 2px; cursor: pointer; display: inline-block; }
+span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: default; }
+.tar-check-ok { border: none; background: var(--green-bg); color: var(--green); font-weight: 800; font-size: 12px; text-align: center; line-height: 18px; border-radius: 4px; }
+.tar-titulo { font-weight: 700; font-size: 13.5px; }
+.tar-commessa { font-size: 11.5px; color: var(--ink-dim); }
+.tar-desc { white-space: pre-wrap; font-size: 12.5px; color: var(--ink-dim); margin: 2px 0; }
+.tar-feita .tar-titulo { color: var(--ink-dim); }
+.tar-feita-info { font-size: 12px; color: var(--green); font-weight: 600; margin-top: 2px; }
+.tar-atrasada { background: var(--rust-bg); }
+.tar-prazo { font-weight: 700; white-space: nowrap; }
+.tar-prazo-atrasada { color: var(--rust); }
+.tar-prazo-hoje { color: var(--amber-ink); }
+.tar-acoes { display: flex; gap: 10px; white-space: nowrap; }
+.tar-apagar { color: var(--rust); }

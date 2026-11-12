@@ -144,3 +144,29 @@ export function taxaAprovacao(ind) {
   const base = ind.finalizadas + ind.rncs;
   return base ? Math.round(ind.finalizadas / base * 100) : null;
 }
+
+/* ------------------------------------------------------- etapas da RNC */
+// aguardando disposição (GP, técnico ou Gerência) → aguardando o CQ → encerrada.
+export function etapa(r) {
+  if (!r || r.situacao === 'encerrada') return 'encerrada';
+  return String(r.disposicao || '').trim() ? 'cq' : 'disposicao';
+}
+
+// RNC aberta pelo CQ na tela simples: o que vem da OP, do usuário e da data,
+// mais o que o CQ informa (observação, quantidade não conforme, procedência).
+export function abertura(op, dados, hojeIso, nomeInspetor, numero) {
+  return Object.assign(rascunho(op, hojeIso, nomeInspetor), {
+    numero: String(numero || '').trim(), descricao: String(dados.descricao || '').trim(),
+    qtdNc: String(dados.qtdNc == null ? '' : dados.qtdNc).trim(),
+    procedencia: dados.procedencia === 'interno' || dados.procedencia === 'externo' ? dados.procedencia : ''
+  });
+}
+
+// Seguimento do CQ depois da disposição. escolha: conforme · desvio ·
+// nao_conforme · novaOp (com o nº da OP de retrabalho).
+export function seguimento(r, escolha, reOp, nomeInspetor, hojeIso, observacoes) {
+  const base = Object.assign({}, r, { reInspetor: nomeInspetor || '', reData: hojeIso || '', reResponsavel: nomeInspetor || '',
+    observacoes: observacoes == null ? (r.observacoes || '') : String(observacoes) });
+  if (escolha === 'novaOp') return Object.assign(base, { reResultado: 'retrabalho', reOp: String(reOp || '').trim() });
+  return Object.assign(base, { reResultado: RESULTADOS.indexOf(escolha) >= 0 ? escolha : '', reOp: '' });
+}

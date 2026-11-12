@@ -22,6 +22,7 @@ import { renderJanelas as renderJanelasFinalizadas, renderFinalizadas } from './
 import { renderOrdens } from './ordens.js';
 import { render as renderListaOps } from './listaOps.js';
 import { renderEspelho } from './projetoTecnico.js';
+import { renderTarefas, atualizarContador as atualizarContadorTarefas } from './tarefas.js';
 import { renderNotificacoes } from './notificacoes.js';
 import { renderCarga } from './carga.js';
 import { renderFabrica, renderRnc, atualizarContadorRnc } from './fabrica.js';
@@ -96,6 +97,8 @@ export function redesenhar() {
   renderJanelasFinalizadas();
   renderListaOps();
   renderEspelho();
+  renderTarefas();
+  atualizarContadorTarefas();
 }
 
 export function atualizarInfoArmazenamento() {

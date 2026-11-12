@@ -361,7 +361,13 @@ describe('RNC (formulário R02)', () => {
   test('disposição: Gerência, GP e técnico do projeto gravam só ela, com a RNC aberta', async () => {
     await semear('equipes/E1/rncs/r2', doc());
     const disp = (uid) => ({ disposicao: 'Retrabalhar furo', dispResponsavel: uid, dispData: '2026-11-12', atualizadoEm: 'y' });
-    for (const uid of [M, G, P]) await assertSucceeds(como(uid).doc('equipes/E1/rncs/r2').update(disp(uid)));
+    for (const uid of [M, G, P]) {
+      await semear('equipes/E1/rncs/r2', doc());
+      await assertSucceeds(como(uid).doc('equipes/E1/rncs/r2').update(disp(uid)));
+    }
+    await assertFails(como(G).doc('equipes/E1/rncs/r2').update(disp(G)));   // já tem disposição: quem deu primeiro vale
+    await semear('equipes/E1/rncs/r2', doc());
+    await assertFails(como(P).doc('equipes/E1/rncs/r2').update({ ...disp(P), disposicao: '' }));
     for (const uid of [T, U, K]) await assertFails(como(uid).doc('equipes/E1/rncs/r2').update(disp(uid)));   // outro técnico, programadores
     await assertFails(como(P).doc('equipes/E1/rncs/r2').update({ disposicao: 'x', reResultado: 'conforme' }));
     await assertFails(como(P).doc('equipes/E1/rncs/r2').update({ situacao: 'encerrada' }));
@@ -965,5 +971,38 @@ describe('itens comerciais, valores e serviços do projeto', () => {
       servicos: [{ tipo: 'TTAT', desenho: '1', posicao: '9' }], enviadoEm: 'x', enviadoPorUid: P, enviadoPorNome: 'P' };
     await assertSucceeds(como(P).doc('equipes/E1/avanco/doP').set(lista));
     await assertFails(como(P).doc('equipes/E1/avanco/doP').set({ ...lista, servicos: 'x' }));
+  });
+});
+
+describe('tarefas avulsas', () => {
+  const tarefa = (extra) => ({ projetoId: 'doP', commessa: '2026-001', titulo: 'Refazer desenho', descricao: '', paraUid: P, paraNome: 'P', prazo: '2026-11-20',
+    status: 'aberta', criadoPorUid: G, criadoPorNome: 'G', criadoEm: 'x', atualizadoEm: 'x', concluidaEm: '', concluidaPorUid: '', concluidaPorNome: '', obsConclusao: '', ...extra });
+  test('GP do projeto e Gerência criam; os outros não; toda a equipe lê', async () => {
+    await assertSucceeds(como(G).doc('equipes/E1/tarefas/t1').set(tarefa()));
+    await assertSucceeds(como(M).doc('equipes/E1/tarefas/t2').set(tarefa({ criadoPorUid: M, projetoId: 'doT' })));
+    await assertFails(como(G).doc('equipes/E1/tarefas/t3').set(tarefa({ projetoId: 'doT' })));   // GP de outro projeto
+    for (const uid of [P, T, U, Q]) await assertFails(como(uid).doc('equipes/E1/tarefas/t4').set(tarefa({ criadoPorUid: uid })));
+    await assertFails(como(G).doc('equipes/E1/tarefas/t5').set(tarefa({ criadoPorUid: M })));
+    await assertFails(como(G).doc('equipes/E1/tarefas/t6').set(tarefa({ titulo: '' })));
+    await assertFails(como(G).doc('equipes/E1/tarefas/t7').set(tarefa({ status: 'concluida' })));
+    for (const uid of [C, M, G, P, T, U, K, Q]) await assertSucceeds(como(uid).doc('equipes/E1/tarefas/t1').get());
+    await assertFails(como(Y).doc('equipes/E1/tarefas/t1').get());
+  });
+  test('quem recebeu só conclui; quem pediu edita, reabre e apaga', async () => {
+    await semear('equipes/E1/tarefas/t1', tarefa());
+    const fim = (uid) => ({ status: 'concluida', concluidaEm: 'y', concluidaPorUid: uid, concluidaPorNome: uid, obsConclusao: 'feito', atualizadoEm: 'y' });
+    await assertFails(como(T).doc('equipes/E1/tarefas/t1').update(fim(T)));
+    await assertFails(como(P).doc('equipes/E1/tarefas/t1').update({ ...fim(P), titulo: 'outro' }));
+    await assertSucceeds(como(P).doc('equipes/E1/tarefas/t1').update(fim(P)));
+    await assertFails(como(P).doc('equipes/E1/tarefas/t1').update({ status: 'aberta' }));
+    await assertSucceeds(como(G).doc('equipes/E1/tarefas/t1').update({ status: 'aberta', concluidaEm: '', concluidaPorUid: '', concluidaPorNome: '', obsConclusao: '' }));
+    await assertSucceeds(como(G).doc('equipes/E1/tarefas/t1').update({ titulo: 'Refazer desenho rev. 2' }));
+    await assertFails(como(G).doc('equipes/E1/tarefas/t1').update({ projetoId: 'doT' }));
+    await assertFails(como(P).doc('equipes/E1/tarefas/t1').delete());
+    await assertSucceeds(como(G).doc('equipes/E1/tarefas/t1').delete());
+  });
+  test('notificações de tarefa', async () => {
+    await assertSucceeds(como(G).collection('notificacoes').add({ paraUid: P, tipo: 'tarefa', mensagem: 'x', projetoId: 'doP', equipeId: 'E1', deUid: G, deNome: 'G', lida: false, criadoEm: 'x' }));
+    await assertSucceeds(como(P).collection('notificacoes').add({ paraUid: G, tipo: 'tarefaConcluida', mensagem: 'x', projetoId: 'doP', equipeId: 'E1', deUid: P, deNome: 'P', lida: false, criadoEm: 'x' }));
   });
 });

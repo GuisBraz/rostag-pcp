@@ -456,12 +456,14 @@ service cloud.firestore {
         allow update: if souPapel(equipeId, 'cq')
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(camposForm())
           && textosOk(request.resource.data);
-        // disposição: Gerência, o GP e o técnico do projeto, enquanto a RNC está aberta
+        // disposição: Gerência, o GP ou o técnico do projeto — uma vez, quem der primeiro
         allow update: if (souGerenteDe(equipeId)
             || (souPapel(equipeId, 'gp') && resource.data.gpUid == request.auth.uid)
             || (souTecnicoDe(equipeId) && resource.data.tecnicoUid == request.auth.uid))
           && resource.data.situacao == 'aberta'
+          && resource.data.get('disposicao', '') == ''
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['disposicao', 'dispResponsavel', 'dispData', 'atualizadoEm'])
+          && request.resource.data.disposicao.size() > 0
           && request.resource.data.disposicao is string && request.resource.data.disposicao.size() <= 3000
           && request.resource.data.dispResponsavel is string && request.resource.data.dispResponsavel.size() <= 60
           && request.resource.data.dispData is string && request.resource.data.dispData.size() <= 10;
@@ -514,6 +516,48 @@ service cloud.firestore {
         allow delete: if souGerenteDe(equipeId)
           || (souPapel(equipeId, 'gp') && projeto(equipeId, projetoId).get('gpUid', null) == request.auth.uid)
           || (souTecnicoDe(equipeId) && projeto(equipeId, projetoId).get('responsavelUid', null) == request.auth.uid);
+      }
+
+      // Tarefas avulsas do projeto: toda a equipe lê; GP do projeto e Gerência
+      // criam, editam, reabrem e apagam; quem recebeu conclui.
+      match /tarefas/{tarefaId} {
+        function camposTarefa() {
+          return ['projetoId', 'commessa', 'titulo', 'descricao', 'paraUid', 'paraNome', 'prazo', 'status',
+                  'criadoPorUid', 'criadoPorNome', 'criadoEm', 'atualizadoEm',
+                  'concluidaEm', 'concluidaPorUid', 'concluidaPorNome', 'obsConclusao'];
+        }
+        function tarefaOk(d) {
+          return d.keys().hasOnly(camposTarefa())
+            && d.titulo is string && d.titulo.size() > 0 && d.titulo.size() <= 120
+            && d.descricao is string && d.descricao.size() <= 2000
+            && d.paraUid is string && d.paraUid.size() > 0
+            && d.prazo is string && d.prazo.size() <= 10
+            && d.status in ['aberta', 'concluida']
+            && d.obsConclusao is string && d.obsConclusao.size() <= 1000;
+        }
+        function gpDoProjeto(projetoId) {
+          return souPapel(equipeId, 'gp') && projeto(equipeId, projetoId).get('gpUid', null) == request.auth.uid;
+        }
+        allow read: if membroDe(equipeId);
+        allow create: if (souGerenteDe(equipeId) || gpDoProjeto(request.resource.data.projetoId))
+          && tarefaOk(request.resource.data)
+          && request.resource.data.status == 'aberta'
+          && request.resource.data.criadoPorUid == request.auth.uid;
+        // quem pediu (ou a Gerência): edita e reabre — sem trocar o projeto nem o autor
+        allow update: if (souGerenteDe(equipeId) || (resource.data.criadoPorUid == request.auth.uid && gpDoProjeto(resource.data.projetoId)))
+          && tarefaOk(request.resource.data)
+          && request.resource.data.projetoId == resource.data.projetoId
+          && request.resource.data.criadoPorUid == resource.data.criadoPorUid;
+        // quem recebeu: só conclui
+        allow update: if membroDe(equipeId)
+          && resource.data.paraUid == request.auth.uid
+          && resource.data.status == 'aberta'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'concluidaEm', 'concluidaPorUid', 'concluidaPorNome', 'obsConclusao', 'atualizadoEm'])
+          && request.resource.data.status == 'concluida'
+          && request.resource.data.concluidaPorUid == request.auth.uid
+          && request.resource.data.obsConclusao is string && request.resource.data.obsConclusao.size() <= 1000;
+        allow delete: if souGerenteDe(equipeId) || (resource.data.criadoPorUid == request.auth.uid && gpDoProjeto(resource.data.projetoId));
       }
 
       // Itens comerciais e serviços externos do projeto: toda a equipe lê;
@@ -619,7 +663,7 @@ service cloud.firestore {
         && request.resource.data.deNome is string && request.resource.data.deNome.size() <= 80
         && request.resource.data.tipo in ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas',
                                           'designacaoTrocada', 'planilhaOps', 'rnc', 'chat', 'pedido', 'pedidoAprovado', 'pedidoRecusado',
-                                          'opAprovada', 'opFinalizada']
+                                          'opAprovada', 'opFinalizada', 'tarefa', 'tarefaConcluida']
         && request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 500
         && (request.resource.data.projetoId == null || request.resource.data.projetoId is string)
         && request.resource.data.lida == false

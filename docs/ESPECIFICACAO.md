@@ -216,6 +216,24 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - **Início da produção** (`prodInicio`) é escolhido pelo GP, independente do
   PCP; sem ele, vale o fim do PCP. O tipo de serviço saiu do projeto.
 
+## 4.3 RNC (tela simples) e tarefas avulsas
+
+- **RNC:** o CQ abre pela OP numa janela simples — desenho, posição, rev.,
+  commessa, OP, qtd e setor vêm da OP; inspetor, data e nº são automáticos; o
+  CQ informa só a observação, a quantidade não conforme e a procedência. A RNC
+  vai para o GP, o técnico do projeto e a Gerência (**aguardando
+  disposição**); basta um deles dar a disposição, que sai assinada por quem
+  deu, e a RNC volta para o CQ (**aguardando o CQ**). O CQ dá seguimento:
+  conforme, liberada com desvio, não conforme ou OP nova de retrabalho
+  (**encerrada**). O PDF continua saindo na folha padrão SOFIR R02. A aba RNC
+  filtra por situação e o número no menu é o que espera por você.
+- **Tarefas avulsas:** imprevistos do projeto, fora do checklist. GP do
+  projeto e Gerência criam (título, detalhes, para quem, prazo opcional); a
+  pessoa recebe notificação, vê em "Minhas tarefas" (menu) ou no cartão
+  Tarefas do projeto, marca como concluída (com observação opcional) e quem
+  pediu é avisado. A concluída mostra quem fez e quanto tempo levou. Não
+  entram no cronograma nem no % do checklist.
+
 ## 5. Notificações
 
 | # | Evento | Quem recebe | Origem |
@@ -238,6 +256,10 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 | 16 | Pedido para paralisar / cancelar | Gerentes | GP |
 | 17 | Pedido aprovado ou recusado (com motivo) | GP que pediu | Gerente |
 | 18 | Serviço externo: prazo do fornecedor vence hoje / venceu (cobrar) | técnico do projeto | Sistema |
+| 19 | Disposição dada na RNC | CQ | quem deu |
+| 20 | Tarefa avulsa para você | quem recebe | GP / Gerência |
+| 21 | Tarefa avulsa concluída | quem pediu | quem concluiu |
+| 22 | Tarefa avulsa vence hoje / atrasada | quem recebe | Sistema |
 
 As de *Sistema* são calculadas pelas datas e aparecem com origem "Sistema".
 
@@ -301,9 +323,14 @@ Sistema (quando apareceu, quando foi lido) fica em
   de usinagem e Gerência gravam.
 - `equipes/{id}/rncs/{id}`: os campos do R02, `opId`, `projetoId`, `area`,
   `gpUid`, `tecnicoUid`, `situacao` (`aberta`/`encerrada`). O CQ grava tudo;
-  Gerência, o GP e o técnico do projeto gravam só a disposição
-  (`disposicao`, `dispResponsavel`, `dispData`) enquanto a RNC está aberta, e o
-  CQ é avisado. Ninguém apaga.
+  Gerência, o GP ou o técnico do projeto gravam só a disposição
+  (`disposicao`, `dispResponsavel`, `dispData`) — uma vez, quem der primeiro —
+  enquanto a RNC está aberta. Ninguém apaga.
+- `equipes/{id}/tarefas/{id}`: tarefa avulsa (`projetoId`, `commessa`,
+  `titulo`, `descricao`, `paraUid/Nome`, `prazo`, `status` aberta/concluida,
+  `criadoPor*`, `criadoEm`, `concluidaEm`, `concluidaPor*`, `obsConclusao`).
+  Toda a equipe lê; GP do projeto e Gerência criam, editam, reabrem e apagam;
+  quem recebeu só conclui.
 - Projeto: `pedido {tipo, motivo, porUid, porNome, em}` enquanto espera a
   Gerência; `motivoCancelamento`. Equipe: `papeisMigrados`.
 - `equipes/{id}/config/checklist`: checklist padrão do PCP da equipe (`itens [{t, dias}]`, `atualizadoEm`, `porUid`, `porNome`); Gerência e GP gravam. Sem ele vale a lista de fábrica.
