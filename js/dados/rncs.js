@@ -67,6 +67,15 @@ export function abrir(op, form) {
   return lote.commit().then(function () { return ref.id; });
 }
 
+// Disposição dada por Gerência, GP ou técnico do projeto (só esses campos).
+export function salvarDisposicao(rnc, form) {
+  return colEquipe('rncs').doc(rnc.id).update({
+    disposicao: String(form.disposicao || '').slice(0, Rnc.LIMITES.disposicao),
+    dispResponsavel: String(form.dispResponsavel || '').slice(0, Rnc.LIMITES.dispResponsavel),
+    dispData: String(form.dispData || '').slice(0, 10), atualizadoEm: agoraIso()
+  });
+}
+
 /**
  * Salva a RNC já aberta (disposição, reinspeção, observações). Se a
  * reinspeção decide o destino da OP, aplica no mesmo lote:

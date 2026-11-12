@@ -349,14 +349,25 @@ describe('RNC (formulário R02)', () => {
     await semear('equipes/E1/ops/op5', op({ status: 'aprovada', finalizadoPorUid: Q }));
     await assertFails(abrir(como(Q), 'r1', { opId: 'op5' }));
   });
-  test('só o CQ abre e edita; ninguém apaga', async () => {
+  test('só o CQ abre e edita tudo; ninguém apaga', async () => {
     for (const uid of [M, G, P, U]) await assertFails(abrir(como(uid), 'r1', { criadoPorUid: uid }));
     await semear('equipes/E1/rncs/r2', doc());
     await assertSucceeds(como(Q).doc('equipes/E1/rncs/r2').update({ disposicao: 'Retrabalhar furo', atualizadoEm: 'y' }));
     await assertFails(como(Q).doc('equipes/E1/rncs/r2').update({ opId: 'op2' }));
-    await assertFails(como(M).doc('equipes/E1/rncs/r2').update({ disposicao: 'x' }));
+    await assertFails(como(M).doc('equipes/E1/rncs/r2').update({ descricao: 'x' }));
     await assertFails(como(Q).doc('equipes/E1/rncs/r2').delete());
     await assertFails(como(M).doc('equipes/E1/rncs/r2').delete());
+  });
+  test('disposição: Gerência, GP e técnico do projeto gravam só ela, com a RNC aberta', async () => {
+    await semear('equipes/E1/rncs/r2', doc());
+    const disp = (uid) => ({ disposicao: 'Retrabalhar furo', dispResponsavel: uid, dispData: '2026-11-12', atualizadoEm: 'y' });
+    for (const uid of [M, G, P]) await assertSucceeds(como(uid).doc('equipes/E1/rncs/r2').update(disp(uid)));
+    for (const uid of [T, U, K]) await assertFails(como(uid).doc('equipes/E1/rncs/r2').update(disp(uid)));   // outro técnico, programadores
+    await assertFails(como(P).doc('equipes/E1/rncs/r2').update({ disposicao: 'x', reResultado: 'conforme' }));
+    await assertFails(como(P).doc('equipes/E1/rncs/r2').update({ situacao: 'encerrada' }));
+    await assertFails(como(P).doc('equipes/E1/rncs/r2').update({ disposicao: 'x'.repeat(3001) }));
+    await semear('equipes/E1/rncs/r4', doc({ situacao: 'encerrada' }));
+    await assertFails(como(P).doc('equipes/E1/rncs/r4').update(disp(P)));
   });
   test('quem lê: Gerência e CQ todas; GP e técnico só as dos projetos deles', async () => {
     await semear('equipes/E1/rncs/r2', doc());
