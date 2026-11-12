@@ -1,11 +1,13 @@
 /* ---------------------------------------------------------------------------
-   Controle de qualidade — "dar baixa" na OP (aprovar ou abrir RNC), o
-   formulário da RNC em tela cheia (R02), a reinspeção, o PDF e a aba RNC.
+   Controle de qualidade — "dar baixa" na OP (aprovar ou abrir RNC), a RNC
+   em tela simples (abertura, disposição, seguimento), o PDF na folha SOFIR
+   R02 e a aba RNC por situação.
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto } from '../estado.js';
-import { esc, hoje, dataHora } from '../nucleo/fmt.js';
+import { esc, hoje, br, dataHora } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Rnc from '../dominio/rnc.js';
+import * as Papeis from '../dominio/papeis.js';
 import { statusOp } from '../dominio/producao.js';
 import * as Auth from '../dados/auth.js';
 import * as Ops from '../dados/ops.js';
@@ -69,193 +71,229 @@ function cqAprovar() {
   });
 }
 
-/* --------------------------------------------------- formulário da RNC */
-// modo: 'nova' (CQ abrindo) · 'editar' (CQ: disposição, reinspeção...) ·
-// 'disposicao' (Gerência, GP e técnico do projeto: só a disposição) · 'ver' (só leitura)
-let form = null;   // { modo, op, rnc }
+/* ------------------------------------------------------ janela da RNC */
+// Tela simples (o PDF continua na folha SOFIR R02):
+//  'nova'       CQ abre: observação, qtd não conforme e procedência
+//  'disposicao' GP, técnico ou Gerência (um deles) escreve a disposição
+//  'cq'         CQ dá seguimento: conforme · desvio · não conforme · OP nova
+//  'ver'        só leitura
+let janela = null;   // { modo, op, rnc }
 
-const CAMPOS_TEXTO = ['numero', 'produto', 'desenho', 'rev', 'commessa', 'op', 'qtd', 'tag', 'item', 'setorOutros',
-  'inspetor', 'qtdNc', 'dispResponsavel', 'reOp', 'reInspetor', 'reResponsavel'];
-const CAMPOS_AREA = ['descricao', 'disposicao', 'observacoes'];
-const CAMPOS_DATA = ['data', 'dispData', 'reData'];
-
-const CAMPOS_DISPOSICAO = ['disposicao', 'dispResponsavel', 'dispData'];
-
-// Quem dá a disposição (além do CQ): Gerência, o GP e o técnico do projeto, com a RNC aberta.
+// Quem dá a disposição: Gerência, o GP e o técnico do projeto (um deles), com a RNC esperando.
 function podeDispor(r) {
-  if (!r || r.situacao === 'encerrada') return false;
+  if (Rnc.etapa(r) !== 'disposicao') return false;
   const papel = Auth.papel(), eu = Auth.uid();
   return Auth.souGerente() || (papel === 'gp' && r.gpUid === eu) || (papel === 'tecnico' && r.tecnicoUid === eu);
 }
-function modoPara(r) { return Auth.souCQ() ? 'editar' : (podeDispor(r) ? 'disposicao' : 'ver'); }
-
-function preencher(r, somenteLeitura) {
-  CAMPOS_TEXTO.concat(CAMPOS_AREA).concat(CAMPOS_DATA).forEach(function (k) {
-    const el = $('rf-' + k);
-    el.value = r[k] == null ? '' : r[k];
-    el.disabled = somenteLeitura;
-    el.classList.remove('invalid');
-    if (Rnc.LIMITES[k]) el.maxLength = Rnc.LIMITES[k];
-  });
-  Rnc.SETORES.forEach(function (k) { const el = $('rf-setor-' + k); el.checked = !!(r.setor && r.setor[k]); el.disabled = somenteLeitura; });
-  ['interno', 'externo'].forEach(function (k) { const el = $('rf-proc-' + k); el.checked = r.procedencia === k; el.disabled = somenteLeitura; });
-  Rnc.RESULTADOS.forEach(function (k) { const el = $('rf-res-' + k); el.checked = r.reResultado === k; el.disabled = somenteLeitura; });
+function modoPara(r) {
+  if (podeDispor(r)) return 'disposicao';
+  if (Auth.souCQ() && Rnc.etapa(r) === 'cq') return 'cq';
+  return 'ver';
 }
 
-function coletar() {
-  const r = {};
-  CAMPOS_TEXTO.concat(CAMPOS_AREA).concat(CAMPOS_DATA).forEach(function (k) { r[k] = $('rf-' + k).value.trim(); });
-  r.setor = {};
-  Rnc.SETORES.forEach(function (k) { r.setor[k] = $('rf-setor-' + k).checked; });
-  r.procedencia = $('rf-proc-interno').checked ? 'interno' : ($('rf-proc-externo').checked ? 'externo' : '');
-  r.reResultado = '';
-  Rnc.RESULTADOS.forEach(function (k) { if ($('rf-res-' + k).checked) r.reResultado = k; });
-  return r;
+function linhaInfo(rotulo, valor) { return '<div><span>' + esc(rotulo) + '</span><b>' + esc(valor == null || valor === '' ? '—' : valor) + '</b></div>'; }
+function resumoPeca(d) {
+  const setor = Rnc.SETORES.filter(function (k) { return d.setor && d.setor[k]; }).map(function (k) { return T('rf.setor.' + k); }).join(', ');
+  return '<div class="rnc-resumo">' +
+    linhaInfo(T('rn.op'), d.op) + linhaInfo(T('rn.commessa'), d.commessa) + linhaInfo(T('rn.desenho'), d.desenho + (d.rev ? ' rev. ' + d.rev : '')) +
+    linhaInfo(T('rn.posicao'), d.item) + linhaInfo(T('rn.qtd'), d.qtd) + linhaInfo(T('rn.setor'), setor) +
+    '<div class="rnc-resumo-peca"><span>' + esc(T('rn.peca')) + '</span><b>' + esc(d.produto || '—') + '</b></div></div>';
+}
+function blocoCq(r) {
+  return '<div class="rnc-bloco"><div class="sub-titulo">' + esc(T('rn.obsCq')) + '</div>' +
+    '<div class="rnc-texto">' + esc(r.descricao || '—') + '</div>' +
+    '<div class="hint-txt">' + esc(T('rn.obsCqInfo', r.inspetor || '—', br(r.data), r.qtdNc || '—', r.qtd || '—', r.procedencia ? T('rn.proc.' + r.procedencia) : '—')) + '</div></div>';
+}
+function blocoDisposicao(r) {
+  if (!String(r.disposicao || '').trim()) return '<div class="rnc-bloco"><div class="sub-titulo">' + esc(T('rn.disposicao')) + '</div><div class="hint-txt">' + esc(T('rn.semDisposicao')) + '</div></div>';
+  return '<div class="rnc-bloco"><div class="sub-titulo">' + esc(T('rn.disposicao')) + '</div><div class="rnc-texto">' + esc(r.disposicao) + '</div>' +
+    '<div class="hint-txt">' + esc(T('rn.dispInfo', r.dispResponsavel || '—', br(r.dispData))) + '</div></div>';
+}
+function blocoSeguimento(r, op) {
+  if (r.situacao !== 'encerrada') return '';
+  const morta = op && statusOp(op) === 'morta';
+  return '<div class="rnc-bloco"><div class="sub-titulo">' + esc(T('rn.seguimento')) + '</div>' +
+    '<div><b>' + esc(r.reOp ? T('rn.esc.novaOp') + ' ' + r.reOp : T('rf.res.' + (r.reResultado || 'nao_conforme'))) + '</b></div>' +
+    (morta ? '<div class="hint-txt">' + esc(T('rnc.morta', op.opNovaNumero || r.reOp || '—')) + '</div>' : '') +
+    (r.observacoes ? '<div class="rnc-texto">' + esc(r.observacoes) + '</div>' : '') +
+    '<div class="hint-txt">' + esc(T('rn.segInfo', r.reInspetor || '—', br(r.reData))) + '</div></div>';
 }
 
-export function abrirFormRnc(modo, op, rnc) {
-  form = { modo: modo, op: op, rnc: rnc };
+function abrirJanela(modo, op, rnc) {
+  janela = { modo: modo, op: op, rnc: rnc };
   const base = rnc || Rnc.rascunho(op, hoje(), Auth.nomeExibicao());
-  if (modo === 'nova') base.numero = base.numero || Rnc.proximoNumero(estado.rncs);
-  preencher(base, modo === 'ver' || modo === 'disposicao');
-  if (modo === 'disposicao') {
-    CAMPOS_DISPOSICAO.forEach(function (k) { $('rf-' + k).disabled = false; });
-    if (!$('rf-dispResponsavel').value) $('rf-dispResponsavel').value = Auth.nomeExibicao() || '';
-    if (!$('rf-dispData').value) $('rf-dispData').value = hoje();
+  const etapaAtual = rnc ? Rnc.etapa(rnc) : null;
+  $('rnc-titulo').textContent = modo === 'nova' ? T('rn.tituloNova') : T('rn.titulo', rnc.numero);
+  $('rnc-sub').innerHTML = modo === 'nova' ? esc(descricaoOp(op))
+    : '<span class="pill-rnc rnc-etapa-' + etapaAtual + '">' + esc(T('rn.etapa.' + etapaAtual)) + '</span>';
+  $('rnc-pdf').hidden = modo === 'nova';
+  $('rnc-erro').textContent = '';
+  let corpo = resumoPeca(base), rodape = '';
+  if (modo === 'nova') {
+    corpo +=
+      '<div class="campos-3">' +
+        '<div class="field"><label for="rn-numero">' + esc(T('rn.numero')) + '</label><input id="rn-numero" class="mono" maxlength="30" value="' + esc(Rnc.proximoNumero(estado.rncs)) + '"></div>' +
+        '<div class="field"><label for="rn-qtdNc">' + esc(T('rn.qtdNc', op.qtd == null ? '—' : op.qtd)) + '</label><input id="rn-qtdNc" type="number" min="1" step="1"' + (op.qtd ? ' max="' + esc(op.qtd) + '"' : '') + ' value="' + esc(op.qtd || '') + '"></div>' +
+        '<div class="field"><span class="label-campo">' + esc(T('rn.procedencia')) + '</span><div class="rn-escolha">' +
+          ['interno', 'externo'].map(function (k) { return '<label><input type="radio" name="rn-proc" value="' + k + '"' + (k === 'interno' ? ' checked' : '') + '> ' + esc(T('rn.proc.' + k)) + '</label>'; }).join('') +
+        '</div></div>' +
+      '</div>' +
+      '<div class="field"><label for="rn-descricao">' + esc(T('rn.obsCq')) + '</label><textarea id="rn-descricao" rows="5" maxlength="3000" placeholder="' + esc(T('rn.obsPh')) + '"></textarea></div>' +
+      '<div class="hint-txt">' + esc(T('rn.notaNova', Auth.nomeExibicao() || '—', br(hoje()))) + '</div>';
+    rodape = '<button type="button" class="btn btn-danger" data-acao="salvarRnc">' + esc(T('rn.abrir')) + '</button>';
+  } else if (modo === 'disposicao') {
+    corpo += blocoCq(rnc) +
+      '<div class="field"><label for="rn-disposicao">' + esc(T('rn.suaDisposicao')) + '</label><textarea id="rn-disposicao" rows="5" maxlength="3000" placeholder="' + esc(T('rn.dispPh')) + '"></textarea></div>' +
+      '<div class="hint-txt">' + esc(T('rn.notaDisposicao', Auth.nomeExibicao() || '—')) + '</div>';
+    rodape = '<button type="button" class="btn btn-primary" data-acao="salvarRnc">' + esc(T('rf.salvarDisposicao')) + '</button>';
+  } else if (modo === 'cq') {
+    corpo += blocoCq(rnc) + blocoDisposicao(rnc) +
+      '<div class="rnc-bloco"><div class="sub-titulo">' + esc(T('rn.seguimento')) + '</div><div class="rn-opcoes">' +
+        ['conforme', 'desvio', 'nao_conforme', 'novaOp'].map(function (k) {
+          return '<label class="rn-opcao"><input type="radio" name="rn-seg" value="' + k + '" data-change="escolhaSeguimento"> <span><b>' + esc(T('rn.esc.' + k)) + '</b><small>' + esc(T('rn.escDet.' + k)) + '</small></span></label>';
+        }).join('') + '</div>' +
+        '<div class="field" id="rn-reop-campo" hidden><label for="rn-reOp">' + esc(T('rn.reOp')) + '</label><input id="rn-reOp" class="mono" maxlength="40"></div>' +
+        '<div class="field"><label for="rn-observacoes">' + esc(T('rn.obsSeguimento')) + '</label><textarea id="rn-observacoes" rows="3" maxlength="6000"></textarea></div></div>';
+    rodape = '<button type="button" class="btn btn-primary" data-acao="salvarRnc">' + esc(T('rn.concluir')) + '</button>';
+  } else {
+    corpo += blocoCq(rnc) + blocoDisposicao(rnc) + blocoSeguimento(rnc, op);
+    if (etapaAtual === 'disposicao') corpo += '<div class="hint-txt">' + esc(T('rn.esperandoDisp')) + '</div>';
+    else if (etapaAtual === 'cq' && !Auth.souCQ()) corpo += '<div class="hint-txt">' + esc(T('rn.esperandoCq')) + '</div>';
   }
-  $('rnc-form-titulo').textContent = T(modo === 'nova' ? 'rf.tituloNova' : (modo === 'ver' ? 'rf.tituloVer' : (modo === 'disposicao' ? 'rf.tituloDisposicao' : 'rf.tituloEditar')), base.numero || '');
-  $('rnc-form-sub').textContent = op ? descricaoOp(op) : (rnc ? T('cq.opDesc', rnc.op, T('area.' + rnc.area), rnc.commessa, rnc.desenho, rnc.item || '—') : '');
-  $('rnc-form-erro').textContent = '';
-  $('rnc-form-nota').textContent = modo === 'nova' ? T('rf.notaNova') : (modo === 'editar' ? T('rf.notaEditar') : (modo === 'disposicao' ? T('rf.notaDisposicao') : ''));
-  $('rnc-form-salvar').style.display = modo === 'ver' ? 'none' : '';
-  $('rnc-form-salvar').textContent = T(modo === 'nova' ? 'rf.salvarNova' : (modo === 'disposicao' ? 'rf.salvarDisposicao' : 'rf.salvar'));
-  // a reinspeção só faz sentido depois da RNC aberta
-  document.getElementById('rnc-form').classList.toggle('rnc-sem-reinspecao', modo === 'nova');
+  $('rnc-corpo').innerHTML = corpo;
+  $('rnc-rodape').innerHTML = '<button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-rnc">' + esc(T(modo === 'ver' ? 'btn.fechar' : 'btn.cancelar')) + '</button>' + rodape;
   fecharModal('modal-baixa');
-  abrirModal('modal-rnc-form', { foco: modo === 'editar' || modo === 'disposicao' ? 'rf-disposicao' : 'rf-descricao', aoFechar: function () { form = null; } });
+  const foco = { nova: 'rn-descricao', disposicao: 'rn-disposicao' }[modo];
+  abrirModal('modal-rnc', { foco: foco, aoFechar: function () { janela = null; } });
 }
 
-function cqNovaRnc() { if (baixaOp) abrirFormRnc('nova', baixaOp, null); }
+function cqNovaRnc() { if (baixaOp) abrirJanela('nova', baixaOp, null); }
 function cqReinspecionar() {
   if (!baixaOp) return;
   const rnc = rncPorId(baixaOp.rncAtualId);
-  if (rnc) abrirFormRnc('editar', baixaOp, rnc);
+  if (rnc) abrirJanela(modoPara(rnc), baixaOp, rnc);
 }
 
-function salvarFormRnc(_a, _b, btn) {
-  if (!form || form.modo === 'ver') return;
-  if (form.modo === 'disposicao') { salvarDisposicao(btn); return; }
-  const dados = coletar();
-  const opDaRnc = form.op || (form.rnc && opPorId(form.rnc.opId));
-  const v = Rnc.validar(dados, opDaRnc ? opDaRnc.qtd : null);
-  ['numero', 'descricao', 'inspetor', 'qtdNc', 'reInspetor', 'reData'].forEach(function (k) { $('rf-' + k).classList.toggle('invalid', v.faltando.indexOf(k) >= 0); });
-  if (!v.ok) {
-    $('rnc-form-erro').textContent = v.faltando.length ? T('rf.faltou', v.faltando.map(function (k) { return T('rf.campo.' + k); }).join(', ')) : T('fm.errLongo');
-    const primeiro = v.faltando[0] && $('rf-' + v.faltando[0]);
-    if (primeiro) primeiro.focus();
-    return;
-  }
-  const op = form.op || (form.rnc && opPorId(form.rnc.opId));
-  if (form.modo === 'nova') {
-    if (!op) return;
-    const repetido = (estado.rncs || []).some(function (r) { return String(r.numero).trim().toLowerCase() === dados.numero.trim().toLowerCase(); });
-    if (repetido) { $('rnc-form-erro').textContent = T('rf.numeroRepetido', dados.numero); $('rf-numero').classList.add('invalid'); return; }
-    comBotaoOcupado(btn, Rncs.abrir(op, dados).then(function () {
-      fecharModal('modal-rnc-form');
-      toast(T('cq.rncGravada', op.numero), { tipo: 'erro' });
-      // notificação 8: Gerência, GP e técnico do projeto
-      return Auth.uidsGerentes().then(function (gerentes) {
-        return Auth.notificarVarios(gerentes.concat([op.gpUid, op.tecnicoUid]), 'rnc',
-          T('notif.rncNova', dados.numero, op.numero, op.commessa, op.desenho, dados.descricao.slice(0, 200)), op.projetoId);
-      });
-    }).catch(function (e) { avisoErro(e, 'cq.erro'); }));
-    return;
-  }
-  const efeitoPrev = Rnc.efeitoReinspecao(dados);
-  const pergunta = op && op.rncAtualId === form.rnc.id && efeitoPrev.encerra
-    ? T('rf.confirmar.' + (efeitoPrev.opStatus === 'morta' ? 'morta' : efeitoPrev.opStatus), op.numero, dados.reOp) : null;
-  const seguir = pergunta ? confirmar(pergunta, { titulo: T('rf.reinspecao'), textoOk: T('rf.salvar') }) : Promise.resolve(true);
+function erro(msg, campo) { $('rnc-erro').textContent = msg; if (campo && $(campo)) { $(campo).classList.add('invalid'); $(campo).focus(); } }
+
+function salvarRnc(_a, _b, btn) {
+  if (!janela) return;
+  if (janela.modo === 'nova') return salvarNova(btn);
+  if (janela.modo === 'disposicao') return salvarDisposicao(btn);
+  if (janela.modo === 'cq') return salvarSeguimento(btn);
+}
+
+function salvarNova(btn) {
+  const op = janela.op;
+  const proc = document.querySelector('input[name="rn-proc"]:checked');
+  const dados = Rnc.abertura(op, { descricao: $('rn-descricao').value, qtdNc: $('rn-qtdNc').value, procedencia: proc ? proc.value : '' },
+    hoje(), Auth.nomeExibicao(), $('rn-numero').value);
+  const v = Rnc.validar(dados, op.qtd);
+  if (!v.ok) return erro(T('rf.faltou', v.faltando.map(function (k) { return T('rf.campo.' + k); }).join(', ')), 'rn-' + (v.faltando[0] || 'descricao'));
+  const repetido = (estado.rncs || []).some(function (r) { return String(r.numero).trim().toLowerCase() === dados.numero.toLowerCase(); });
+  if (repetido) return erro(T('rf.numeroRepetido', dados.numero), 'rn-numero');
+  comBotaoOcupado(btn, Rncs.abrir(op, dados).then(function () {
+    fecharModal('modal-rnc');
+    toast(T('cq.rncGravada', op.numero), { tipo: 'erro' });
+    // vai para a Gerência, o GP e o técnico do projeto darem a disposição
+    return Auth.uidsGerentes().then(function (gerentes) {
+      return Auth.notificarVarios(gerentes.concat([op.gpUid, op.tecnicoUid]), 'rnc',
+        T('notif.rncNova', dados.numero, op.numero, op.commessa, op.desenho, dados.descricao.slice(0, 200)), op.projetoId);
+    });
+  }).catch(function (e) { avisoErro(e, 'cq.erro'); }));
+}
+
+// Gerência, GP ou técnico grava a disposição; a RNC sai da lista deles e volta para o CQ.
+function salvarDisposicao(btn) {
+  const r = janela.rnc;
+  const texto = $('rn-disposicao').value.trim();
+  if (!texto) return erro(T('rf.faltou', T('rf.campo.disposicao')), 'rn-disposicao');
+  const dados = { disposicao: texto, dispResponsavel: Auth.nomeExibicao() || '', dispData: hoje() };
+  comBotaoOcupado(btn, Rncs.salvarDisposicao(r, dados).then(function () {
+    fecharModal('modal-rnc');
+    toast(T('rf.disposicaoSalva', r.numero));
+    return Auth.uidsPorPapel(['cq']).then(function (cq) {
+      return Auth.notificarVarios(cq, 'rnc', T('notif.rncDisposicao', r.numero, r.op || '', r.commessa || '', Auth.nomeExibicao() || '', texto.slice(0, 200)), r.projetoId);
+    }).catch(function (e) { console.warn('CQ não avisado:', e); });
+  }).catch(function (e) {
+    // outro já deu a disposição (as regras só aceitam a primeira)
+    if (e && e.code === 'permission-denied' && Rnc.etapa(rncPorId(r.id)) !== 'disposicao') { fecharModal('modal-rnc'); toast(T('rn.jaTinha', r.numero)); return; }
+    avisoErro(e, 'cq.erro');
+  }));
+}
+
+// CQ dá seguimento na peça: o mesmo efeito da reinspeção de antes.
+function salvarSeguimento(btn) {
+  const r = janela.rnc, op = janela.op || opPorId(r.opId);
+  const marcado = document.querySelector('input[name="rn-seg"]:checked');
+  if (!marcado) return erro(T('rn.escolha'));
+  const reOp = marcado.value === 'novaOp' ? $('rn-reOp').value.trim() : '';
+  if (marcado.value === 'novaOp' && !reOp) return erro(T('rn.faltaReOp'), 'rn-reOp');
+  const dados = Rnc.seguimento(r, marcado.value, reOp, Auth.nomeExibicao(), hoje(), $('rn-observacoes').value.trim());
+  const efeito = Rnc.efeitoReinspecao(dados);
+  const ativa = op && op.rncAtualId === r.id;
+  const seguir = ativa ? confirmar(T('rf.confirmar.' + (efeito.opStatus === 'morta' ? 'morta' : efeito.opStatus), op.numero, reOp), { titulo: T('rn.seguimento'), textoOk: T('rn.concluir') }) : Promise.resolve(true);
   seguir.then(function (ok) {
     if (!ok) return;
-    comBotaoOcupado(btn, Rncs.salvar(form.rnc, dados, op).then(function (r) {
-      fecharModal('modal-rnc-form');
-      toast(r.efeito && r.efeito.encerra ? T('rf.resultado.' + r.efeito.opStatus, op.numero, dados.reOp) : T('rf.salva', dados.numero));
-      if (r.efeito && (r.efeito.opStatus === 'aprovada' || r.efeito.opStatus === 'desvio')) avisarProgramador(op);
+    comBotaoOcupado(btn, Rncs.salvar(r, dados, op).then(function (res) {
+      fecharModal('modal-rnc');
+      toast(res.efeito ? T('rf.resultado.' + res.efeito.opStatus, op.numero, reOp) : T('rf.salva', r.numero));
+      if (res.efeito && (res.efeito.opStatus === 'aprovada' || res.efeito.opStatus === 'desvio')) avisarProgramador(op);
     }).catch(function (e) { avisoErro(e, 'cq.erro'); }));
   });
 }
 
-// Gerência, GP ou técnico grava só a disposição; o CQ é avisado para seguir com a reinspeção.
-function salvarDisposicao(btn) {
-  const r = form.rnc, dados = {};
-  CAMPOS_DISPOSICAO.forEach(function (k) { dados[k] = $('rf-' + k).value.trim(); });
-  $('rf-disposicao').classList.toggle('invalid', !dados.disposicao);
-  if (!dados.disposicao) { $('rnc-form-erro').textContent = T('rf.faltou', T('rf.campo.disposicao')); $('rf-disposicao').focus(); return; }
-  comBotaoOcupado(btn, Rncs.salvarDisposicao(r, dados).then(function () {
-    fecharModal('modal-rnc-form');
-    toast(T('rf.disposicaoSalva', r.numero));
-    return Auth.uidsPorPapel(['cq']).then(function (cq) {
-      return Auth.notificarVarios(cq, 'rnc', T('notif.rncDisposicao', r.numero, r.op || '', r.commessa || '', Auth.nomeExibicao() || '', dados.disposicao.slice(0, 200)), r.projetoId);
-    }).catch(function (e) { console.warn('CQ não avisado:', e); });
-  }).catch(function (e) { avisoErro(e, 'cq.erro'); }));
-}
-
 function baixarPdfRnc(_a, _b, btn) {
-  if (!form) return;
-  const dados = form.modo === 'ver' ? Object.assign({}, form.rnc) : coletar();
-  comBotaoOcupado(btn, baixarPdf(dados).then(function (nome) { toast(T('rf.pdfBaixado', nome)); })
+  if (!janela || !janela.rnc) return;
+  const r = rncPorId(janela.rnc.id) || janela.rnc;
+  comBotaoOcupado(btn, baixarPdf(r).then(function (nome) { toast(T('rf.pdfBaixado', nome)); })
     .catch(function (e) { avisoErro(e, 'rf.pdfErro'); }));
 }
 
-// Só uma opção de resultado por vez (os quadradinhos do papel viram escolha única).
-document.addEventListener('change', function (e) {
-  const el = e.target;
-  if (!el || !el.id || el.id.indexOf('rf-res-') !== 0 || !el.checked) return;
-  Rnc.RESULTADOS.forEach(function (k) { if ('rf-res-' + k !== el.id) $('rf-res-' + k).checked = false; });
-});
-document.addEventListener('change', function (e) {
-  const el = e.target;
-  if (!el || !el.id || el.id.indexOf('rf-proc-') !== 0 || !el.checked) return;
-  ['interno', 'externo'].forEach(function (k) { if ('rf-proc-' + k !== el.id) $('rf-proc-' + k).checked = false; });
-});
-
 /* ----------------------------------------------------------- aba RNC */
 const COR_RES = { conforme: 'green', desvio: 'amber', nao_conforme: 'rust', retrabalho: 'rust' };
+const FILTROS_RNC = ['disposicao', 'cq', 'encerrada', 'todas'];
+let filtroRnc = null;   // null = o padrão do cargo
+function filtroPadrao() { return Auth.souCQ() ? 'cq' : (Papeis.veRnc(Auth.papel()) ? 'disposicao' : 'todas'); }
+
+// RNC que espera por mim: a disposição (Gerência, GP, técnico) ou o seguimento (CQ).
+export function rncsEsperandoMim() {
+  return (estado.rncs || []).filter(function (r) { return podeDispor(r) || (Auth.souCQ() && Rnc.etapa(r) === 'cq'); }).length;
+}
+
 export function renderRnc() {
-  const lista = (estado.rncs || []).slice().sort(function (a, b) { return String(b.criadoEm || '').localeCompare(String(a.criadoEm || '')); });
-  const abertas = lista.filter(function (r) { return r.situacao !== 'encerrada'; }).length;
-  $('rnc-count').textContent = T('rnc.contagemNova', lista.length, abertas);
+  const f = filtroRnc || filtroPadrao();
+  const todas = (estado.rncs || []).slice().sort(function (a, b) { return String(b.criadoEm || '').localeCompare(String(a.criadoEm || '')); });
+  const conta = { todas: todas.length, disposicao: 0, cq: 0, encerrada: 0 };
+  todas.forEach(function (r) { conta[Rnc.etapa(r)]++; });
+  $('rnc-filtros').innerHTML = FILTROS_RNC.map(function (k) {
+    return '<button type="button" role="tab" aria-selected="' + (f === k) + '" class="' + (f === k ? 'ativa' : '') + '" data-acao="filtroRnc" data-arg="' + k + '">' +
+      esc(T('rn.f.' + k)) + '<b>' + conta[k] + '</b></button>';
+  }).join('');
+  $('rnc-count').textContent = T('rnc.contagemNova', todas.length, conta.disposicao + conta.cq);
+  const lista = f === 'todas' ? todas : todas.filter(function (r) { return Rnc.etapa(r) === f; });
   $('rnc-lista').innerHTML = lista.length ? lista.map(function (r) {
-    const op = opPorId(r.opId);
-    const st = op ? statusOp(op) : null;
-    const res = r.reResultado ? '<span class="pill-op op-res-' + (COR_RES[r.reResultado] || 'rust') + '">' + esc(T('rf.res.' + r.reResultado)) + '</span>' : '';
-    return '<div class="card rnc-card' + (r.situacao === 'encerrada' ? ' rnc-encerrada' : '') + '">' +
+    const et = Rnc.etapa(r), minha = podeDispor(r) || (Auth.souCQ() && et === 'cq');
+    const res = r.situacao === 'encerrada' ? '<span class="pill-op op-res-' + (COR_RES[r.reOp ? 'retrabalho' : r.reResultado] || 'rust') + '">' +
+      esc(r.reOp ? T('rn.esc.novaOp') : T('rf.res.' + (r.reResultado || 'nao_conforme'))) + '</span>' : '';
+    return '<div class="card rnc-card rnc-clicavel' + (et === 'encerrada' ? ' rnc-encerrada' : '') + (minha ? ' rnc-minha' : '') + '" data-acao="verRnc" data-arg="' + esc(r.id) + '" role="button" tabindex="0">' +
       '<div class="rnc-topo"><span class="mono rnc-op">RNC ' + esc(r.numero) + '</span>' +
-        '<span class="pill-area area-' + esc(r.area) + '">' + esc(T('area.' + r.area)) + '</span>' + res +
-        '<span class="rnc-aguarda">' + esc(T(r.situacao === 'encerrada' ? 'rnc.encerrada' : 'rnc.aguardando')) + '</span></div>' +
+        '<span class="pill-area area-' + esc(r.area) + '">' + esc(T('area.' + r.area)) + '</span>' +
+        '<span class="pill-rnc rnc-etapa-' + et + '">' + esc(T('rn.etapa.' + et)) + '</span>' + res + '</div>' +
       '<div class="rnc-peca"><b class="mono">' + esc(r.commessa) + '</b> · OP ' + esc(r.op) + ' · ' + esc(T('rnc.peca', r.desenho, r.item || '—')) +
-        (r.produto ? ' · ' + esc(r.produto) : '') + '</div>' +
+        (r.produto ? ' · ' + esc(r.produto) : '') + ' · ' + esc(T('rn.qtdCurta', r.qtdNc || '—', r.qtd || '—')) + '</div>' +
       '<div class="rnc-obs">' + esc(r.descricao || '—') + '</div>' +
-      (r.disposicao ? '<div class="hint-txt"><b>' + esc(T('rf.disposicaoCurta')) + '</b> ' + esc(r.disposicao) + '</div>' : '') +
-      (op && st === 'morta' ? '<div class="hint-txt">' + esc(T('rnc.morta', op.opNovaNumero || '—')) + '</div>' : '') +
+      (r.disposicao ? '<div class="hint-txt"><b>' + esc(T('rf.disposicaoCurta')) + '</b> ' + esc(r.disposicao) + (r.dispResponsavel ? ' — ' + esc(r.dispResponsavel) : '') + '</div>' : '') +
       '<div class="hint-txt">' + esc(T('rnc.registradaPor', r.inspetor || r.criadoPorNome || '—', dataHora(r.criadoEm))) + '</div>' +
-      '<div class="rnc-acoes"><button type="button" class="btn btn-outline btn-mini" data-acao="verRnc" data-arg="' + esc(r.id) + '">' + esc(T('rnc.verFormulario')) + '</button>' +
-        '<button type="button" class="btn btn-outline btn-mini" data-acao="pdfRncDireto" data-arg="' + esc(r.id) + '">' + esc(T('rf.pdf')) + '</button>' +
-        (buscarProjeto(r.projetoId) ? '<button type="button" class="link-btn" data-acao="irPara" data-arg="projetos" data-arg2="' + esc(r.projetoId) + '">' + esc(T('rnc.verProjeto')) + '</button>' : '') +
-      '</div></div>';
-  }).join('') : '<div class="card panel-pad empty-state">' + esc(T('rnc.vazio')) + '</div>';
+      (minha ? '<div class="rnc-chamada">' + esc(T(et === 'cq' ? 'rn.chamadaCq' : 'rn.chamadaDisp')) + ' →</div>' : '') +
+      '</div>';
+  }).join('') : '<div class="card panel-pad empty-state">' + esc(T(todas.length ? 'rn.vazioFiltro' : 'rnc.vazio')) + '</div>';
 }
 
 function verRnc(id) {
   const r = rncPorId(id);
   if (!r) return;
-  const op = opPorId(r.opId);
-  abrirFormRnc(modoPara(r), op, r);
-}
-function pdfRncDireto(id, _b, btn) {
-  const r = rncPorId(id);
-  if (!r) return;
-  comBotaoOcupado(btn, baixarPdf(r).then(function (nome) { toast(T('rf.pdfBaixado', nome)); }).catch(function (e) { avisoErro(e, 'rf.pdfErro'); }));
+  abrirJanela(modoPara(r), opPorId(r.opId), r);
 }
 
 registrarAcoes({
@@ -263,13 +301,18 @@ registrarAcoes({
   cqAprovar: cqAprovar,
   cqNovaRnc: cqNovaRnc,
   cqReinspecionar: cqReinspecionar,
-  salvarFormRnc: salvarFormRnc,
+  salvarRnc: salvarRnc,
   baixarPdfRnc: baixarPdfRnc,
   verRnc: verRnc,
-  pdfRncDireto: pdfRncDireto,
+  filtroRnc: function (k) { if (FILTROS_RNC.indexOf(k) >= 0) { filtroRnc = k; renderRnc(); } },
+  escolhaSeguimento: function () {
+    const m = document.querySelector('input[name="rn-seg"]:checked');
+    $('rn-reop-campo').hidden = !m || m.value !== 'novaOp';
+    if (m && m.value === 'novaOp') $('rn-reOp').focus();
+  },
   verRncDaOp: function (opId) {
     const o = opPorId(opId);
     const r = o && (rncPorId(o.rncAtualId) || rncsDaOp(o.id).pop());
-    if (r) abrirFormRnc(modoPara(r), o, r);
+    if (r) abrirJanela(modoPara(r), o, r);
   }
 });

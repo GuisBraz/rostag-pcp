@@ -24,6 +24,7 @@ import './listaOps.js';
 import { abrirPlanilha } from './fabrica.js';
 import { resumoCartao as resumoComerciais } from './comerciais.js';
 import { resumoCartao as resumoServicos } from './servicos.js';
+import { resumoCartao as resumoTarefas } from './tarefas.js';
 import { exportarPlanilha } from './avanco.js';
 
 let checklistAberto = false;   // começa fechado toda vez que se entra num projeto (rota.js)
@@ -43,7 +44,7 @@ export function renderCartoesTecnico(p) {
   const c = Projeto.aguardandoCronograma(p) ? null : Cronograma.calcular(p);
   const atrasadas = c ? c.itens.filter(function (i) { return i.situacao === 'atrasada'; }).length : 0;
   const st = Producao.estatisticas(opsDoProjeto(p.id));
-  const com = resumoComerciais(p.id), serv = resumoServicos(p.id);
+  const com = resumoComerciais(p.id), serv = resumoServicos(p.id), tar = resumoTarefas(p.id);
   $('tec-areas').innerHTML =
     cartao('alternarChecklist', p.id, T('tec.checklist'), c ? Projeto.progresso(p) + '<small>%</small>' : '—',
       !c ? T('sit.aguardando') : (atrasadas ? T('ar.procAtrasadas', plural(atrasadas, 'ar.ativ', 'ar.ativs')) : T('ar.procOk')),
@@ -53,7 +54,8 @@ export function renderCartoesTecnico(p) {
     cartao('abrirListaOpsProjeto', p.id, T('tec.ops'), String(st.total),
       st.total ? T('tec.opsDet', st.abertas, st.retrabalho) : T('d.semOps'), st.retrabalho ? '--rust' : '--ink') +
     cartao('abrirComerciais', p.id, T('tec.comerciais'), com ? com.valor : '—', com ? com.detalhe : T('com.abrir'), com ? com.cor : '--ink-faint') +
-    cartao('abrirServicos', p.id, T('tec.servicos'), serv ? serv.valor : '—', serv ? serv.detalhe : T('serv.abrir'), serv ? serv.cor : '--ink-faint');
+    cartao('abrirServicos', p.id, T('tec.servicos'), serv ? serv.valor : '—', serv ? serv.detalhe : T('serv.abrir'), serv ? serv.cor : '--ink-faint') +
+    cartao('abrirTarefas', p.id, T('tec.tarefas'), tar.valor, tar.detalhe, tar.cor);
   $('tec-checklist-card').hidden = !checklistAberto;
 }
 

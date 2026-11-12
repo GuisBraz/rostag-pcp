@@ -51,6 +51,7 @@
       <button type="button" class="side-item" data-tab="carga" data-acao="irPara" data-arg="carga" title="Alt+7" style="display:none"><span class="icon" aria-hidden="true">▥</span><span class="label" data-i18n="nav.carga">Carga</span></button>
       <button type="button" class="side-item" data-tab="rnc" data-acao="irPara" data-arg="rnc" title="Alt+5"><span class="icon" aria-hidden="true">⚠</span><span class="label" data-i18n="nav.rnc">RNC</span><span class="side-badge" id="rnc-contador" style="display:none">0</span></button>
       <button type="button" class="side-item" data-tab="finalizadas" data-acao="irPara" data-arg="finalizadas"><span class="icon" aria-hidden="true">✔</span><span class="label" data-i18n="nav.finalizadas">Todas as OPs</span></button>
+      <button type="button" class="side-item side-item-acao" data-acao="abrirMinhasTarefas"><span class="icon" aria-hidden="true">☑</span><span class="label" data-i18n="nav.tarefas">Minhas tarefas</span><span class="side-badge" id="tarefas-contador" style="display:none">0</span></button>
       <button type="button" class="side-item" data-tab="notificacoes" data-acao="irPara" data-arg="notificacoes" title="Alt+6"><span class="icon" aria-hidden="true">🔔</span><span class="label" data-i18n="nav.notificacoes">Notificações</span><span class="side-badge side-badge-azul" id="notif-nav-contador" style="display:none">0</span></button>
     </nav>
 
@@ -326,6 +327,7 @@
             <button type="button" class="btn btn-outline" data-acao="abrirEspelho" data-i18n="ac.planilha">Planilha de avanço</button>
             <button type="button" class="btn btn-outline" data-acao="abrirComerciais" data-i18n="ac.comerciais">Itens comerciais</button>
             <button type="button" class="btn btn-outline" data-acao="abrirServicos" data-i18n="ac.servicos">Serviços</button>
+            <button type="button" class="btn btn-outline" data-acao="abrirTarefas" data-i18n="ac.tarefas">Tarefas</button>
           </div>
           <div id="ac-resumo"></div>
           <div id="ac-gantt"></div>
@@ -522,7 +524,7 @@
 
 <!-- ==================== RNC ==================== -->
 <div class="tabpanel" id="tab-rnc">
-  <div class="actionbar"><div class="hint" id="rnc-count">—</div></div>
+  <div class="actionbar"><div class="fab-visoes" id="rnc-filtros" role="tablist"></div><div class="hint" id="rnc-count">—</div></div>
   <div id="rnc-lista" class="rnc-lista"></div>
 </div>
 
@@ -970,6 +972,60 @@
   </div>
 </div>
 
+<!-- ==================== TAREFAS AVULSAS ==================== -->
+<div class="modal-overlay" id="modal-tarefas" role="dialog" aria-modal="true" aria-labelledby="tar-titulo">
+  <div class="modal-box modal-largo">
+    <div class="modal-header">
+      <div style="min-width:0;"><h2 id="tar-titulo">Tarefas</h2><div class="hint-txt" id="tar-sub"></div></div>
+      <div class="esp-topo-acoes"><div id="tar-acoes" class="esp-acoes"></div>
+        <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-tarefas" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button></div>
+    </div>
+    <div class="modal-body">
+      <div class="fab-visoes tar-abas" id="tar-abas" role="tablist"></div>
+      <div id="tar-lista" class="tar-lista"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-tarefa" role="dialog" aria-modal="true" aria-labelledby="tared-titulo-h">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="tared-titulo-h">Nova tarefa</h2>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-tarefa" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="tared-titulo" data-i18n="tar.campoTitulo">TAREFA</label><input id="tared-titulo" maxlength="120" data-i18n-ph="tar.tituloPh" placeholder="ex.: Refazer o desenho 1609576 rev. 2"></div>
+      <div class="field"><label for="tared-descricao" data-i18n="tar.campoDescricao">DETALHES</label><textarea id="tared-descricao" rows="4" maxlength="2000"></textarea></div>
+      <div class="campos-3">
+        <div class="field" style="grid-column: span 2;"><label for="tared-para" data-i18n="tar.campoPara">PARA QUEM</label><select id="tared-para"></select></div>
+        <div class="field"><label for="tared-prazo" data-i18n="tar.campoPrazo">PRAZO (OPCIONAL)</label><input id="tared-prazo" type="date"></div>
+      </div>
+      <div class="form-error" id="tared-erro"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-tarefa" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-acao="salvarTarefa" data-i18n="btn.salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-tarefa-concluir" role="dialog" aria-modal="true" aria-labelledby="tarc-h">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="tarc-h" data-i18n="tar.concluirTit">Concluir tarefa</h2><div class="hint-txt" id="tarc-nome"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-tarefa-concluir" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="tarc-obs" data-i18n="tar.obsConclusao">COMO FOI RESOLVIDA (OPCIONAL)</label><textarea id="tarc-obs" rows="4" maxlength="1000"></textarea></div>
+      <div class="hint-txt" data-i18n="tar.concluirNota">Quem pediu recebe uma notificação.</div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-tarefa-concluir" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-success" data-acao="confirmarConclusao" data-i18n="tar.concluir">Concluir</button>
+    </div>
+  </div>
+</div>
+
 <!-- ==================== SERVIÇOS (TELA CHEIA) ==================== -->
 <div class="modal-overlay tela-cheia" id="modal-servicos" role="dialog" aria-modal="true" aria-labelledby="serv-titulo">
   <div class="modal-box">
@@ -1140,78 +1196,20 @@
 </div>
 
 <!-- ==================== FORMULÁRIO DA RNC (R02) ==================== -->
-<div class="modal-overlay tela-cheia" id="modal-rnc-form" role="dialog" aria-modal="true" aria-labelledby="rnc-form-titulo">
-  <div class="modal-box">
+<div class="modal-overlay" id="modal-rnc" role="dialog" aria-modal="true" aria-labelledby="rnc-titulo">
+  <div class="modal-box modal-largo">
     <div class="modal-header">
-      <div style="min-width:0;">
-        <h2 id="rnc-form-titulo">RNC</h2>
-        <div class="detail-sub" id="rnc-form-sub" style="margin-top:2px;">—</div>
+      <div style="min-width:0;"><h2 id="rnc-titulo">RNC</h2><div class="hint-txt" id="rnc-sub"></div></div>
+      <div class="esp-topo-acoes">
+        <button type="button" class="btn btn-outline btn-mini" id="rnc-pdf" data-acao="baixarPdfRnc" data-i18n="rf.pdf">⭳ Baixar PDF</button>
+        <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-rnc" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
       </div>
-      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-rnc-form" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
-      <div class="hint-txt" id="rnc-form-nota"></div>
-      <div class="rnc-folha" id="rnc-form">
-        <div class="rf-cab">
-          <div class="rf-logo"><img src="img/logo-sofir.png" alt="SOFIR"></div>
-          <div class="rf-titulo">REGISTRO DE NÃO CONFORMIDADE</div>
-          <div class="rf-num"><label for="rf-numero">Nº</label><input id="rf-numero" class="mono" autocomplete="off"></div>
-        </div>
-        <div class="rf-linha">
-          <div class="rf-c rf-g3"><label for="rf-produto">PRODUTO:</label><input id="rf-produto"></div>
-          <div class="rf-c"><label for="rf-desenho">Nº DES.:</label><input id="rf-desenho" class="mono"></div>
-          <div class="rf-c rf-p"><label for="rf-rev">REV.:</label><input id="rf-rev" class="mono"></div>
-        </div>
-        <div class="rf-linha">
-          <div class="rf-c"><label for="rf-commessa">COMMESSA:</label><input id="rf-commessa" class="mono"></div>
-          <div class="rf-c"><label for="rf-op">OP:</label><input id="rf-op" class="mono"></div>
-          <div class="rf-c rf-p"><label for="rf-qtd">QTD.:</label><input id="rf-qtd"></div>
-          <div class="rf-c"><label for="rf-tag">TAG:</label><input id="rf-tag"></div>
-          <div class="rf-c rf-p"><label for="rf-item">ITEM:</label><input id="rf-item" class="mono"></div>
-        </div>
-        <div class="rf-linha rf-setores"><span class="rf-rot">SETOR:</span><label class="rf-chk"><input type="checkbox" id="rf-setor-usinagem"> USINAGEM</label><label class="rf-chk"><input type="checkbox" id="rf-setor-caldeiraria"> CALDEIRARIA</label><label class="rf-chk"><input type="checkbox" id="rf-setor-pintura"> PINTURA</label><label class="rf-chk"><input type="checkbox" id="rf-setor-fornecedor"> FORNECEDOR</label><label class="rf-chk"><input type="checkbox" id="rf-setor-outros"> OUTROS:</label><input id="rf-setorOutros" class="rf-outros" aria-label="Outros"></div>
-        <div class="rf-linha rf-setores"><span class="rf-rot">PROCEDÊNCIA:</span><label class="rf-chk"><input type="checkbox" id="rf-proc-interno"> Interno</label><label class="rf-chk"><input type="checkbox" id="rf-proc-externo"> Externo</label></div>
-        <div class="rf-bloco">
-          <label class="rf-sec" for="rf-descricao">Descrição da não-conformidade *</label>
-          <textarea id="rf-descricao" rows="8" class="rf-pautado"></textarea>
-          <div class="rf-linha rf-sem-borda">
-            <div class="rf-c rf-g2"><label for="rf-inspetor">Inspetor *</label><input id="rf-inspetor"></div>
-            <div class="rf-c"><label for="rf-qtdNc">Qtde. N/C *</label><input id="rf-qtdNc" inputmode="numeric" autocomplete="off"></div>
-            <div class="rf-c"><label for="rf-data">Data</label><input id="rf-data" type="date"></div>
-          </div>
-        </div>
-        <div class="rf-bloco">
-          <label class="rf-sec" for="rf-disposicao">Disposição / correção</label>
-          <textarea id="rf-disposicao" rows="6" class="rf-pautado"></textarea>
-          <div class="rf-linha rf-sem-borda">
-            <div class="rf-c rf-g2"><label for="rf-dispResponsavel">Responsável</label><input id="rf-dispResponsavel"></div>
-            <div class="rf-c"><label for="rf-dispData">Data</label><input id="rf-dispData" type="date"></div>
-          </div>
-        </div>
-        <div class="rf-bloco rf-reinspecao">
-          <div class="rf-sec rf-faixa">REINSPEÇÃO</div>
-          <div class="rf-linha rf-sem-borda">
-            <div class="rf-c"><label for="rf-reOp">Nº OP – RETRABALHO</label><input id="rf-reOp" class="mono"></div>
-            <div class="rf-c rf-g2"><label for="rf-reInspetor">INSPETOR</label><input id="rf-reInspetor"></div>
-            <div class="rf-c"><label for="rf-reData">DATA</label><input id="rf-reData" type="date"></div>
-          </div>
-          <div class="rf-linha rf-setores rf-sem-borda"><label class="rf-chk"><input type="checkbox" id="rf-res-retrabalho"> RETRABALHO</label><label class="rf-chk"><input type="checkbox" id="rf-res-conforme"> CONFORME</label><label class="rf-chk"><input type="checkbox" id="rf-res-nao_conforme"> NÃO CONFORME</label><label class="rf-chk"><input type="checkbox" id="rf-res-desvio"> LIBERADA COM DESVIO</label></div>
-          <div class="rf-linha rf-sem-borda"><div class="rf-c rf-g2"><label for="rf-reResponsavel">RESPONSÁVEL</label><input id="rf-reResponsavel"></div></div>
-          <div class="hint-txt" data-i18n="rf.notaReinspecao">Conforme → OP aprovada · Liberada com desvio → aprovada com desvio · Não conforme → continua em retrabalho (pode abrir nova RNC) · Nº OP – Retrabalho preenchido → nasce a OP nova e esta vira peça morta.</div>
-        </div>
-        <div class="rf-bloco">
-          <label class="rf-sec" for="rf-observacoes">OBSERVAÇÕES</label>
-          <textarea id="rf-observacoes" rows="5" class="rf-pautado"></textarea>
-        </div>
-        <div class="rf-rodape">R02 - Registro de não conformidade - rev.: 01 data 08/10/2024</div>
-      </div>
-      <div class="form-error" id="rnc-form-erro"></div>
+      <div id="rnc-corpo"></div>
+      <div class="form-error" id="rnc-erro"></div>
     </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-rnc-form" data-i18n="btn.fechar">Fechar</button>
-      <button type="button" class="btn btn-outline" data-acao="baixarPdfRnc" data-i18n="rf.pdf">⭳ Baixar PDF</button>
-      <button type="button" class="btn btn-danger" id="rnc-form-salvar" data-acao="salvarFormRnc">Salvar</button>
-    </div>
+    <div class="modal-footer" id="rnc-rodape"></div>
   </div>
 </div>
 
