@@ -185,6 +185,9 @@ function aplicarRestricoesPapel() {
     if (b) b.style.display = x[1] ? '' : 'none';
   });
   // a usinagem programa na "Carga Máquina"
+  // a caldeiraria programa na "Carga Fábrica"
+  const rotFab = document.querySelector('.side-item[data-tab="fabrica"] .label');
+  if (rotFab) rotFab.textContent = T(area === 'caldeiraria' ? 'nav.cargaFabrica' : 'nav.fabrica');
   const rotCarga = document.querySelector('.side-item[data-tab="carga"] .label');
   if (rotCarga) rotCarga.textContent = T(area === 'usinagem' ? 'nav.cargaMaquina' : 'nav.carga');
   const bRnc = document.querySelector('.side-item[data-tab="rnc"]');

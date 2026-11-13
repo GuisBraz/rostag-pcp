@@ -6,7 +6,7 @@
    nova aparece no próximo carregamento, sem ficar presa em cache.
    Os dados (Firestore) não passam por aqui: o próprio SDK guarda o cache.
 --------------------------------------------------------------------------- */
-const CACHE = 'rostag-pcp-v27';
+const CACHE = 'rostag-pcp-v28';
 const ARQUIVOS = [
   './', 'index.html', 'manifest.json', 'css/app.css', 'css/temas.css', 'vendor/chart.umd.min.js', 'img/logo.png',
   'img/favicon.png', 'img/sobre.jpg', 'img/logo-sofir.png', 'img/login-arte.webp', 'img/login-fundo.webp',
@@ -22,7 +22,7 @@ const ARQUIVOS = [
   'js/dados/auth.js', 'js/dados/avanco.js', 'js/dados/carga.js', 'js/dados/checklist.js', 'js/dados/comerciais.js', 'js/dados/firebase.js',
   'js/dados/ops.js', 'js/dados/programacao.js', 'js/dados/rncs.js', 'js/dados/store.js', 'js/dados/tarefas.js',
   'js/ui/acesso.js', 'js/ui/ano.js', 'js/ui/app.js', 'js/ui/atalhos.js', 'js/ui/atualizacao.js', 'js/ui/avanco.js',
-  'js/ui/bibliotecas.js', 'js/ui/carga.js', 'js/ui/checklistPadrao.js', 'js/ui/comerciais.js', 'js/ui/componentes.js', 'js/ui/dados.js',
+  'js/ui/bibliotecas.js', 'js/ui/carga.js', 'js/ui/cargaFabrica.js', 'js/ui/checklistPadrao.js', 'js/ui/comerciais.js', 'js/ui/componentes.js', 'js/ui/dados.js',
   'js/ui/desempenho.js', 'js/ui/detalhe.js', 'js/ui/dom.js', 'js/ui/equipe.js', 'js/ui/fabrica.js',
   'js/ui/filtros.js', 'js/ui/finalizadas.js', 'js/ui/formulario.js', 'js/ui/gerencia.js', 'js/ui/graficos.js',
   'js/ui/linha.js', 'js/ui/listaOps.js', 'js/ui/minhasEquipes.js', 'js/ui/modal.js', 'js/ui/notificacoes.js', 'js/ui/opDetalhe.js',

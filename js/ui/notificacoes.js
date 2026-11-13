@@ -57,12 +57,12 @@ export function pararNotificacoes() {
 }
 
 const TIPOS_REAIS = ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas', 'designacaoTrocada', 'planilhaOps', 'rnc', 'chat', 'pedido', 'pedidoAprovado', 'pedidoRecusado',
-  'opAprovada', 'opFinalizada', 'tarefa', 'tarefaConcluida'];
+  'opAprovada', 'opFinalizada', 'tarefa', 'tarefaConcluida', 'opReagendada'];
 // Categorias para o filtro da tela cheia.
 const CATEGORIA = {
   designacao: 'projeto', projetoCriado: 'projeto', cronograma: 'projeto', datas: 'projeto', designacaoTrocada: 'projeto',
   planilhaOps: 'fabrica', rnc: 'fabrica', chat: 'conversa', observacao: 'conversa', opAprovada: 'fabrica', opFinalizada: 'fabrica',
-  pedido: 'projeto', pedidoAprovado: 'projeto', pedidoRecusado: 'projeto', tarefa: 'projeto', tarefaConcluida: 'projeto'
+  pedido: 'projeto', pedidoAprovado: 'projeto', pedidoRecusado: 'projeto', tarefa: 'projeto', tarefaConcluida: 'projeto', opReagendada: 'fabrica'
 };
 function categoriaDe(n) { return n.real ? (CATEGORIA[n.tipo] || 'conversa') : (/^(prod|prog|serv)-/.test(n.tipo) ? 'fabrica' : 'prazos'); }
 
@@ -80,7 +80,7 @@ function alertasCalculados() {
   if (!Auth.podeEntrar()) return [];
   const semana = Semana.inicioSemana(hoje()), equipeId = Auth.equipeAtualId();
   const novos = [];
-  const lista = Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops }).concat(avisosProgramador()).concat(avisosServicos()).concat(avisosTarefas()).map(function (n) {
+  const lista = Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops }).concat(avisosProgramador()).concat(avisosServicos()).concat(avisosTarefas()).concat(avisosCaldAtraso()).map(function (n) {
     const chave = Semana.chaveAlerta(semana, equipeId, n.id);
     const st = estadoAlertas && estadoAlertas[chave];
     if (estadoAlertas && !st && !registrando.has(chave)) {
@@ -123,6 +123,14 @@ function avisosServicos() {
       titulo: T('n.serv-cobrar', a.commessa, a.tipoServico, a.peca),
       meta: T(a.atrasoDias > 0 ? 'n.serv-cobrarAtrasoM' : 'n.serv-cobrarM', a.naRua, a.fornecedor || '—', br(a.previsto), a.atrasoDias)
     };
+  });
+}
+
+// OP de caldeiraria com a previsão vencida e ainda na fábrica: avisa o técnico e o GP dela.
+function avisosCaldAtraso() {
+  return Prog.avisosCaldAtraso(estado.ops, Auth.uid(), hoje()).map(function (a) {
+    return { id: a.id, tipo: a.tipo, nivel: a.nivel, projetoId: a.projetoId, origem: 'sistema', quando: a.data,
+      titulo: T('n.prod-cald-atraso', a.commessa, a.numero), meta: T('n.prod-cald-atrasoM', a.empresa || '—', br(a.data), a.dias) };
   });
 }
 

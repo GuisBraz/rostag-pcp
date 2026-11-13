@@ -71,7 +71,7 @@ export function aplicarRota() {
   $('tab-' + aba).classList.add('active');
   // no Painel Geral o título diz o módulo de quem está logado
   const modulo = aba === 'painel' ? Papeis.moduloDe(Auth.papel()) : null;
-  const nomeAba = aba === 'carga' && Auth.areaProgramador() === 'usinagem' ? 'cargaMaquina' : aba;
+  const nomeAba = aba === 'carga' && Auth.areaProgramador() === 'usinagem' ? 'cargaMaquina' : (aba === 'fabrica' && Auth.areaProgramador() === 'caldeiraria' ? 'cargaFabrica' : aba);
   $('page-title').innerHTML = esc(T('nav.' + nomeAba)) + (modulo ? '<span class="titulo-modulo"><span class="titulo-traco"> — </span>' + esc(T('modulo.' + modulo)) + '</span>' : '');
   // o Painel Geral não tem subtítulo (a saudação ocupa o topo)
   $('page-sub').textContent = aba === 'painel' ? '' : T('sub.' + aba);

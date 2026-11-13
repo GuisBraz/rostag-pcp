@@ -221,6 +221,15 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - **Ordens de Produção (Gerência, GP, técnico):** cartões por commessa (OPs,
   prazo, avanço e contagem por situação); o cartão abre as OPs em tela cheia.
   Gerência e GP não têm mais Carga, Fábrica e Todas as OPs no menu.
+- **Carga Fábrica (programadora de caldeiraria):** abas Aguardando
+  programação (por commessa; programa várias OPs de uma vez com empresa —
+  SOFIR interna ou terceirizada —, início e previsão de término), Lista
+  (quem está com cada OP, pelo término), Linha do tempo (no visual da linha
+  das entregas, com a faixa de hoje e os meses), Baixa do CQ (finalizar) e
+  Empresas. Filtros de empresa, commessa e mês de entrega. Reagendar guarda a
+  previsão anterior em `programacao.historico` (OP "Reagendada") e avisa o
+  técnico e o GP; previsão vencida com a OP na fábrica avisa os dois (alerta
+  do Sistema).
 - **Checklist padrão novo (14 tarefas):** Análise de escopo, Criar lista de
   avanço, SC itens críticos, Criar LM, Aproveitamento de laminados, SC
   laminados, Aproveitamento de chapas, SC chapas, Detalhamento de dobra (quando

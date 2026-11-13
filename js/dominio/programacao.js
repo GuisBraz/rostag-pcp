@@ -187,3 +187,29 @@ export function proximasEtapas(o) {
   const m = (o && o.marcas) || {};
   return ETAPAS.filter(function (k) { return m[k]; });
 }
+
+/* ------------------------------------------------- carga fábrica (caldeiraria) */
+// A fabricação interna (SOFIR) é sempre uma opção, além das terceirizadas.
+export const SOFIR = { id: 'sofir', nome: 'SOFIR', interna: true };
+export function empresasCald(terceirizadas) {
+  return [SOFIR].concat((terceirizadas || []).filter(function (t) { return t.ativa !== false && t.id !== SOFIR.id; }));
+}
+// Prazo da OP programada: 'atraso' (previsão vencida) · 'vence' (até 3 dias) · 'prazo'.
+export function prazoCald(o, h) {
+  const pr = o && o.programacao;
+  if (!pr || !pr.previsaoFim) return null;
+  const d = difDias(h || hoje(), pr.previsaoFim);
+  return { k: d < 0 ? 'atraso' : (d <= 3 ? 'vence' : 'prazo'), dias: d };
+}
+export function reagendada(o) { return !!(o && o.programacao && (o.programacao.historico || []).length); }
+
+// Aviso para o técnico e o GP da OP: a previsão venceu e a OP ainda está na fábrica.
+export function avisosCaldAtraso(ops, uid, h) {
+  h = h || hoje();
+  return (ops || []).filter(function (o) {
+    return o.area === 'caldeiraria' && (o.tecnicoUid === uid || o.gpUid === uid) && situacao(o) === 'programada' && o.programacao.previsaoFim < h;
+  }).map(function (o) {
+    return { id: 'prod-cald-atraso:' + o.id, tipo: 'prod-cald-atraso', nivel: 'alerta', projetoId: o.projetoId, commessa: o.commessa || '',
+      numero: o.numero, empresa: o.programacao.terceirizada || '', data: o.programacao.previsaoFim, dias: difDias(o.programacao.previsaoFim, h) };
+  });
+}
