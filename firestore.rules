@@ -371,7 +371,8 @@ service cloud.firestore {
             || (cald && k.hasOnly(['programacao', 'desprogramadaEm'])
               && (d.get('programacao', null) == null
                 || (d.programacao is map
-                  && d.programacao.keys().hasOnly(['terceirizadaId', 'terceirizada', 'previsaoFim', 'em', 'porUid'])
+                  && d.programacao.keys().hasOnly(['terceirizadaId', 'terceirizada', 'inicio', 'previsaoFim', 'historico', 'em', 'porUid'])
+                  && d.programacao.get('historico', []) is list && d.programacao.get('historico', []).size() <= 30
                   && d.programacao.terceirizadaId is string && d.programacao.previsaoFim is string
                   && d.programacao.porUid == request.auth.uid)))
             || (usi && k.hasOnly(['horasReais', 'desprogramadaEm'])
@@ -673,7 +674,7 @@ service cloud.firestore {
         && request.resource.data.deNome is string && request.resource.data.deNome.size() <= 80
         && request.resource.data.tipo in ['designacao', 'observacao', 'projetoCriado', 'cronograma', 'datas',
                                           'designacaoTrocada', 'planilhaOps', 'rnc', 'chat', 'pedido', 'pedidoAprovado', 'pedidoRecusado',
-                                          'opAprovada', 'opFinalizada', 'tarefa', 'tarefaConcluida']
+                                          'opAprovada', 'opFinalizada', 'tarefa', 'tarefaConcluida', 'opReagendada']
         && request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 500
         && (request.resource.data.projetoId == null || request.resource.data.projetoId is string)
         && request.resource.data.lida == false

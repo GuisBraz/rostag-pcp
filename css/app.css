@@ -1198,3 +1198,42 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .ord-conta.zero { opacity: .55; }
 .ord-conta-baixaCq b { color: var(--green); }
 .ord-conta-rnc b { color: var(--rust); }
+
+/* Carga Fábrica (caldeiraria) */
+.cf-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+@media (max-width: 900px) { .cf-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cf-kpi { display: flex; align-items: center; gap: 12px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--raio-btn, 12px); padding: 9px 14px; cursor: pointer; text-align: left; font-family: var(--font); color: var(--ink); }
+.cf-kpi:hover { border-color: var(--teal); }
+.cf-kpi-val { font-size: 22px; font-weight: 800; line-height: 1; min-width: 26px; font-family: var(--mono); }
+.cf-kpi-rot { display: block; font-size: 10px; font-weight: 800; letter-spacing: .05em; color: var(--ink-faint); text-transform: uppercase; }
+.cf-kpi-det { display: block; font-size: 11.5px; color: var(--ink-dim); }
+.cf-topo { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.cf-abas { margin-bottom: 0; }
+.cf-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cf-filtros select { max-width: 220px; }
+.cf-com { color: var(--terracotta); }
+.cf-grupo { margin-bottom: 14px; }
+.cf-grupo-topo { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+.cf-grupo-topo input { width: auto; }
+.cf-grupo-dir { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--ink-dim); }
+.cf-empresa { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+.cf-bola { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.ord-tab tr.cf-atrasada td { background: var(--rust-bg); }
+.pill-cf { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+.cf-prazo { background: var(--violet-bg); color: var(--violet); }
+.cf-vence { background: var(--amber-bg); color: var(--amber-ink); }
+.cf-atraso { background: var(--rust-bg); color: var(--rust); }
+.cf-reag { background: var(--terracotta-bg); color: var(--terracotta); }
+.cf-tl { display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .cf-tl { grid-template-columns: 1fr; } }
+.cf-tl-lado .tl-sidebar-item { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cf-tl-lado .tl-sidebar-item b { margin-left: auto; font-family: var(--mono); }
+.cf-tl-lado .tl-sidebar-item .cm { width: 100%; color: var(--ink-faint); }
+.cf-tl-lado .tl-sidebar-item.cf-ativa { background: var(--bg-panel-alt); border-color: var(--line); }
+.cf-tl-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.cf-trilho { position: relative; }
+.cf-trilho::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--line); transform: translateX(-50%); }
+.cf-tl-mes { text-align: center; padding: 6px 0; position: relative; z-index: 1; }
+.cf-tl-mes span { background: var(--bg-panel); padding: 2px 10px; font-size: 11px; font-weight: 800; color: var(--ink-faint); letter-spacing: .08em; }
+.cf-empresas .prog-terc { display: flex; align-items: center; gap: 8px; }
+.cf-empresas .prog-terc .hint-txt { margin-left: auto; }

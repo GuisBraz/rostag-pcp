@@ -1251,6 +1251,65 @@
   </div>
 </div>
 
+<!-- ==================== CARGA FÁBRICA (caldeiraria) ==================== -->
+<div class="modal-overlay" id="modal-cf-prog" role="dialog" aria-modal="true" aria-labelledby="cfp-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="cfp-titulo" data-i18n="cf.programarTit">Programar OPs</h2><div class="hint-txt" id="cfp-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-cf-prog" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="cfp-empresa" data-i18n="cf.empresaCampo">EMPRESA QUE VAI FABRICAR</label><select id="cfp-empresa"></select></div>
+      <div class="row2">
+        <div class="field"><label for="cfp-inicio" data-i18n="cf.inicioCampo">INÍCIO</label><input type="date" id="cfp-inicio"></div>
+        <div class="field"><label for="cfp-fim" data-i18n="cf.terminoCampo">PREVISÃO DE TÉRMINO</label><input type="date" id="cfp-fim"></div>
+      </div>
+      <div class="hint-txt" data-i18n="cf.programarNota">O técnico e o GP do projeto acompanham. Se a previsão vencer e a OP não voltar, eles são avisados.</div>
+      <div class="form-error" id="cfp-erro"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-cf-prog" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-acao="salvarProgramarCargaFab" data-i18n="cf.programar">Programar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-cf-op" role="dialog" aria-modal="true" aria-labelledby="cfo-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="cfo-titulo">OP</h2><div class="hint-txt" id="cfo-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-cf-op" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body" id="cfo-corpo"></div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-cf-op" data-i18n="btn.fechar">Fechar</button>
+      <button type="button" class="btn btn-primary" id="cfo-reagendar" data-acao="reagendarOpAberta" data-i18n="cf.reagendar">Reagendar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-cf-reag" role="dialog" aria-modal="true" aria-labelledby="cfr-titulo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div><h2 id="cfr-titulo" data-i18n="cf.reagendarTit">Reagendar OP</h2><div class="hint-txt" id="cfr-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-cf-reag" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="row2">
+        <div class="field"><label for="cfr-atual" data-i18n="cf.previsaoAtual">PREVISÃO ATUAL</label><input id="cfr-atual" disabled></div>
+        <div class="field"><label for="cfr-nova" data-i18n="cf.novaPrevisao">NOVA PREVISÃO</label><input type="date" id="cfr-nova"></div>
+      </div>
+      <div class="hint-txt" id="cfr-hist"></div>
+      <div class="hint-txt" data-i18n="cf.reagendarNota">A OP fica marcada como Reagendada e o técnico e o GP recebem o aviso.</div>
+      <div class="form-error" id="cfr-erro"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-cf-reag" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-acao="salvarReagendarCargaFab" data-i18n="cf.reagendar">Reagendar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ==================== PENDÊNCIAS DA GERÊNCIA ==================== -->
 <div class="modal-overlay tela-cheia" id="modal-pendencias" role="dialog" aria-modal="true" aria-labelledby="pend-titulo">
   <div class="modal-box">

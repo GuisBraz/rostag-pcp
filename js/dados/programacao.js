@@ -34,11 +34,23 @@ export function salvarTerceirizada(nome) {
 export function excluirTerceirizada(id) { return equipe().collection('terceirizadas').doc(id).delete(); }
 
 /* ------------------------------------------------------------ caldeiraria */
-export function programarCald(opId, terceirizada, previsaoFim) {
-  return refOp(opId).update({
-    programacao: { terceirizadaId: terceirizada.id, terceirizada: String(terceirizada.nome || '').slice(0, 60), previsaoFim: previsaoFim,
-      em: agoraIso(), porUid: Auth.uid() }
+export function programarCald(opId, terceirizada, previsaoFim, inicio) {
+  return programarVariasCald([opId], terceirizada, inicio, previsaoFim);
+}
+// Programa várias OPs de uma vez: empresa (SOFIR ou terceirizada), início e previsão de término.
+export function programarVariasCald(opIds, empresa, inicio, previsaoFim) {
+  const lote = db().batch(), agora = agoraIso();
+  (opIds || []).forEach(function (id) {
+    lote.update(refOp(id), { programacao: { terceirizadaId: empresa.id, terceirizada: String(empresa.nome || '').slice(0, 60),
+      inicio: inicio || '', previsaoFim: previsaoFim, historico: [], em: agora, porUid: Auth.uid() } });
   });
+  return lote.commit();
+}
+// Reagendar: nova previsão; a anterior entra no histórico (a OP fica "reagendada").
+export function reagendarCald(op, novaData) {
+  const pr = op.programacao || {};
+  return refOp(op.id).update({ programacao: { terceirizadaId: pr.terceirizadaId, terceirizada: pr.terceirizada || '', inicio: pr.inicio || '',
+    previsaoFim: novaData, historico: (pr.historico || []).concat([pr.previsaoFim]).slice(-30), em: agoraIso(), porUid: Auth.uid() } });
 }
 // Tira da fábrica: volta para a mão da programadora (conta de novo a espera).
 export function tirarDaFabrica(opId) { return refOp(opId).update({ programacao: null, desprogramadaEm: agoraIso() }); }

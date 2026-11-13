@@ -59,3 +59,17 @@ test('próximo passo: sugestão pela planilha e grupo da peça pronta', () => {
   assert.deepEqual(['pintura', 'decapagem', 'servicoExterno', 'embarque', 'usinagem'].map((p) => Fin.grupo(pronta(p))),
     ['pintura', 'decapagem', 'servicoExterno', 'expedicao', 'semDestino']);
 });
+
+import * as ProgD from '../js/dominio/programacao.js';
+test('carga fábrica: SOFIR sempre na lista, prazo, reagendada e aviso de atraso', () => {
+  assert.deepEqual(ProgD.empresasCald([{ id: 't1', nome: 'Alfa' }, { id: 't2', nome: 'Velha', ativa: false }]).map((e) => e.id), ['sofir', 't1']);
+  const o = (fim, extra) => ({ id: 'o' + fim, area: 'caldeiraria', status: 'aberta', projetoId: 'p', numero: '1', tecnicoUid: 'tec', gpUid: 'gp',
+    programacao: { terceirizadaId: 'sofir', terceirizada: 'SOFIR', previsaoFim: fim, historico: [] }, ...extra });
+  const h = '2026-11-13';
+  assert.deepEqual(['2026-11-10', '2026-11-15', '2026-11-30'].map((d) => ProgD.prazoCald(o(d), h).k), ['atraso', 'vence', 'prazo']);
+  assert.equal(ProgD.reagendada(o('2026-11-30', { programacao: { previsaoFim: '2026-11-30', historico: ['2026-11-20'] } })), true);
+  const ops = [o('2026-11-10'), o('2026-11-30'), o('2026-11-09', { status: 'aprovada' }), o('2026-11-08', { area: 'usinagem' })];
+  assert.deepEqual(ProgD.avisosCaldAtraso(ops, 'tec', h).map((a) => [a.id, a.dias]), [['prod-cald-atraso:o2026-11-10', 3]]);
+  assert.equal(ProgD.avisosCaldAtraso(ops, 'gp', h).length, 1);
+  assert.equal(ProgD.avisosCaldAtraso(ops, 'outro', h).length, 0);
+});

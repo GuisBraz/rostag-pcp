@@ -24,7 +24,7 @@ import { configurar as configurarOpManual } from './opManual.js';
 import { alternarPopup } from './app.js';
 import { garantirXlsx } from './bibliotecas.js';
 import './opPdf.js';
-import { renderQuadroCald } from './programacao.js';
+import { renderCargaFabrica } from './cargaFabrica.js';
 import { classeAtraso } from './opDetalhe.js';
 import './avanco.js';
 
@@ -166,7 +166,7 @@ export function renderFabrica() {
   const quadro = papel === 'prog_caldeiraria';
   $('fab-lista-wrap').hidden = quadro;
   $('fab-quadro').hidden = !quadro;
-  if (quadro) { $('fab-count').textContent = ''; $('btn-subir-planilha').style.display = 'none'; renderQuadroCald('fab-quadro'); return; }
+  if (quadro) { $('fab-count').textContent = ''; $('btn-subir-planilha').style.display = 'none'; renderCargaFabrica('fab-quadro'); return; }
   const prog = Auth.areaProgramador();
   const cq = Auth.souCQ();
   $('btn-subir-planilha').style.display = Papeis.sobePlanilha(papel) ? '' : 'none';

@@ -1037,3 +1037,16 @@ describe('próximo passo na baixa do CQ', () => {
     await assertSucceeds(como(Q).doc('equipes/E1/ops/op1').update({ status: 'aberta', finalizadoPorUid: del, finalizadoPorNome: del, finalizadoEm: del, proximoPasso: del, proximoPassoEm: del }));
   });
 });
+
+describe('carga fábrica: programar, início e reagendar', () => {
+  test('programadora de caldeiraria grava início, previsão e histórico; outro cargo não', async () => {
+    await semear('equipes/E1/ops/op2', op({ projetoId: 'doT', area: 'caldeiraria', tecnicoUid: T, gpUid: 'outroGP' }));
+    const prog = (uid, extra) => ({ programacao: { terceirizadaId: 'sofir', terceirizada: 'SOFIR', inicio: '2026-11-13', previsaoFim: '2026-11-30', historico: [], em: 'x', porUid: uid, ...extra } });
+    await assertSucceeds(como(K).doc('equipes/E1/ops/op2').update(prog(K)));
+    await assertSucceeds(como(K).doc('equipes/E1/ops/op2').update(prog(K, { previsaoFim: '2026-12-05', historico: ['2026-11-30'] })));
+    await assertFails(como(K).doc('equipes/E1/ops/op2').update(prog(K, { historico: 'x' })));
+    await assertFails(como(K).doc('equipes/E1/ops/op2').update(prog(K, { outro: 1 })));
+    await assertFails(como(U).doc('equipes/E1/ops/op2').update(prog(U)));
+    await assertSucceeds(como(K).collection('notificacoes').add({ paraUid: T, tipo: 'opReagendada', mensagem: 'x', projetoId: 'doT', equipeId: 'E1', deUid: K, deNome: 'K', lida: false, criadoEm: 'x' }));
+  });
+});
