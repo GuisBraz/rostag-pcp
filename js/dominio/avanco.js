@@ -103,6 +103,34 @@ export function resumoPecas(lista) {
   return r;
 }
 
+// Marca de uma linha por coluna: cald, usin, comercial ou as marcas da peça.
+export function marcaDe(i, k) {
+  if (k === 'cald') return !!i.cald;
+  if (k === 'usin') return !!i.usin;
+  if (k === 'comercial') return !!i.comercial;
+  return !!(i.marcas && i.marcas[k]);
+}
+
+/**
+ * Linhas da planilha personalizada com os filtros do cabeçalho (todas as
+ * marcas ligadas ao mesmo tempo). Sem filtro: tudo menos os comerciais; os
+ * comerciais só aparecem com o filtro "comercial". O conjunto de uma peça que
+ * passou continua aparecendo (a árvore não se perde).
+ */
+export function filtrar(lista, filtros) {
+  const ks = Object.keys(filtros || {}).filter(function (k) { return filtros[k]; });
+  const comComerciais = ks.indexOf('comercial') >= 0;
+  const passa = function (i) { return (comComerciais || !i.comercial) && ks.every(function (k) { return marcaDe(i, k); }); };
+  if (!ks.length) return (lista || []).filter(function (i) { return !i.comercial; });
+  const ok = (lista || []).filter(passa);
+  const posOk = ok.map(function (i) { return texto(i.posicao); }).filter(Boolean);
+  return (lista || []).filter(function (i) {
+    if (ok.indexOf(i) >= 0) return true;
+    const p = texto(i.posicao);
+    return !!p && !i.comercial && posOk.some(function (o) { return o.indexOf(p + '.') === 0; });
+  });
+}
+
 // OP "de pintura" do projeto, quando a planilha traz no resumo do topo.
 export function opPintura(matriz, cab) {
   const ate = cab ? cab.linha : Math.min((matriz || []).length, 10);

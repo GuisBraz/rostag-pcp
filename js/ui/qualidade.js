@@ -60,9 +60,8 @@ function avisarProgramador(o) {
   });
 }
 
-function cqAprovar() {
-  const o = baixaOp;
-  if (!o) return;
+function cqAprovar() { if (baixaOp) aprovarOp(baixaOp); }
+function aprovarOp(o) {
   confirmar(T('cq.aprovarConfirm', descricaoOp(o)), { titulo: T('cq.aprovar'), textoOk: T('baixa.simAprovar') }).then(function (ok) {
     if (!ok) return;
     fecharModal('modal-baixa');
@@ -299,6 +298,9 @@ function verRnc(id) {
 registrarAcoes({
   abrirBaixa: abrirBaixa,
   cqAprovar: cqAprovar,
+  // pelo detalhe da OP em tela cheia (Fábrica do CQ)
+  cqAprovarOp: function (id) { const o = opPorId(id); if (o && Auth.souCQ() && statusOp(o) === 'aberta') aprovarOp(o); },
+  cqNovaRncOp: function (id) { const o = opPorId(id); if (o && Auth.souCQ() && statusOp(o) === 'aberta') abrirJanela('nova', o, null); },
   cqNovaRnc: cqNovaRnc,
   cqReinspecionar: cqReinspecionar,
   salvarRnc: salvarRnc,

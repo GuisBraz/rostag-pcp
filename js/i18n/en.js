@@ -518,4 +518,7 @@ export default {
   'n.tarefa-vence':'{0}: task due today — {1}', 'n.tarefa-venceM':'Due: {0}.',
   'n.tarefa-atrasada':'{0}: task late — {1}', 'n.tarefa-atrasadaM':'Was due {0} ({1} day(s) late).',
   'fab.aviso.agrupada':'Row {0}: same work order no. {1} as row {2} — merged into one work order (qty summed: {3}).', 'fab.rJuntar':'{0} duplicated work order(s) with the same number will be merged', 'fab.rNaoJuntou':'Could not merge (QC already moved them): {0} — check by hand',
+  'pl.filtroPor':'Show only rows marked in {0}', 'pl.filtroTirar':'Remove the {0} filter', 'pl.filtrando':'Filter: {0} · {1} row(s)', 'pl.limpar':'clear filters', 'pl.dicaFiltro':'Click a marked column title (FAB, MACHINING, PAINTING…) to filter.', 'pl.vaziaFiltro':'No rows with these marks.',
+  'serv.ped.titulo':'Import service purchase order (PDF)', 'serv.ped.nota':'Upload the service purchase order PDF. The site links each item to a service by request number and the drawing in the description; check before saving. Order and supplier go to the service; only Management, PM and technician see the price.', 'serv.ped.item':'SERVICE', 'serv.ped.por.sc':'linked by request', 'serv.ped.por.desenho':'linked by drawing', 'serv.ped.por.sugestao':'suggested by description — check',
+  'fab.cqAguardam':'{0} work order(s) awaiting QC', 'fab.cqVerOps':'See work orders',
 };

@@ -10,6 +10,7 @@
 --------------------------------------------------------------------------- */
 import { addDias, fds, difDias, hoje } from '../nucleo/fmt.js';
 import { chave, texto } from './planilha.js';
+import { semelhanca } from './comerciais.js';
 
 export function chaveServico(desenho, posicao, tipo) { return 'S|' + chave(desenho) + '|' + chave(posicao) + '|' + chave(tipo).slice(0, 30); }
 
@@ -147,3 +148,36 @@ export function avisos(docs, projetos, uid, h) {
   return r;
 }
 
+
+/* ------------------------------------------- pedido de compra do serviço */
+function textoServico(s) { return [s.tipo, s.servico, s.peca].join(' '); }
+// O desenho da peça aparece na descrição do item do pedido?
+function citaDesenho(ln, s) { const d = chave(s.desenho); return d.length >= 5 && chave(ln.descricao).indexOf(d) >= 0; }
+
+/**
+ * Liga cada linha do pedido (já da commessa do projeto) ao serviço da lista:
+ * pela SC (a mais parecida, se a SC tiver vários), depois pelo desenho citado
+ * na descrição e, por fim, só sugestão pela descrição.
+ * Devolve [{ linha, chave, por: 'sc' | 'desenho' | 'sugestao' | null }]
+ */
+export function ligarPedido(linhasPedido, servicos) {
+  const livres = (servicos || []).slice();
+  return (linhasPedido || []).map(function (ln) {
+    let achado = null, por = null;
+    if (ln.sc) {
+      const mesmaSc = livres.filter(function (s) { return s.sc && s.sc === ln.sc; });
+      if (mesmaSc.length) {
+        achado = mesmaSc.filter(function (s) { return citaDesenho(ln, s); })[0] ||
+          mesmaSc.slice().sort(function (a, b) { return semelhanca(ln.descricao, textoServico(b)) - semelhanca(ln.descricao, textoServico(a)); })[0];
+        por = 'sc';
+      }
+    }
+    if (!achado) { achado = livres.filter(function (s) { return citaDesenho(ln, s); })[0] || null; if (achado) por = 'desenho'; }
+    if (!achado) {
+      const melhor = livres.map(function (s) { return { s: s, n: semelhanca(ln.descricao, textoServico(s)) }; }).sort(function (a, b) { return b.n - a.n; })[0];
+      if (melhor && melhor.n >= 0.5) { achado = melhor.s; por = 'sugestao'; }
+    }
+    if (achado) livres.splice(livres.indexOf(achado), 1);
+    return { linha: ln, chave: achado ? achado.chave : null, por: por };
+  });
+}

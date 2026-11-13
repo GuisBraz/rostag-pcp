@@ -107,3 +107,34 @@ test('resumo da planilha: só peças finais, sem comerciais', () => {
   ];
   assert.deepEqual(Av.resumoPecas(l), { pecas: 5, peso: 24.3, usinagem: 5, caldeiraria: 1 });
 });
+
+test('planilha: filtro pelo cabeçalho mantém o conjunto e os comerciais só com o filtro', () => {
+  const l = [
+    { posicao: '28', qtd: 2, pesoTotal: 9.4 },
+    { posicao: '28.1', qtd: 1, pesoTotal: 4.1, cald: true, usin: true },
+    { posicao: '28.2', qtd: 1, pesoTotal: 0.6, usin: true, marcas: { ttat: true } },
+    { posicao: '9', qtd: 3, pesoTotal: 19.6, usin: true, marcas: { ttat: true } },
+    { posicao: '23', qtd: 16, comercial: true }
+  ];
+  assert.deepEqual(Av.filtrar(l, {}).map((i) => i.posicao), ['28', '28.1', '28.2', '9']);
+  assert.deepEqual(Av.filtrar(l, { cald: true }).map((i) => i.posicao), ['28', '28.1']);
+  assert.deepEqual(Av.filtrar(l, { usin: true, ttat: true }).map((i) => i.posicao), ['28', '28.2', '9']);
+  assert.deepEqual(Av.filtrar(l, { comercial: true }).map((i) => i.posicao), ['23']);
+  assert.deepEqual(Av.resumoPecas(Av.filtrar(l, { usin: true, ttat: true })), { pecas: 4, peso: 20.2, usinagem: 4, caldeiraria: 0 });
+});
+
+test('pedido de serviço: liga pela SC (o desenho desempata), pelo desenho e sugere', () => {
+  const servs = [
+    { chave: 's1', tipo: 'TRATAMENTO TERMICO', servico: 'CEMENTAÇÃO', peca: 'CREMALHEIRA PARTE 1', desenho: '1609576', sc: '036889' },
+    { chave: 's2', tipo: 'TRATAMENTO TERMICO', servico: 'CEMENTAÇÃO', peca: 'CREMALHEIRA PARTE 2', desenho: '1609577', sc: '036889' },
+    { chave: 's3', tipo: 'ELETROEROSÃO', servico: 'RASGO CHAVETA', peca: 'DISTANCIADOR', desenho: '1609602', sc: '' },
+    { chave: 's4', tipo: 'VULCANIZAÇÃO', servico: 'REVESTIR POLIURETANO', peca: 'BATENTE', desenho: '1609028', sc: '' }
+  ];
+  const r = Serv.ligarPedido([
+    { descricao: 'CEMENTACAO CREMALHEIRA DES 1609577', sc: '036889' },
+    { descricao: 'ELETROEROSAO RASGO CHAVETA DES. 1609602', sc: '' },
+    { descricao: 'VULCANIZAÇÃO REVESTIR POLIURETANO BATENTE', sc: '' },
+    { descricao: 'FRETE', sc: '' }
+  ], servs);
+  assert.deepEqual(r.map((x) => [x.chave, x.por]), [['s2', 'sc'], ['s3', 'desenho'], ['s4', 'sugestao'], [null, null]]);
+});
