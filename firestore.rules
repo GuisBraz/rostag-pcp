@@ -358,7 +358,7 @@ service cloud.firestore {
               && designacaoConfere(d, p) && extrasOk(d)
               && d.numero is string && d.numero.size() > 0 && d.numero.size() <= 40)
             || (k.hasOnly(['destino', 'destinoEm', 'destinoPorUid'])
-              && d.destino in ['expedicao', 'montagem', 'pintura'] && d.destinoPorUid == request.auth.uid)
+              && d.destino in ['expedicao', 'montagem', 'pintura', 'decapagem', 'servicoExterno'] && d.destinoPorUid == request.auth.uid)
           );
         }
         function programacaoOk(papel, gerente, k, d, r) {
@@ -389,7 +389,9 @@ service cloud.firestore {
         function cqOk(k, d, r) {
           return r.status in ['aberta', 'retrabalho', 'rnc']
             && k.hasOnly(['status', 'finalizadoPorUid', 'finalizadoPorNome', 'finalizadoEm',
-                          'rncAtualId', 'rncNumero', 'retrabalhoDesde', 'mortaEm', 'opNovaId', 'opNovaNumero', 'qtdNc'])
+                          'rncAtualId', 'rncNumero', 'retrabalhoDesde', 'mortaEm', 'opNovaId', 'opNovaNumero', 'qtdNc',
+                          'proximoPasso', 'proximoPassoEm'])
+            && d.get('proximoPasso', '') in ['', 'usinagem', 'caldeiraria', 'pintura', 'decapagem', 'servicoExterno', 'embarque']
             && d.get('qtdNc', 1) is int && d.get('qtdNc', 1) >= 1
             && (!(r.get('qtd', null) is number) || r.qtd <= 0 || d.get('qtdNc', 1) <= r.qtd)
             && (
@@ -402,13 +404,21 @@ service cloud.firestore {
                 && d.mortaEm is string)
             );
         }
+        // CQ desfaz a própria baixa: aprovada direto (sem RNC) e ainda não
+        // encerrada pelo programador → volta para aberta, sem os dados da baixa
+        function cqDesfazOk(k, d, r) {
+          return r.status == 'aprovada' && r.get('rncAtualId', null) == null && !('encerradaEm' in r)
+            && d.status == 'aberta'
+            && k.hasOnly(['status', 'finalizadoPorUid', 'finalizadoPorNome', 'finalizadoEm', 'proximoPasso', 'proximoPassoEm'])
+            && !('finalizadoEm' in d) && !('finalizadoPorUid' in d) && !('proximoPasso' in d);
+        }
         function atualizacaoOk() {
           let papel = papelEm(equipeId);
           let gerente = papel == 'gerente_pcp' || (souCoordDe(equipeId) && !equipeMigrada(equipeId));
           let k = request.resource.data.diff(resource.data).affectedKeys();
           let d = request.resource.data;
           let r = resource.data;
-          return k.size() > 0 && ((papel == 'cq' && cqOk(k, d, r))
+          return k.size() > 0 && ((papel == 'cq' && (cqOk(k, d, r) || cqDesfazOk(k, d, r)))
             || ((gerente || papel in ['prog_usinagem', 'prog_caldeiraria']) && programacaoOk(papel, gerente, k, d, r))
             || ((gerente || papel in ['gp', 'tecnico', 'planejador']) && dadosOk(papel, gerente, k, d, r)));
         }

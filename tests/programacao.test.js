@@ -107,7 +107,7 @@ test('peças finalizadas, destino, commessas e romaneio', () => {
   assert.deepEqual([por('D3').pronta, por('D3').destino, por('D3').destinoGravado], [true, 'pintura', null]);
   assert.equal(Fin.grupo(por('D4')), 'semDestino');
   const aberto = function (pid) { return pid !== 'p9'; };
-  assert.deepEqual(Fin.contagem(lista, aberto), { expedicao: 1, montagem: 0, pintura: 1, semDestino: 1 });
+  assert.deepEqual(Fin.contagem(lista, aberto), { expedicao: 1, montagem: 0, pintura: 1, decapagem: 0, servicoExterno: 0, semDestino: 1 });
   assert.deepEqual(Fin.commessas(lista, 'expedicao', aberto).map(function (c) { return [c.commessa, c.prontas, c.total]; }), [['C1', 1, 4]]);
   const itens = Fin.itensDaCommessa(lista, 'p1', 'expedicao');
   assert.deepEqual(itens.map(function (i) { return i.desenho + ':' + i.situacao; }), ['D1:disponivel', 'D2:emProducao', 'D3:outroDestino', 'D4:outroDestino']);

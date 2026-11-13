@@ -17,6 +17,8 @@ import { avisoErro } from './app.js';
 
 let aberta = null;   // id da OP na janela
 
+// O CQ desfaz a própria baixa: aprovada direto (sem RNC) e o programador ainda não encerrou.
+export function podeDesfazerBaixa(o) { return Auth.souCQ() && !!o && o.status === 'aprovada' && !o.rncAtualId && !o.encerradaEm; }
 export function opPorId(id) { return estado.ops.find(function (o) { return o.id === id; }) || null; }
 export function naFila() { return Prog.opsNaFila(estado.maquinas); }
 export function situacaoDe(o) { return Prog.situacao(o, o.area === 'usinagem' && naFila().has(o.id)); }
@@ -93,6 +95,7 @@ export function render() {
       (o.obs ? linha(T('av.cObs'), '<span class="op-obs">' + esc(o.obs) + '</span>') : '') +
     '</div>' +
     '<div class="opd-bloco"><div class="panel-title">' + esc(T('opd.andamento')) + '</div>' +
+      (o.proximoPasso ? linha(T('passo.pergunta'), esc(T('passo.' + o.proximoPasso))) : '') +
       linha(T('opd.prazoProjeto'), p && p.prodFim ? br(p.prodFim) : '—') +
       (o.area === 'caldeiraria' ? linha(T('prog.terceirizada'), prog ? esc(prog.terceirizada || '—') + ' · ' + esc(T('prog.ate', br(prog.previsaoFim))) : '—') : '') +
       (o.area === 'usinagem' ? linha(T('prog.naFila'), fila.length ? esc(fila.join(', ')) : '—') : '') +
@@ -125,7 +128,8 @@ export function render() {
   $('opd-cq').innerHTML = !Auth.souCQ() ? '' : (st === 'aberta'
     ? '<button type="button" class="btn btn-success" data-acao="cqAprovarOp" data-arg="' + esc(o.id) + '">' + esc(T('cq.aprovar')) + '</button>' +
       '<button type="button" class="btn btn-danger" data-acao="cqNovaRncOp" data-arg="' + esc(o.id) + '">' + esc(T('baixa.abrirRnc')) + '</button>'
-    : (st === 'retrabalho' ? '<button type="button" class="btn btn-danger" data-acao="verRncDaOp" data-arg="' + esc(o.id) + '">' + esc(T('fab.verRnc', o.rncNumero || '—')) + '</button>' : ''));
+    : (st === 'retrabalho' ? '<button type="button" class="btn btn-danger" data-acao="verRncDaOp" data-arg="' + esc(o.id) + '">' + esc(T('fab.verRnc', o.rncNumero || '—')) + '</button>'
+      : (podeDesfazerBaixa(o) ? '<button type="button" class="btn btn-outline" data-acao="cqDesfazerBaixa" data-arg="' + esc(o.id) + '">' + esc(T('cq.desfazer')) + '</button>' : '')));
 }
 
 registrarAcoes({

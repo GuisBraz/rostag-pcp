@@ -1006,3 +1006,34 @@ describe('tarefas avulsas', () => {
     await assertSucceeds(como(P).collection('notificacoes').add({ paraUid: G, tipo: 'tarefaConcluida', mensagem: 'x', projetoId: 'doP', equipeId: 'E1', deUid: P, deNome: 'P', lida: false, criadoEm: 'x' }));
   });
 });
+
+describe('CQ desfaz a baixa', () => {
+  const desfaz = { status: 'aberta', finalizadoPorUid: firebase.firestore.FieldValue.delete(), finalizadoPorNome: firebase.firestore.FieldValue.delete(), finalizadoEm: firebase.firestore.FieldValue.delete() };
+  const aprovada = (extra) => op({ status: 'aprovada', finalizadoPorUid: Q, finalizadoPorNome: 'Q', finalizadoEm: 'x', ...extra });
+  test('aprovada direto volta para aberta; só o CQ', async () => {
+    await semear('equipes/E1/ops/op1', aprovada());
+    for (const uid of [M, P, U]) await assertFails(como(uid).doc('equipes/E1/ops/op1').update(desfaz));
+    await assertSucceeds(como(Q).doc('equipes/E1/ops/op1').update(desfaz));
+  });
+  test('não desfaz depois do programador encerrar, nem aprovação vinda de RNC, nem mexendo em outros campos', async () => {
+    await semear('equipes/E1/ops/op1', aprovada({ encerradaEm: 'y' }));
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(desfaz));
+    await semear('equipes/E1/ops/op1', aprovada({ rncAtualId: 'r1' }));
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(desfaz));
+    await semear('equipes/E1/ops/op1', aprovada());
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update({ ...desfaz, qtd: 9 }));
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update({ status: 'aberta' }));   // sem limpar a baixa
+  });
+});
+
+describe('próximo passo na baixa do CQ', () => {
+  test('CQ aprova com o próximo passo; valor fora da lista é recusado', async () => {
+    const fim = (extra) => ({ status: 'aprovada', finalizadoPorUid: Q, finalizadoPorNome: 'Q', finalizadoEm: 'x', ...extra });
+    await assertSucceeds(como(Q).doc('equipes/E1/ops/op1').update(fim({ proximoPasso: 'pintura', proximoPassoEm: 'x' })));
+    await semear('equipes/E1/ops/op1', op());
+    await assertFails(como(Q).doc('equipes/E1/ops/op1').update(fim({ proximoPasso: 'lixar', proximoPassoEm: 'x' })));
+    await semear('equipes/E1/ops/op1', op({ status: 'aprovada', finalizadoPorUid: Q, finalizadoPorNome: 'Q', finalizadoEm: 'x', proximoPasso: 'embarque', proximoPassoEm: 'x' }));
+    const del = firebase.firestore.FieldValue.delete();
+    await assertSucceeds(como(Q).doc('equipes/E1/ops/op1').update({ status: 'aberta', finalizadoPorUid: del, finalizadoPorNome: del, finalizadoEm: del, proximoPasso: del, proximoPassoEm: del }));
+  });
+});

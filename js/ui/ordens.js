@@ -2,11 +2,15 @@
    Ordens de Produção — as OPs da área que ainda estão na fábrica (até o
    programador finalizar), organizadas por projeto. Clicar abre a janela
    com tudo da OP. Projeto atrasado: as OPs dele ganham a borda vermelha.
+   Gerência, GP e técnico veem só os cartões das commessas; o cartão abre,
+   em tela cheia, todas as OPs do projeto com filtros (listaOps.js).
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto, opVisivel } from '../estado.js';
 import { esc, br, numeroBr, compararNatural } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Prog from '../dominio/programacao.js';
+import * as Producao from '../dominio/producao.js';
+import './listaOps.js';
 import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes } from './dom.js';
 import { naFila, pillSituacao, classeAtraso } from './opDetalhe.js';
@@ -17,7 +21,47 @@ const ICONES = { pintura: '🎨', servicoExterno: '🚚', ttat: '🔥', oxidacao
 
 function areaAtual() { return Auth.areaProgramador() || filtro.area; }
 
+function barra(rot, s) {
+  return '<div class="av-linha"><span class="av-rot">' + esc(rot) + '</span><div class="bar"><div style="width:' + s.pct + '%"></div></div>' +
+    '<span class="av-pct">' + s.pct + '%</span><span class="av-n">' + esc(T('fab.pecasDeN', numeroBr(s.pecasFeitas), numeroBr(s.pecas))) + '</span></div>';
+}
+
+// Gerência, GP e técnico: um cartão por commessa (as OPs ficam na tela cheia).
+function renderCartoes() {
+  $('ord-barra').style.display = 'none';
+  const fila = naFila();
+  const por = {};
+  estado.ops.filter(opVisivel).forEach(function (o) { (por[o.projetoId] = por[o.projetoId] || []).push(o); });
+  const ids = Object.keys(por).sort(function (a, b) {
+    const pa = buscarProjeto(a), pb = buscarProjeto(b);
+    const atrasoA = Prog.projetoAtrasado(pa) ? 0 : 1, atrasoB = Prog.projetoAtrasado(pb) ? 0 : 1;
+    return atrasoA - atrasoB || compararNatural(por[a][0].commessa, por[b][0].commessa);
+  });
+  const total = ids.reduce(function (t, k) { return t + por[k].length; }, 0);
+  $('ord-count').textContent = T('ord.contagem', total, ids.length);
+  if (!ids.length) { $('ord-lista').innerHTML = '<div class="card panel-pad empty-state">' + esc(T('ord.vazio')) + '</div>'; return; }
+  $('ord-lista').innerHTML = '<div class="ord-cartoes">' + ids.map(function (pid) {
+    const ops = por[pid], p = buscarProjeto(pid), o0 = ops[0];
+    const s = Producao.estatisticas(ops);
+    const conta = { emAberto: 0, programada: 0, baixaCq: 0, rnc: 0 };
+    ops.forEach(function (o) { const k = Prog.situacao(o, o.area === 'usinagem' && fila.has(o.id)); if (conta[k] != null) conta[k]++; });
+    const atrasado = Prog.projetoAtrasado(p);
+    return '<div class="card panel-pad av-card av-card-cq ord-cartao' + (atrasado ? ' op-proj-atrasado' : '') + '" data-acao="abrirListaOpsProjeto" data-arg="' + esc(pid) + '" role="button" tabindex="0">' +
+      '<div class="av-head"><b class="mono">' + esc(o0.commessa) + '</b>' + (atrasado ? ' <span class="pill-prog prog-atrasado">' + esc(T('prog.projAtrasado')) + '</span>' : '') + '</div>' +
+      '<div class="hint-txt av-desc">' + esc((p && p.descricao) || o0.descricaoProjeto || '') + '</div>' +
+      '<div class="hint-txt">' + esc(T('ord.nOps', ops.length)) + (p && p.prodFim ? ' · ' + esc(T('prog.prazo', br(p.prodFim))) : '') + '</div>' +
+      barra(T('fab.geral'), s) + barra(T('area.caldeiraria'), s.caldeiraria) + barra(T('area.usinagem'), s.usinagem) +
+      '<div class="ord-contas">' + Object.keys(conta).map(function (k) {
+        return '<span class="ord-conta ord-conta-' + k + (conta[k] ? '' : ' zero') + '"><b>' + conta[k] + '</b> ' + esc(T('prog.col.' + k)) + '</span>';
+      }).join('') + '</div>' +
+      '<div class="link-btn av-lista">' + esc(T('fab.cqVerOps')) + ' →</div></div>';
+  }).join('') + '</div>';
+}
+
 export function renderOrdens() {
+  // programadores seguem com a lista da área; os outros, os cartões por commessa
+  if (!Auth.areaProgramador()) { renderCartoes(); return; }
+  $('ord-barra').style.display = '';
   const area = areaAtual();
   $('ord-area').hidden = !!Auth.areaProgramador();
   $('ord-area').value = filtro.area;

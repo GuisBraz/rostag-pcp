@@ -12,8 +12,10 @@ import { chave } from './planilha.js';
 import { statusOp } from './producao.js';
 import { encerrada } from './programacao.js';
 
-export const DESTINOS = ['expedicao', 'montagem', 'pintura'];
-export const GRUPOS = ['expedicao', 'montagem', 'pintura', 'semDestino'];
+export const DESTINOS = ['expedicao', 'montagem', 'pintura', 'decapagem', 'servicoExterno'];
+export const GRUPOS = ['expedicao', 'montagem', 'pintura', 'decapagem', 'servicoExterno', 'semDestino'];
+// próximo passo que o CQ escolheu → grupo da peça pronta (embarque = expedição)
+const DO_PASSO = { pintura: 'pintura', decapagem: 'decapagem', servicoExterno: 'servicoExterno', embarque: 'expedicao' };
 
 function chavePeca(o) { return o.projetoId + '|' + chave(o.desenho) + '|' + chave(o.posicao); }
 
@@ -35,6 +37,10 @@ export function pecas(ops) {
     const pronta = vivas.length > 0 && vivas.every(encerrada);
     const gravado = (todas.find(function (o) { return DESTINOS.indexOf(o.destino) >= 0; }) || {}).destino || null;
     const pintura = todas.some(function (o) { return o.marcas && o.marcas.pintura; });
+    // o passo da última baixa do CQ (a OP que terminou por último)
+    const ultima = vivas.filter(function (o) { return DO_PASSO[o.proximoPasso]; })
+      .sort(function (a, b) { return String(b.finalizadoEm || '').localeCompare(String(a.finalizadoEm || '')); })[0];
+    const doPasso = ultima ? DO_PASSO[ultima.proximoPasso] : null;
     const fins = vivas.map(function (o) { return o.encerradaEm || ''; }).sort();
     const pesoTotal = base.pesoTotal != null ? base.pesoTotal : (base.pesoUnit != null && base.qtd != null ? Math.round(base.pesoUnit * base.qtd * 100) / 100 : null);
     return {
@@ -42,7 +48,7 @@ export function pecas(ops) {
       desenho: base.desenho || '', posicao: base.posicao || '', descricao: base.descricao || '', qtd: base.qtd == null ? null : base.qtd,
       pesoUnit: base.pesoUnit == null ? null : base.pesoUnit, pesoTotal: pesoTotal, produto: base.produto || '',
       ops: todas, pronta: pronta, finalizadaEm: pronta ? fins[fins.length - 1] : null,
-      destino: gravado || (pintura ? 'pintura' : null), destinoGravado: gravado
+      destino: gravado || doPasso || (pintura ? 'pintura' : null), destinoGravado: gravado
     };
   });
 }
@@ -52,7 +58,7 @@ export function grupo(peca) { return peca.destino || 'semDestino'; }
 
 // Contagem das peças prontas por grupo (só de projetos abertos, se informado).
 export function contagem(lista, projetoAberto) {
-  const r = { expedicao: 0, montagem: 0, pintura: 0, semDestino: 0 };
+  const r = { expedicao: 0, montagem: 0, pintura: 0, decapagem: 0, servicoExterno: 0, semDestino: 0 };
   (lista || []).forEach(function (p) {
     if (!p.pronta || (projetoAberto && !projetoAberto(p.projetoId))) return;
     r[grupo(p)]++;

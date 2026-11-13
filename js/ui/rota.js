@@ -31,12 +31,14 @@ export function abaPermitida(aba) {
   if (!Auth.membro()) return aba === 'painel' || aba === 'notificacoes' || aba === 'config';
   const papel = Auth.papel();
   const area = Papeis.areaDoProgramador(papel);
-  if (aba === 'config' || aba === 'notificacoes' || aba === 'finalizadas') return true;
-  if (aba === 'fabrica') return area !== 'usinagem' && papel !== 'tecnico';   // o técnico vê as OPs dentro do projeto
-  if (aba === 'ordens') return !!area || Papeis.ehGerente(papel);
+  const gerOuGp = Papeis.ehGerente(papel) || papel === 'gp';   // as OPs deles ficam em Ordens de Produção
+  if (aba === 'finalizadas') return !gerOuGp;
+  if (aba === 'config' || aba === 'notificacoes') return true;
+  if (aba === 'fabrica') return area !== 'usinagem' && papel !== 'tecnico' && !gerOuGp;   // o técnico vê as OPs dentro do projeto
+  if (aba === 'ordens') return !!area || gerOuGp || papel === 'tecnico';
   if (aba === 'rnc') return Papeis.veRnc(papel) || Papeis.ehCQ(papel) || !!area;
   if (aba === 'painel' && Papeis.ehCQ(papel)) return true;
-  if (aba === 'carga') return Papeis.veCarga(papel) && area !== 'caldeiraria';
+  if (aba === 'carga') return Papeis.veCarga(papel) && area !== 'caldeiraria' && !gerOuGp;
   if (aba === 'painel' || aba === 'linha') return Papeis.leProjetos(papel);
   return Papeis.veProjetos(papel);
 }

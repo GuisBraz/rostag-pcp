@@ -209,6 +209,18 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - **Fábrica do CQ:** só os cartões, um por commessa (com quantas OPs aguardam
   o CQ); o cartão abre as OPs da commessa em tela cheia com filtros; a OP abre
   em tela cheia (roteiro e informações) com Aprovar e Abrir RNC.
+- **Próximo passo na baixa do CQ:** ao aprovar, o CQ escolhe o próximo
+  passo da peça (usinagem, caldeiraria, pintura, decapagem, serviço externo,
+  embarque), com sugestão pela planilha; avisa o programador de usinagem
+  (usinagem), o de caldeiraria (caldeiraria, pintura, decapagem), o técnico do
+  projeto (serviço externo) ou o GP e a Gerência (embarque). O programador
+  ainda finaliza a OP. "Todas as OPs" separa as peças prontas pelo passo
+  (embarque = expedição). Gravado em `op.proximoPasso`/`proximoPassoEm`.
+- **Desfazer baixa (CQ):** OP aprovada direto (sem RNC) e ainda não encerrada
+  pelo programador volta para em aberto, com confirmação.
+- **Ordens de Produção (Gerência, GP, técnico):** cartões por commessa (OPs,
+  prazo, avanço e contagem por situação); o cartão abre as OPs em tela cheia.
+  Gerência e GP não têm mais Carga, Fábrica e Todas as OPs no menu.
 - **Checklist padrão novo (14 tarefas):** Análise de escopo, Criar lista de
   avanço, SC itens críticos, Criar LM, Aproveitamento de laminados, SC
   laminados, Aproveitamento de chapas, SC chapas, Detalhamento de dobra (quando

@@ -21,7 +21,7 @@ import { $, registrarAcoes } from './dom.js';
 import { toast } from './toast.js';
 import { alternarPopup, fecharPopups } from './app.js';
 import { abrirMinhas as abrirMinhasTarefas } from './tarefas.js';
-import { irPara, abaAtual } from './rota.js';
+import { irPara, abaAtual, abaPermitida } from './rota.js';
 
 let pararEscuta = null, pararEstado = null;
 let estadoAlertas = null;              // { chave: { semana, alertaId, criadoEm, lidaEm } } — null = ainda não chegou
@@ -280,7 +280,7 @@ function abrirNotificacao(id) {
   const area = Auth.areaProgramador();
   if (/^prog-/.test(n.tipo)) { irPara('ordens'); return; }
   if (n.tipo === 'opAprovada' && area) { irPara(area === 'usinagem' ? 'carga' : 'fabrica'); return; }
-  if (n.tipo === 'opFinalizada') { irPara('finalizadas'); return; }
+  if (n.tipo === 'opFinalizada') { irPara(abaPermitida('finalizadas') ? 'finalizadas' : 'ordens'); return; }
   if (/^tarefa/.test(n.tipo)) { abrirMinhasTarefas(); return; }
   if (n.projetoId && buscarProjeto(n.projetoId)) irPara('projetos', n.projetoId);
 }
