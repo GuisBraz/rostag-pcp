@@ -61,6 +61,7 @@ export function abrirOpDetalhe(id) {
   const o = opPorId(id);
   if (!o) return;
   aberta = id;
+  $('modal-op-detalhe').classList.toggle('tela-cheia', Auth.souCQ());   // o CQ inspeciona pela tela cheia
   abrirModal('modal-op-detalhe', { aoFechar: function () { aberta = null; } });
   render();
 }
@@ -119,6 +120,12 @@ export function render() {
   }
   $('opd-corpo').innerHTML = html;
   $('opd-finalizar').hidden = !podeFinalizar(o);
+  // CQ: aprovar ou abrir RNC (em retrabalho: ver a RNC atual)
+  const st = Producao.statusOp(o);
+  $('opd-cq').innerHTML = !Auth.souCQ() ? '' : (st === 'aberta'
+    ? '<button type="button" class="btn btn-success" data-acao="cqAprovarOp" data-arg="' + esc(o.id) + '">' + esc(T('cq.aprovar')) + '</button>' +
+      '<button type="button" class="btn btn-danger" data-acao="cqNovaRncOp" data-arg="' + esc(o.id) + '">' + esc(T('baixa.abrirRnc')) + '</button>'
+    : (st === 'retrabalho' ? '<button type="button" class="btn btn-danger" data-acao="verRncDaOp" data-arg="' + esc(o.id) + '">' + esc(T('fab.verRnc', o.rncNumero || '—')) + '</button>' : ''));
 }
 
 registrarAcoes({

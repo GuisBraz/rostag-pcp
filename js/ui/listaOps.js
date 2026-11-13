@@ -99,8 +99,10 @@ export function render() {
   const fila = naFila();
   const sit = function (o) { return Prog.situacao(o, o.area === 'usinagem' && fila.has(o.id)); };
   const p = aberta.projetoId ? buscarProjeto(aberta.projetoId) : null;
-  $('lops-titulo').textContent = p ? T('lops.tituloProjeto', p.commessa) : T('lops.titulo.' + aberta.grupo);
-  $('lops-sub').textContent = p ? (p.descricao || '') : T('lops.sub');
+  // o CQ não carrega os projetos: o nome vem da própria OP
+  const op0 = aberta.projetoId && !p ? estado.ops.find(function (o) { return o.projetoId === aberta.projetoId; }) : null;
+  $('lops-titulo').textContent = p ? T('lops.tituloProjeto', p.commessa) : (op0 ? T('lops.tituloProjeto', op0.commessa) : T('lops.titulo.' + aberta.grupo));
+  $('lops-sub').textContent = p ? (p.descricao || '') : (op0 ? (op0.descricaoProjeto || '') : T('lops.sub'));
   const adicionar = podeAdicionar(p);
   $('lops-acoes').innerHTML = adicionar
     ? '<button type="button" class="btn btn-outline" data-acao="addOpsPdf" data-arg="' + esc(p.id) + '">' + esc(T('lops.pdf')) + '</button>' +

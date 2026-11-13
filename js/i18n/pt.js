@@ -829,4 +829,7 @@ export default {
   'n.tarefa-vence':'{0}: tarefa vence hoje — {1}', 'n.tarefa-venceM':'Prazo: {0}.',
   'n.tarefa-atrasada':'{0}: tarefa atrasada — {1}', 'n.tarefa-atrasadaM':'Prazo era {0} ({1} dia(s) de atraso).',
   'fab.aviso.agrupada':'Linha {0}: mesmo nº de OP {1} da linha {2} — viram uma OP só (qtd somada: {3}).', 'fab.rJuntar':'{0} OP(s) duplicada(s) do mesmo nº serão juntadas na OP agrupada', 'fab.rNaoJuntou':'Não deu para juntar (o CQ já movimentou): {0} — confira à mão',
+  'pl.filtroPor':'Mostrar só as linhas marcadas em {0}', 'pl.filtroTirar':'Tirar o filtro de {0}', 'pl.filtrando':'Filtro: {0} · {1} linha(s)', 'pl.limpar':'limpar filtros', 'pl.dicaFiltro':'Clique no título de uma coluna marcada (CALD, USINAGEM, PINTURA…) para filtrar.', 'pl.vaziaFiltro':'Nenhuma linha com essas marcas.',
+  'serv.ped.titulo':'Importar pedido de compra do serviço (PDF)', 'serv.ped.nota':'Suba o PDF do pedido de compra do serviço. O site liga cada item ao serviço da lista pela SC e pelo desenho citado na descrição; confira antes de gravar. Pedido e fornecedor vão para o serviço; o valor só Gerência, GP e técnico veem.', 'serv.ped.item':'SERVIÇO DA LISTA', 'serv.ped.por.sc':'ligado pela SC', 'serv.ped.por.desenho':'ligado pelo desenho', 'serv.ped.por.sugestao':'sugestão pela descrição — confira',
+  'fab.cqAguardam':'{0} OP(s) aguardando o CQ', 'fab.cqVerOps':'Ver as OPs',
 };

@@ -65,7 +65,7 @@ function podeMexer(p) { return !!p && Projeto.aberto(p) && (Auth.souGerente() ||
 function abrirEspelho(projetoId) {
   projetoId = projetoId || estado.idDetalhe;
   if (!projetoId) return;
-  espelho = { projetoId: projetoId, doc: undefined };
+  espelho = { projetoId: projetoId, doc: undefined, filtros: {} };
   abrirModal('modal-espelho', { aoFechar: function () { espelho = null; } });
   renderEspelho();
   DadosAvanco.lerGuardada(projetoId).then(function (doc) {
@@ -88,25 +88,33 @@ const COLUNAS = [
   ['pl.qtd', function (i) { return i.qtd == null ? '' : numeroBr(i.qtd); }, 'num'],
   ['pl.pesoUnit', function (i) { return i.pesoUnit == null ? '' : numeroBr(i.pesoUnit); }, 'num'],
   ['pl.pesoTotal', function (i) { return i.pesoTotal == null ? '' : numeroBr(i.pesoTotal); }, 'num'],
-  ['pl.comercial', function (i) { return MARCA(i.comercial); }, 'pl-c'],
-  ['pl.cald', function (i) { return MARCA(i.cald); }, 'pl-c'],
-  ['pl.usinagem', function (i) { return MARCA(i.usin); }, 'pl-c'],
-  ['pl.pintura', function (i) { return MARCA(i.marcas && i.marcas.pintura); }, 'pl-c'],
-  ['pl.oxidacao', function (i) { return MARCA(i.marcas && i.marcas.oxidacao); }, 'pl-c'],
-  ['pl.servicos', function (i) { return MARCA(i.marcas && i.marcas.servicoExterno); }, 'pl-c'],
-  ['pl.ttat', function (i) { return MARCA(i.marcas && i.marcas.ttat); }, 'pl-c'],
+  ['pl.comercial', function (i) { return MARCA(i.comercial); }, 'pl-c', 'comercial'],
+  ['pl.cald', function (i) { return MARCA(i.cald); }, 'pl-c', 'cald'],
+  ['pl.usinagem', function (i) { return MARCA(i.usin); }, 'pl-c', 'usin'],
+  ['pl.pintura', function (i) { return MARCA(i.marcas && i.marcas.pintura); }, 'pl-c', 'pintura'],
+  ['pl.oxidacao', function (i) { return MARCA(i.marcas && i.marcas.oxidacao); }, 'pl-c', 'oxidacao'],
+  ['pl.servicos', function (i) { return MARCA(i.marcas && i.marcas.servicoExterno); }, 'pl-c', 'servicoExterno'],
+  ['pl.ttat', function (i) { return MARCA(i.marcas && i.marcas.ttat); }, 'pl-c', 'ttat'],
   ['pl.produto', function (i) { return esc(i.produto); }, 'mono'],
   ['pl.opCald', function (i) { return esc(i.opCald); }, 'mono'],
   ['pl.opUsin', function (i) { return esc(i.opUsin); }, 'mono']
 ];
 
-// A lista do projeto do jeito do site: só as peças (os comerciais têm o cartão deles).
-function tabelaPlanilha(itens) {
-  const pecas = itens.filter(function (i) { return !i.comercial; });
-  if (!pecas.length) return '<div class="empty-state">' + esc(T('pl.vazia')) + '</div>';
+// A lista do projeto do jeito do site: as peças (os comerciais só com o filtro
+// "Comercial"). Clicar no título de uma coluna de marca filtra por ela.
+function tabelaPlanilha(itens, pecas, filtros) {
+  const cab = COLUNAS.map(function (c) {
+    if (!c[3]) return '<th class="' + c[2] + '">' + esc(T(c[0])) + '</th>';
+    const ativo = !!filtros[c[3]];
+    return '<th class="' + c[2] + ' pl-filtro' + (ativo ? ' ativo' : '') + '" data-acao="filtroPlanilha" data-arg="' + c[3] + '" role="button" tabindex="0"' +
+      ' aria-pressed="' + ativo + '" title="' + esc(T(ativo ? 'pl.filtroTirar' : 'pl.filtroPor', T(c[0]))) + '">' + esc(T(c[0])) + (ativo ? ' ✕' : '') + '</th>';
+  }).join('');
+  if (!pecas.length) {
+    return '<div class="table-wrap pl-wrap"><table class="ord-tab pl-tab"><thead><tr>' + cab + '</tr></thead></table>' +
+      '<div class="empty-state">' + esc(T(Object.keys(filtros).length ? 'pl.vaziaFiltro' : 'pl.vazia')) + '</div></div>';
+  }
   const pos = pecas.map(function (i) { return String(i.posicao || '').trim(); });
-  return '<div class="table-wrap pl-wrap"><table class="ord-tab pl-tab"><thead><tr>' +
-    COLUNAS.map(function (c) { return '<th class="' + c[2] + '">' + esc(T(c[0])) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+  return '<div class="table-wrap pl-wrap"><table class="ord-tab pl-tab"><thead><tr>' + cab + '</tr></thead><tbody>' +
     pecas.map(function (i, n) {
       const conjunto = !pos[n] || pos.some(function (o) { return pos[n] && o.indexOf(pos[n] + '.') === 0; });
       return '<tr class="' + (conjunto ? 'pl-conjunto' : '') + (i.nivel ? ' pl-nivel' + Math.min(i.nivel, 3) : '') + '">' +
@@ -132,10 +140,16 @@ export function renderEspelho() {
   if (!doc) { $('esp-corpo').innerHTML = '<div class="empty-state">' + esc(T(mexe ? 'esp.semListaSubir' : 'av.semLista')) + '</div>'; $('esp-rodape').textContent = ''; return; }
   const lidos = Avanco.itens(doc.matriz);
   if (!lidos) { $('esp-corpo').innerHTML = '<div class="empty-state">' + esc(T('av.erroLer')) + '</div>'; return; }
-  const r = Avanco.resumoPecas(lidos.itens);
+  const filtros = espelho.filtros;
+  const linhas = Avanco.filtrar(lidos.itens, filtros);
+  const r = Avanco.resumoPecas(linhas);   // os números do topo acompanham o filtro
+  const ativos = COLUNAS.filter(function (c) { return c[3] && filtros[c[3]]; }).map(function (c) { return T(c[0]); });
   $('esp-resumo').innerHTML = '<div class="pl-kpis">' + kpi(T('pl.kPecas'), numeroBr(r.pecas)) + kpi(T('pl.kPeso'), numeroBr(r.peso) + '<small> kg</small>') +
-    kpi(T('pl.kUsinagem'), numeroBr(r.usinagem)) + kpi(T('pl.kCaldeiraria'), numeroBr(r.caldeiraria)) + '</div>';
-  $('esp-corpo').innerHTML = tabelaPlanilha(lidos.itens);
+    kpi(T('pl.kUsinagem'), numeroBr(r.usinagem)) + kpi(T('pl.kCaldeiraria'), numeroBr(r.caldeiraria)) + '</div>' +
+    '<div class="pl-filtros-info">' + (ativos.length
+      ? esc(T('pl.filtrando', ativos.join(' + '), linhas.length)) + ' <button type="button" class="link-btn" data-acao="limparFiltroPlanilha">' + esc(T('pl.limpar')) + '</button>'
+      : esc(T('pl.dicaFiltro'))) + '</div>';
+  $('esp-corpo').innerHTML = tabelaPlanilha(lidos.itens, linhas, filtros);
   $('esp-rodape').textContent = T('av.enviada', doc.enviadoPorNome || '—', dataHora(doc.enviadoEm), doc.arquivo || '');
 }
 
@@ -173,6 +187,12 @@ registrarAcoes({
     if (p) renderCartoesTecnico(p);
   },
   abrirEspelho: abrirEspelho,
+  filtroPlanilha: function (k) {
+    if (!espelho || !COLUNAS.some(function (c) { return c[3] === k; })) return;
+    if (espelho.filtros[k]) delete espelho.filtros[k]; else espelho.filtros[k] = true;
+    renderEspelho();
+  },
+  limparFiltroPlanilha: function () { if (espelho) { espelho.filtros = {}; renderEspelho(); } },
   baixarEspelho: function (_a, _b, btn) { if (espelho && espelho.doc) comBotaoOcupado(btn, exportarPlanilha(espelho.doc, espelho.projetoId)); },
   apagarListaOps: apagarListaOps
 });

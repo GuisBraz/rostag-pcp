@@ -181,6 +181,11 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   Comercial, Cald, Usinagem, Pintura, Oxidação negra, Serviços externos, TTAT,
   Produto, OP cald, OP usi. Sem colunas de avanço e sem as linhas comerciais.
   Subir, baixar e "apagar lista e OPs" continuam.
+- **Filtro pelo cabeçalho da planilha:** clicar no título de uma coluna de
+  marca (Comercial, Cald, Usinagem, Pintura, Oxidação negra, Serv. externos,
+  TTAT) mostra só as linhas marcadas; vários juntos = todas as marcas; o
+  conjunto da peça continua aparecendo; os números do topo acompanham o
+  filtro; os comerciais só aparecem com o filtro Comercial.
 - **Itens comerciais:** as linhas "Comercial" da planilha com quantidade, SC,
   pedido de compra, fornecedor, valor e chegada (parcial ou completa). O pedido
   entra pelo **PDF do pedido de compra** (sistema da empresa): o site lê número,
@@ -197,6 +202,13 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   fornecedor e prazo em **dias úteis** — padrão — ou **corridos**) e o retorno;
   os dois podem ser parciais. Sem nº de NF/romaneio e sem ligação automática
   com a próxima etapa da OP.
+- **Pedido de compra do serviço:** o mesmo PDF dos comerciais, importado na
+  tela de Serviços; liga pela SC, pelo desenho citado na descrição ou à mão;
+  grava pedido e fornecedor no serviço e o valor no documento restrito
+  (comerciaisValores, chaves S|…).
+- **Fábrica do CQ:** só os cartões, um por commessa (com quantas OPs aguardam
+  o CQ); o cartão abre as OPs da commessa em tela cheia com filtros; a OP abre
+  em tela cheia (roteiro e informações) com Aprovar e Abrir RNC.
 - **Checklist padrão novo (14 tarefas):** Análise de escopo, Criar lista de
   avanço, SC itens críticos, Criar LM, Aproveitamento de laminados, SC
   laminados, Aproveitamento de chapas, SC chapas, Detalhamento de dobra (quando

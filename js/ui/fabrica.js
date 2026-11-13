@@ -128,15 +128,27 @@ function barra(rot, s) {
 }
 
 function renderAvanco(lista) {
+  const cq = Auth.souCQ();
   const porProjeto = {};
   lista.forEach(function (o) { (porProjeto[o.projetoId] = porProjeto[o.projetoId] || []).push(o); });
   const ids = Object.keys(porProjeto).sort(function (a, b) { return compararNatural(porProjeto[a][0].commessa, porProjeto[b][0].commessa); });
   const area = Auth.areaProgramador();
-  $('fab-avanco').innerHTML = ids.slice(0, 24).map(function (id) {
+  $('fab-avanco').innerHTML = (cq ? ids : ids.slice(0, 24)).map(function (id) {
     const s = Producao.estatisticas(porProjeto[id]);
     const o = porProjeto[id][0];
     const p = buscarProjeto(id);
     const sit = p ? Producao.situacao(p, Producao.estatisticas(opsDoProjeto(id))) : null;
+    if (cq) {
+      // CQ: o cartão inteiro abre as OPs da commessa (tela cheia, com filtros)
+      const aguardam = porProjeto[id].filter(function (x) { const st = Producao.statusOp(x); return st === 'aberta' || st === 'retrabalho'; }).length;
+      return '<div class="card panel-pad av-card av-card-cq" data-acao="abrirListaOpsProjeto" data-arg="' + esc(id) + '" role="button" tabindex="0">' +
+        '<div class="av-head"><b>' + esc(o.commessa) + '</b>' + (sit ? ' <span class="pill-prod prod-' + sit + '">' + esc(T('prod.' + sit)) + '</span>' : '') + '</div>' +
+        '<div class="hint-txt av-desc">' + esc(o.descricaoProjeto || o.cliente || '') + '</div>' +
+        barra(T('fab.geral'), s) + barra(T('area.caldeiraria'), s.caldeiraria) + barra(T('area.usinagem'), s.usinagem) +
+        '<div class="av-cq-aguardam' + (aguardam ? '' : ' zero') + '">' + esc(T('fab.cqAguardam', aguardam)) + '</div>' +
+        (s.pecasRnc ? '<div class="av-rnc">' + esc(T('fab.pecasRnc', numeroBr(s.pecasRnc))) + '</div>' : '') +
+        '<div class="link-btn av-lista">' + esc(T('fab.cqVerOps')) + ' →</div></div>';
+    }
     return '<div class="card panel-pad av-card">' +
       '<div class="av-head"><b>' + esc(o.commessa) + '</b>' + (sit ? ' <span class="pill-prod prod-' + sit + '">' + esc(T('prod.' + sit)) + '</span>' : '') + '</div>' +
       '<div class="hint-txt av-desc">' + esc(o.descricaoProjeto || o.cliente || '') + '</div>' +
@@ -165,6 +177,16 @@ export function renderFabrica() {
   preencherFiltroProjetos();
   preencherFiltroClientes();
 
+  // o CQ vê só os cartões (um por commessa); a lista fica dentro de cada um
+  [$('fab-visoes'), $('fab-tabela'), document.querySelector('#tab-fabrica .fab-filtros')].forEach(function (el) { el.style.display = cq ? 'none' : ''; });
+  if (cq) {
+    const todas = estado.ops.filter(opVisivel);
+    const st = Producao.estatisticas(todas);
+    $('fab-count').textContent = !estado.opsCarregadas ? T('fab.carregando') : T('fab.contagemNova', st.total, st.abertas, st.retrabalho, st.aprovadas, st.desvio, st.mortas);
+    renderAvanco(todas);
+    if (estado.opsCarregadas && !todas.length) $('fab-avanco').innerHTML = '<div class="card panel-pad empty-state">' + esc(T('fab.vazio')) + '</div>';
+    return;
+  }
   const base = opsSemVisao();
   renderVisoes(base);
   const lista = opsFiltradas(base);
