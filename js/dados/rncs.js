@@ -107,7 +107,9 @@ export function salvar(rnc, form, op) {
       });
       lote.update(refOp, { status: 'morta', mortaEm: agora, opNovaId: novaId, opNovaNumero: efeito.criarOp.slice(0, 40), qtdNc: nc });
     } else if (efeito.opStatus === 'aprovada' || efeito.opStatus === 'desvio') {
-      lote.update(refOp, { status: efeito.opStatus, finalizadoPorUid: Auth.uid(), finalizadoPorNome: Auth.nomeExibicao(), finalizadoEm: agora });
+      const fim = { status: efeito.opStatus, finalizadoPorUid: Auth.uid(), finalizadoPorNome: Auth.nomeExibicao(), finalizadoEm: agora };
+      if (form.proximoPasso) { fim.proximoPasso = form.proximoPasso; fim.proximoPassoEm = agora; }
+      lote.update(refOp, fim);
     } else if (nc !== op.qtdNc) {
       lote.update(refOp, { qtdNc: nc });
     }

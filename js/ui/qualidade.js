@@ -9,6 +9,7 @@ import { T } from '../i18n/index.js';
 import * as Rnc from '../dominio/rnc.js';
 import * as Papeis from '../dominio/papeis.js';
 import { statusOp } from '../dominio/producao.js';
+import * as Producao from '../dominio/producao.js';
 import * as Auth from '../dados/auth.js';
 import * as Ops from '../dados/ops.js';
 import * as Rncs from '../dados/rncs.js';
@@ -17,6 +18,7 @@ import { abrirModal, fecharModal, confirmar } from './modal.js';
 import { toast } from './toast.js';
 import { avisoErro } from './app.js';
 import { baixarPdf } from './rncPdf.js';
+import { podeDesfazerBaixa } from './opDetalhe.js';
 
 function opPorId(id) { return estado.ops.find(function (o) { return o.id === id; }) || null; }
 function rncPorId(id) { return (estado.rncs || []).find(function (r) { return r.id === id; }) || null; }
@@ -53,21 +55,50 @@ export function abrirBaixa(id) {
   abrirModal('modal-baixa', { aoFechar: function () { baixaOp = null; } });
 }
 
-// CQ deu baixa: o programador da área é avisado de que pode finalizar a OP.
-function avisarProgramador(o) {
-  Auth.uidsPorPapel(['prog_' + o.area]).then(function (uids) {
-    Auth.notificarVarios(uids, 'opAprovada', T('notif.opAprovada', o.numero, o.commessa, o.descricao || o.desenho), o.projetoId);
+// CQ deu baixa: o programador da área (finalizar a OP) e quem cuida do próximo
+// passo recebem um aviso só, com o próximo passo da peça.
+function avisarProgramador(o, passo) {
+  const destino = { usinagem: ['prog_usinagem'], caldeiraria: ['prog_caldeiraria'], pintura: ['prog_caldeiraria'], decapagem: ['prog_caldeiraria'] }[passo] || [];
+  Promise.all([
+    Auth.uidsPorPapel(['prog_' + o.area].concat(destino)),
+    passo === 'embarque' ? Auth.uidsGerentes() : Promise.resolve([])
+  ]).then(function (r) {
+    const uids = r[0].concat(r[1]).concat(passo === 'servicoExterno' ? [o.tecnicoUid] : []).concat(passo === 'embarque' ? [o.gpUid] : []);
+    const msg = passo ? T('notif.opAprovadaPasso', o.numero, o.commessa, o.descricao || o.desenho, T('passo.acao.' + passo))
+      : T('notif.opAprovada', o.numero, o.commessa, o.descricao || o.desenho);
+    Auth.notificarVarios(uids, 'opAprovada', msg, o.projetoId);
   });
 }
 
+// Escolha do próximo passo (aprovar direto ou seguimento da RNC conforme/desvio).
+function opcoesPasso(nome, sugerido) {
+  return Producao.PASSOS.map(function (k) {
+    return '<label class="rn-opcao"><input type="radio" name="' + nome + '" value="' + k + '"' + (k === sugerido ? ' checked' : '') + '> <span><b>' + esc(T('passo.' + k)) + '</b>' +
+      '<small>' + esc(T('passo.det.' + k)) + (k === sugerido ? ' · ' + esc(T('passo.sugerido')) : '') + '</small></span></label>';
+  }).join('');
+}
+let aprovando = null;
+
 function cqAprovar() { if (baixaOp) aprovarOp(baixaOp); }
+// Aprovar pede o próximo passo da peça (já vem a sugestão pela planilha).
 function aprovarOp(o) {
-  confirmar(T('cq.aprovarConfirm', descricaoOp(o)), { titulo: T('cq.aprovar'), textoOk: T('baixa.simAprovar') }).then(function (ok) {
-    if (!ok) return;
-    fecharModal('modal-baixa');
-    Ops.aprovar(o.id).then(function () { toast(T('cq.aprovada', o.numero)); avisarProgramador(o); })
-      .catch(function (e) { avisoErro(e, 'cq.erro'); });
-  });
+  aprovando = o;
+  fecharModal('modal-baixa');
+  $('passo-sub').textContent = descricaoOp(o);
+  $('passo-opcoes').innerHTML = opcoesPasso('passo-op', Producao.passoSugerido(o, estado.ops));
+  $('passo-nota').textContent = T('passo.nota');
+  abrirModal('modal-passo', { aoFechar: function () { aprovando = null; } });
+}
+function confirmarAprovacao(_a, _b, btn) {
+  const o = aprovando;
+  const m = document.querySelector('input[name="passo-op"]:checked');
+  if (!o || !m) return;
+  const passo = m.value;
+  comBotaoOcupado(btn, Ops.aprovar(o.id, passo).then(function () {
+    fecharModal('modal-passo');
+    toast(T('cq.aprovadaPasso', o.numero, T('passo.' + passo)));
+    avisarProgramador(o, passo);
+  }).catch(function (e) { avisoErro(e, 'cq.erro'); }));
 }
 
 /* ------------------------------------------------------ janela da RNC */
@@ -151,6 +182,7 @@ function abrirJanela(modo, op, rnc) {
         ['conforme', 'desvio', 'nao_conforme', 'novaOp'].map(function (k) {
           return '<label class="rn-opcao"><input type="radio" name="rn-seg" value="' + k + '" data-change="escolhaSeguimento"> <span><b>' + esc(T('rn.esc.' + k)) + '</b><small>' + esc(T('rn.escDet.' + k)) + '</small></span></label>';
         }).join('') + '</div>' +
+        '<div id="rn-passo" hidden><div class="sub-titulo">' + esc(T('passo.pergunta')) + '</div><div class="rn-opcoes">' + opcoesPasso('rn-passo', Producao.passoSugerido(op || {}, estado.ops)) + '</div></div>' +
         '<div class="field" id="rn-reop-campo" hidden><label for="rn-reOp">' + esc(T('rn.reOp')) + '</label><input id="rn-reOp" class="mono" maxlength="40"></div>' +
         '<div class="field"><label for="rn-observacoes">' + esc(T('rn.obsSeguimento')) + '</label><textarea id="rn-observacoes" rows="3" maxlength="6000"></textarea></div></div>';
     rodape = '<button type="button" class="btn btn-primary" data-acao="salvarRnc">' + esc(T('rn.concluir')) + '</button>';
@@ -229,6 +261,8 @@ function salvarSeguimento(btn) {
   const reOp = marcado.value === 'novaOp' ? $('rn-reOp').value.trim() : '';
   if (marcado.value === 'novaOp' && !reOp) return erro(T('rn.faltaReOp'), 'rn-reOp');
   const dados = Rnc.seguimento(r, marcado.value, reOp, Auth.nomeExibicao(), hoje(), $('rn-observacoes').value.trim());
+  const passoEl = document.querySelector('input[name="rn-passo"]:checked');
+  if (marcado.value === 'conforme' || marcado.value === 'desvio') dados.proximoPasso = passoEl ? passoEl.value : '';
   const efeito = Rnc.efeitoReinspecao(dados);
   const ativa = op && op.rncAtualId === r.id;
   const seguir = ativa ? confirmar(T('rf.confirmar.' + (efeito.opStatus === 'morta' ? 'morta' : efeito.opStatus), op.numero, reOp), { titulo: T('rn.seguimento'), textoOk: T('rn.concluir') }) : Promise.resolve(true);
@@ -237,7 +271,7 @@ function salvarSeguimento(btn) {
     comBotaoOcupado(btn, Rncs.salvar(r, dados, op).then(function (res) {
       fecharModal('modal-rnc');
       toast(res.efeito ? T('rf.resultado.' + res.efeito.opStatus, op.numero, reOp) : T('rf.salva', r.numero));
-      if (res.efeito && (res.efeito.opStatus === 'aprovada' || res.efeito.opStatus === 'desvio')) avisarProgramador(op);
+      if (res.efeito && (res.efeito.opStatus === 'aprovada' || res.efeito.opStatus === 'desvio')) avisarProgramador(op, dados.proximoPasso);
     }).catch(function (e) { avisoErro(e, 'cq.erro'); }));
   });
 }
@@ -298,8 +332,18 @@ function verRnc(id) {
 registrarAcoes({
   abrirBaixa: abrirBaixa,
   cqAprovar: cqAprovar,
+  confirmarAprovacao: confirmarAprovacao,
   // pelo detalhe da OP em tela cheia (Fábrica do CQ)
   cqAprovarOp: function (id) { const o = opPorId(id); if (o && Auth.souCQ() && statusOp(o) === 'aberta') aprovarOp(o); },
+  cqDesfazerBaixa: function (id, _b, btn) {
+    const o = opPorId(id);
+    if (!podeDesfazerBaixa(o)) return;
+    confirmar(T('cq.desfazerQ', o.numero, o.finalizadoPorNome || '—'), { titulo: T('cq.desfazer'), textoOk: T('cq.desfazerSim'), perigo: true }).then(function (ok) {
+      if (!ok) return;
+      comBotaoOcupado(btn, Ops.desfazerAprovacao(o.id).then(function () { toast(T('cq.desfeita', o.numero)); })
+        .catch(function (e) { avisoErro(e, 'cq.erro'); }));
+    });
+  },
   cqNovaRncOp: function (id) { const o = opPorId(id); if (o && Auth.souCQ() && statusOp(o) === 'aberta') abrirJanela('nova', o, null); },
   cqNovaRnc: cqNovaRnc,
   cqReinspecionar: cqReinspecionar,
@@ -310,6 +354,7 @@ registrarAcoes({
   escolhaSeguimento: function () {
     const m = document.querySelector('input[name="rn-seg"]:checked');
     $('rn-reop-campo').hidden = !m || m.value !== 'novaOp';
+    $('rn-passo').hidden = !m || (m.value !== 'conforme' && m.value !== 'desvio');
     if (m && m.value === 'novaOp') $('rn-reOp').focus();
   },
   verRncDaOp: function (opId) {

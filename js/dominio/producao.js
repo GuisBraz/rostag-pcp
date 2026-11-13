@@ -86,3 +86,25 @@ export function diasAtraso(p, h) {
   h = h || hoje();
   return p.prodFim && h > p.prodFim ? difDias(p.prodFim, h) : 0;
 }
+
+/* --------------------------------------------- próximo passo (baixa do CQ) */
+// O CQ, ao dar baixa, diz para onde a peça vai. Usinagem e caldeiraria avisam
+// o programador da área; pintura e decapagem, o de caldeiraria; serviço
+// externo, o técnico do projeto; embarque, o GP e a Gerência.
+export const PASSOS = ['usinagem', 'caldeiraria', 'pintura', 'decapagem', 'servicoExterno', 'embarque'];
+
+function mesmaPeca(a, b) {
+  const k = function (s) { return String(s == null ? '' : s).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  return a.projetoId === b.projetoId && k(a.desenho) === k(b.desenho) && k(a.posicao) === k(b.posicao);
+}
+// Sugestão pelo que a planilha já diz: a outra área da peça ainda aberta,
+// depois TTAT/serviço externo, pintura; sem nada, embarque.
+export function passoSugerido(op, ops) {
+  const outras = (ops || []).filter(function (x) { return x.id !== op.id && mesmaPeca(x, op) && emAberto(x); });
+  if (op.area === 'caldeiraria' && outras.some(function (x) { return x.area === 'usinagem'; })) return 'usinagem';
+  if (op.area === 'usinagem' && outras.some(function (x) { return x.area === 'caldeiraria'; })) return 'caldeiraria';
+  const m = op.marcas || {};
+  if (m.ttat || m.servicoExterno) return 'servicoExterno';
+  if (m.pintura) return 'pintura';
+  return 'embarque';
+}

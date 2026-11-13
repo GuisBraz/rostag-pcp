@@ -176,9 +176,11 @@ function aplicarRestricoesPapel() {
   // programadores: painel e linha do tempo (só leitura), sem a lista de projetos
   const leProjetos = Papeis.leProjetos(papel);
   const area = Papeis.areaDoProgramador(papel);
+  // Gerência e GP: as OPs ficam em Ordens de Produção (sem Carga, Fábrica e Todas as OPs)
+  const gerOuGp = Papeis.ehGerente(papel) || papel === 'gp';
   [['painel', leProjetos || Papeis.ehCQ(papel) || !Auth.membro()], ['projetos', veProjetos], ['linha', leProjetos],
-    ['carga', Papeis.veCarga(papel) && area !== 'caldeiraria'], ['fabrica', area !== 'usinagem' && papel !== 'tecnico'],
-    ['ordens', !!area || Papeis.ehGerente(papel)], ['finalizadas', Auth.membro()]].forEach(function (x) {
+    ['carga', Papeis.veCarga(papel) && area !== 'caldeiraria' && !gerOuGp], ['fabrica', area !== 'usinagem' && papel !== 'tecnico' && !gerOuGp],
+    ['ordens', !!area || gerOuGp || papel === 'tecnico'], ['finalizadas', Auth.membro() && !gerOuGp]].forEach(function (x) {
     const b = document.querySelector('.side-item[data-tab="' + x[0] + '"]');
     if (b) b.style.display = x[1] ? '' : 'none';
   });

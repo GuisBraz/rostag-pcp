@@ -20,7 +20,7 @@ import { toast } from './toast.js';
 import { avisoErro } from './app.js';
 import { garantirXlsx } from './bibliotecas.js';
 
-const ICONE = { expedicao: '🚚', montagem: '🔧', pintura: '🎨', semDestino: '❔' };
+const ICONE = { expedicao: '🚚', montagem: '🔧', pintura: '🎨', decapagem: '🧪', servicoExterno: '🏭', semDestino: '❔' };
 let aberto = { grupo: null, projetoId: null };
 
 // Só projetos em andamento (concluído, cancelado ou excluído some).

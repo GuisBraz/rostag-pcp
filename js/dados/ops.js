@@ -5,7 +5,7 @@
      GP → gpUid · técnico → tecnicoUid
 --------------------------------------------------------------------------- */
 import { agoraIso } from '../nucleo/fmt.js';
-import { db } from './firebase.js';
+import { db, apagarCampo } from './firebase.js';
 import * as Auth from './auth.js';
 import * as Planilha from '../dominio/planilha.js';
 
@@ -116,8 +116,17 @@ export function idOp(projetoId, area, desenho, posicao) { return Planilha.idOp(p
 
 // CQ aprova a OP (aberta, ou em retrabalho depois de reinspecionada). A RNC
 // e a reinspeção vão por dados/rncs.js.
-export function aprovar(opId) {
-  return colOps().doc(opId).update({ status: 'aprovada', finalizadoPorUid: Auth.uid(), finalizadoPorNome: Auth.nomeExibicao(), finalizadoEm: agoraIso() });
+export function aprovar(opId, passo) {
+  const agora = agoraIso();
+  const dados = { status: 'aprovada', finalizadoPorUid: Auth.uid(), finalizadoPorNome: Auth.nomeExibicao(), finalizadoEm: agora };
+  if (passo) { dados.proximoPasso = passo; dados.proximoPassoEm = agora; }
+  return colOps().doc(opId).update(dados);
+}
+
+// CQ desfaz a baixa (aprovação direta, ainda não encerrada pelo programador): volta para em aberto.
+export function desfazerAprovacao(opId) {
+  return colOps().doc(opId).update({ status: 'aberta', finalizadoPorUid: apagarCampo(), finalizadoPorNome: apagarCampo(), finalizadoEm: apagarCampo(),
+    proximoPasso: apagarCampo(), proximoPassoEm: apagarCampo() });
 }
 
 export function apagar(opId) { return colOps().doc(opId).delete(); }

@@ -45,3 +45,17 @@ test('tarefas: duração, prazo, ordem e avisos', () => {
   assert.deepEqual(av.map((a) => [a.id, a.tipo, a.nivel, a.atrasoDias]), [['tarefa-prazo:b', 'tarefa-atrasada', 'alerta', 2]]);
   assert.equal(Tar.avisos(l, 'outro', h)[0].tipo, 'tarefa-vence');
 });
+
+import * as Prod from '../js/dominio/producao.js';
+import * as Fin from '../js/dominio/finalizadas.js';
+test('próximo passo: sugestão pela planilha e grupo da peça pronta', () => {
+  const cald = { id: 'c', projetoId: 'p', area: 'caldeiraria', desenho: 'D1', posicao: '1', status: 'aberta', marcas: { pintura: true } };
+  const usi = { id: 'u', projetoId: 'p', area: 'usinagem', desenho: 'D1', posicao: '1', status: 'aberta' };
+  assert.equal(Prod.passoSugerido(cald, [cald, usi]), 'usinagem');
+  assert.equal(Prod.passoSugerido(cald, [cald, { ...usi, status: 'aprovada' }]), 'pintura');
+  assert.equal(Prod.passoSugerido({ ...usi, marcas: { ttat: true } }, [usi]), 'servicoExterno');
+  assert.equal(Prod.passoSugerido(usi, [usi]), 'embarque');
+  const pronta = (passo) => Fin.pecas([{ ...usi, status: 'aprovada', encerradaEm: 'x', finalizadoEm: 'x', proximoPasso: passo }])[0];
+  assert.deepEqual(['pintura', 'decapagem', 'servicoExterno', 'embarque', 'usinagem'].map((p) => Fin.grupo(pronta(p))),
+    ['pintura', 'decapagem', 'servicoExterno', 'expedicao', 'semDestino']);
+});
