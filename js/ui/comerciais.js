@@ -11,7 +11,7 @@ import { T } from '../i18n/index.js';
 import * as Avanco from '../dominio/avanco.js';
 import * as Com from '../dominio/comerciais.js';
 import * as Pedido from '../dominio/pedidoPdf.js';
-import { chave } from '../dominio/planilha.js';
+import { mesmaCommessa } from '../dominio/planilha.js';
 import * as Auth from '../dados/auth.js';
 import * as DadosAvanco from '../dados/avanco.js';
 import * as DadosCom from '../dados/comerciais.js';
@@ -234,7 +234,7 @@ function lerPedidoPdf(ev) {
     const pd = Pedido.lerPedido(r.paginas);
     if (!pd.ok || !pd.itens.length) { $('ped-corpo').innerHTML = ''; $('ped-erro').textContent = T(pd.motivo === 'semTexto' ? 'com.pdfSemTexto' : 'com.pdfNaoPedido'); return; }
     const p = buscarProjeto(vivo.projetoId);
-    const daCommessa = pd.itens.filter(function (it) { return chave(it.commessa) && chave(it.commessa) === chave(p.commessa); });
+    const daCommessa = pd.itens.filter(function (it) { return mesmaCommessa(it.commessa, p.commessa); });
     const ligacoes = Com.ligarPedido(daCommessa, linhas(vivo).filter(function (l) { return !l.extra; }));
     const porLinha = new Map(ligacoes.map(function (x) { return [x.linha, x]; }));
     ped = {

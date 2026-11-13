@@ -828,4 +828,5 @@ export default {
   'notif.tarefa':'{0}: {1} — pedida por {2} · {3}', 'notif.tarefaConcluida':'{0}: "{1}" concluída por {2}{3}',
   'n.tarefa-vence':'{0}: tarefa vence hoje — {1}', 'n.tarefa-venceM':'Prazo: {0}.',
   'n.tarefa-atrasada':'{0}: tarefa atrasada — {1}', 'n.tarefa-atrasadaM':'Prazo era {0} ({1} dia(s) de atraso).',
+  'fab.aviso.agrupada':'Linha {0}: mesmo nº de OP {1} da linha {2} — viram uma OP só (qtd somada: {3}).', 'fab.rJuntar':'{0} OP(s) duplicada(s) do mesmo nº serão juntadas na OP agrupada', 'fab.rNaoJuntou':'Não deu para juntar (o CQ já movimentou): {0} — confira à mão',
 };

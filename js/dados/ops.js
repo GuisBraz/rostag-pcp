@@ -65,6 +65,8 @@ export function gravarPlanilha(projeto, comparacao) {
       }));
     });
   });
+  // OPs duplicadas de antes do agrupamento (mesmo nº de OP), ainda em aberto
+  (comparacao.juntar || []).forEach(function (id) { escritas.push(function (lote) { lote.delete(col.doc(id)); }); });
   const envios = [];
   for (let i = 0; i < escritas.length; i += LOTE_MAX) {
     const lote = db().batch();

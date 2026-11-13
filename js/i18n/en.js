@@ -517,4 +517,5 @@ export default {
   'notif.tarefa':'{0}: {1} — requested by {2} · {3}', 'notif.tarefaConcluida':'{0}: "{1}" completed by {2}{3}',
   'n.tarefa-vence':'{0}: task due today — {1}', 'n.tarefa-venceM':'Due: {0}.',
   'n.tarefa-atrasada':'{0}: task late — {1}', 'n.tarefa-atrasadaM':'Was due {0} ({1} day(s) late).',
+  'fab.aviso.agrupada':'Row {0}: same work order no. {1} as row {2} — merged into one work order (qty summed: {3}).', 'fab.rJuntar':'{0} duplicated work order(s) with the same number will be merged', 'fab.rNaoJuntou':'Could not merge (QC already moved them): {0} — check by hand',
 };

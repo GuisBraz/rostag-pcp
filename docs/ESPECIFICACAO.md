@@ -210,6 +210,12 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - **PDF da OP por projeto:** a OP é procurada só no projeto escolhido; PDF de
   outra commessa é recusado. PDF impresso em retrato (texto girado 90°) é lido
   normalmente; o texto das instruções vai para `operacoes[].texto`.
+- **Commessa base:** PDF da OP e pedido de compra são comparados pela commessa
+  base, sem o sufixo de complemento ("2025-061P - REV.1" aceita a 2025-061P).
+- **Mesmo nº de OP em várias linhas** (peça igual em conjuntos diferentes,
+  aberta numa OP só): vira uma OP com quantidade e peso somados e as posições
+  juntas ("1.3 / 2.3"); ao subir de novo, as duplicadas antigas ainda em aberto
+  são juntadas (as que o CQ já movimentou ficam, com aviso).
 - **Todas as OPs** (antes "OPs Finalizadas"): Em andamento, Em RNC, Expedição,
   Montagem mecânica, Pintura e Sem destino — só projetos em andamento.
 - **Excluir projeto** apaga junto as OPs, a lista de avanço, os comerciais e os serviços (as RNCs ficam).

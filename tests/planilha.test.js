@@ -43,18 +43,41 @@ test('peça com OP de caldeiraria e de usinagem vira duas OPs; o conjunto sem OP
   assert.equal(cald.linha, 10);
 });
 
-test('peça repetida na mesma área é recusada; OP sem desenho também', () => {
-  const r = Planilha.lerOps(planilha([suporte, { ...suporte, 18: '' }, { 17: '999' }]));
+test('peça repetida na mesma área (com outro nº de OP) é recusada; OP sem desenho também', () => {
+  const r = Planilha.lerOps(planilha([suporte, { ...suporte, 17: '02050301099', 18: '' }, { 17: '999' }]));
   assert.equal(r.ops.length, 2);
   assert.equal(r.erros.length, 2);
   assert.equal(r.erros[0].motivo, 'pecaRepetida');
   assert.equal(r.erros[1].motivo, 'semDesenho');
 });
 
-test('mesmo nº de OP em peças diferentes só avisa', () => {
-  const r = Planilha.lerOps(planilha([suporte, { ...suporte, 3: '2', 18: '' }]));
-  assert.equal(r.ops.length, 3);
-  assert.equal(r.avisos.length, 1);
+test('mesmo nº de OP em linhas diferentes vira uma OP só, com qtd e peso somados', () => {
+  // o pé igual das duas escadas: duas linhas, uma OP de caldeiraria
+  const r = Planilha.lerOps(planilha([suporte, { ...suporte, 3: '2', 6: '3', 8: '1308,30', 18: '' }]));
+  assert.equal(r.ops.length, 2);
+  const cald = r.ops.find((o) => o.area === 'caldeiraria');
+  assert.deepEqual([cald.qtd, cald.pesoTotal, cald.posicao, cald.idPos, cald.linhas], [5, 2180.5, '1 / 2', '1', [10, 11]]);
+  assert.deepEqual(r.avisos.map((a) => [a.motivo, a.linha, a.outra, a.qtd]), [['agrupada', 11, 10, 5]]);
+  assert.equal(r.erros.length, 0);
+  // a OP agrupada mantém o id da primeira linha; a duplicada antiga (em aberto) é juntada
+  const idC = Planilha.idOp('p1', 'caldeiraria', '1609568', '1');
+  const idDup = Planilha.idOp('p1', 'caldeiraria', '1609568', '2');
+  const idMexida = Planilha.idOp('p1', 'caldeiraria', '1609568', '9');
+  const c = Planilha.comparar(r.ops, {
+    [idC]: { ...cald, qtd: 2, posicao: '1', status: 'aberta' },
+    [idDup]: { area: 'caldeiraria', numero: '02050301001', status: 'aberta' },
+    [idMexida]: { area: 'caldeiraria', numero: '02050301001', status: 'aprovada' }
+  }, 'p1');
+  assert.deepEqual(c.atualizadas.map((x) => [x.id, x.campos.qtd, x.campos.posicao]), [[idC, 5, '1 / 2']]);
+  assert.deepEqual(c.juntar, [idDup]);
+  assert.deepEqual(c.naoJuntou.map((x) => x.id), [idMexida]);
+});
+
+test('commessa base: complemento "REV.1" aceita a commessa original', () => {
+  assert.equal(Planilha.mesmaCommessa('2025-061P', '2025-061P - REV.1'), true);
+  assert.equal(Planilha.mesmaCommessa('2025-061P COMPLEMENTO', '2025-061P'), true);
+  assert.equal(Planilha.mesmaCommessa('2025-061P', '2025-062P'), false);
+  assert.equal(Planilha.mesmaCommessa('', ''), false);
 });
 
 test('sem as colunas de OP não reconhece a planilha', () => {

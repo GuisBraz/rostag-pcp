@@ -330,6 +330,8 @@ function mostrarResumo() {
     T('fab.rIguais', c.iguais.length)
   ];
   if (lida.ignoradas) itens.push(T('fab.rIgnoradas', lida.ignoradas));
+  if (c.juntar.length) itens.push(T('fab.rJuntar', c.juntar.length));
+  if (c.naoJuntou.length) itens.push(T('fab.rNaoJuntou', c.naoJuntou.map(function (x) { return x.numero; }).join(', ')));
   const comerciais = lida.itens.filter(function (i) { return i.comercial; }).length;
   itens.unshift(T('fab.rLista', lida.itens.length, comerciais) + (lida.lista.opPintura ? ' · ' + T('fab.rPintura', lida.lista.opPintura) : '') +
     (lida.lista.servicos.length ? ' · ' + T('fab.rServicos', lida.lista.servicos.length) : ''));
@@ -341,7 +343,7 @@ function mostrarResumo() {
   }
   if (lida.avisos.length) {
     html += '<div class="planilha-avisos"><b>' + esc(T('fab.rAvisos', lida.avisos.length)) + '</b><ul>' +
-      lida.avisos.slice(0, 10).map(function (a) { return '<li>' + esc(T('fab.aviso.numeroRepetido', a.linha, a.numero, a.outra)) + '</li>'; }).join('') +
+      lida.avisos.slice(0, 10).map(function (a) { return '<li>' + esc(T('fab.aviso.' + a.motivo, a.linha, a.numero, a.outra, numeroBr(a.qtd))) + '</li>'; }).join('') +
       '</ul></div>';
   }
   $('planilha-resumo').innerHTML = html;
@@ -354,7 +356,7 @@ function enviarPlanilha(_a, _b, btn) {
   const p = buscarProjeto($('planilha-projeto').value);
   if (!p) return;
   const c = comparacaoAtual();
-  const mudouOps = c.novas.length || c.atualizadas.length;
+  const mudouOps = c.novas.length || c.atualizadas.length || c.juntar.length;
   comBotaoOcupado(btn, Ops.gravarPlanilha(p, c).then(function () {
     return DadosAvanco.salvar(p, lida.lista).catch(function (e) { e.listaFalhou = true; throw e; });
   }).then(function () {
