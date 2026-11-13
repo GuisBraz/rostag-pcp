@@ -7,7 +7,9 @@
    PESO TOTAL (KG), N° OP CALD e N° OP USINAGEM.
    Cada linha com nº de OP de caldeiraria vira uma OP de caldeiraria; com nº de
    OP de usinagem, uma de usinagem. Uma peça (desenho + posição) tem no máximo
-   uma OP por área.
+   uma OP por área. Linhas com o MESMO nº de OP na mesma área (ex.: o pé igual
+   das duas escadas, aberto numa OP só) viram uma OP: quantidade e peso
+   somados, posições juntas ("1.3 / 2.3").
 --------------------------------------------------------------------------- */
 
 const LIMITE_LINHAS_CABECALHO = 40;
@@ -61,6 +63,15 @@ const COLUNAS = {
 
 export { chave, texto };
 
+// Commessa base: o código sem o que vem depois para complementos e revisões
+// ("2025-061P - REV.1" → "2025061P"). As OPs e os pedidos do sistema saem
+// com a commessa original, então a comparação é sempre pela base.
+export function commessaBase(c) {
+  const s = texto(c).toUpperCase().replace(/[\s\-_.\/]*(REV|COMPL|ADITIVO)[\s\S]*$/, '');
+  return chave(s);
+}
+export function mesmaCommessa(a, b) { const x = commessaBase(a); return !!x && x === commessaBase(b); }
+
 // Marca da planilha (X, emoji, "sim"...): qualquer coisa que não seja vazio ou "-".
 export function marcado(v) { const t = texto(v); return !!t && t !== '-'; }
 
@@ -110,7 +121,7 @@ export function lerOps(linhas) {
   if (!cab) return { ok: false, motivo: 'semCabecalho', ops: [], ignoradas: 0, erros: [], avisos: [] };
   const c = cab.cols;
   const ops = [], erros = [], avisos = [];
-  const vistas = {}, numeros = {};
+  const vistas = {}, porNumero = {};
   let ignoradas = 0;
   const cel = function (linha, campo) { return c[campo] == null ? '' : texto(linha[c[campo]]); };
 
@@ -130,30 +141,61 @@ export function lerOps(linhas) {
     [['caldeiraria', opC], ['usinagem', opU]].forEach(function (par) {
       const area = par[0], num = par[1].slice(0, 40);
       if (!num) return;
+      // mesmo nº de OP na mesma área: a linha entra na OP que já existe
+      const kn = area + '|' + chave(num);
+      if (porNumero[kn]) {
+        const o = porNumero[kn];
+        agrupar(o, comum);
+        avisos.push({ linha: nLinha, motivo: 'agrupada', area: area, numero: num, outra: o.linha, qtd: o.qtd });
+        return;
+      }
       const k = area + '|' + chave(comum.desenho) + '|' + chave(comum.posicao);
       if (vistas[k]) { erros.push({ linha: nLinha, motivo: 'pecaRepetida', area: area, outra: vistas[k] }); return; }
       vistas[k] = nLinha;
-      const kn = area + '|' + chave(num);
-      if (numeros[kn]) avisos.push({ linha: nLinha, motivo: 'numeroRepetido', area: area, numero: num, outra: numeros[kn] });
-      else numeros[kn] = nLinha;
-      ops.push(Object.assign({ area: area, numero: num }, comum));
+      const op = Object.assign({ area: area, numero: num, idPos: comum.posicao, linhas: [nLinha] }, comum);
+      porNumero[kn] = op;
+      ops.push(op);
     });
   }
   return { ok: true, ops: ops, ignoradas: ignoradas, erros: erros, avisos: avisos };
+}
+
+// Soma a linha na OP agrupada: quantidade e peso total; a posição entra na lista.
+function agrupar(o, l) {
+  o.linhas.push(l.linha);
+  if (o.qtd != null || l.qtd != null) o.qtd = (Number(o.qtd) || 0) + (Number(l.qtd) || 0);
+  if (o.pesoTotal != null || l.pesoTotal != null) o.pesoTotal = Math.round(((Number(o.pesoTotal) || 0) + (Number(l.pesoTotal) || 0)) * 100) / 100;
+  const pos = o.posicao ? o.posicao.split(' / ') : [];
+  if (l.posicao && pos.indexOf(l.posicao) < 0) o.posicao = pos.concat([l.posicao]).join(' / ').slice(0, 60);
+  ['produto', 'obs'].forEach(function (k) { if (!o[k] && l[k]) o[k] = l[k]; });
+  Object.keys(l.marcas || {}).forEach(function (k) { o.marcas[k] = true; });
 }
 
 function ordenado(obj) { const r = {}; Object.keys(obj).sort().forEach(function (k) { r[k] = obj[k]; }); return r; }
 
 /**
  * Compara a planilha com as OPs já gravadas do projeto.
- * Devolve { novas, atualizadas, iguais } — atualizar nunca mexe na finalização.
+ * Devolve { novas, atualizadas, iguais, juntar, naoJuntou } — atualizar nunca
+ * mexe na finalização. juntar: ids de OPs duplicadas (mesmo nº de OP, de antes
+ * do agrupamento) ainda em aberto, que somem porque a OP agrupada as cobre;
+ * naoJuntou: as que o CQ já movimentou (ficam, com aviso).
  */
 export function comparar(lidas, existentesPorId, projetoId) {
   const CAMPOS = ['numero', 'desenho', 'posicao', 'rev', 'descricao', 'qtd', 'pesoUnit', 'pesoTotal', 'produto', 'obs', 'marcas'];
   const igual = function (a, b) { return JSON.stringify(a == null ? null : a) === JSON.stringify(b == null ? null : b); };
-  const novas = [], atualizadas = [], iguais = [];
+  const novas = [], atualizadas = [], iguais = [], juntar = [], naoJuntou = [];
+  const idsLidos = {};
+  lidas.forEach(function (o) { idsLidos[idOp(projetoId, o.area, o.desenho, o.idPos != null ? o.idPos : o.posicao)] = true; });
   lidas.forEach(function (o) {
-    const id = idOp(projetoId, o.area, o.desenho, o.posicao);
+    const id = idOp(projetoId, o.area, o.desenho, o.idPos != null ? o.idPos : o.posicao);
+    if (o.linhas && o.linhas.length > 1) {
+      Object.keys(existentesPorId).forEach(function (eid) {
+        const e = existentesPorId[eid];
+        if (idsLidos[eid] || e.area !== o.area || chave(e.numero) !== chave(o.numero) || e.origemOpId) return;
+        if ((!e.status || e.status === 'aberta') && !e.rncAtualId) juntar.push(eid);
+        else naoJuntou.push({ id: eid, numero: e.numero, status: e.status });
+      });
+    }
     const atual = existentesPorId[id];
     if (!atual) { novas.push(Object.assign({ id: id }, o)); return; }
     const mudou = {};
@@ -164,5 +206,5 @@ export function comparar(lidas, existentesPorId, projetoId) {
     if (Object.keys(mudou).length) atualizadas.push({ id: id, campos: mudou, op: o, status: atual.status });
     else iguais.push(id);
   });
-  return { novas: novas, atualizadas: atualizadas, iguais: iguais };
+  return { novas: novas, atualizadas: atualizadas, iguais: iguais, juntar: juntar, naoJuntou: naoJuntou };
 }

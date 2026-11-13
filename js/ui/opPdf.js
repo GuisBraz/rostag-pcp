@@ -10,7 +10,7 @@ import { estado, buscarProjeto } from '../estado.js';
 import { esc, numeroBr } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as OpPdf from '../dominio/opPdf.js';
-import { chave } from '../dominio/planilha.js';
+import { chave, mesmaCommessa } from '../dominio/planilha.js';
 import * as Producao from '../dominio/producao.js';
 import * as Projeto from '../dominio/projeto.js';
 import * as Auth from '../dados/auth.js';
@@ -58,31 +58,35 @@ function acharOp(numero) {
 }
 function commessaDiferente(pdf) {
   const p = buscarProjeto(projetoAtualId());
-  return !!(p && pdf.commessa && p.commessa && chave(pdf.commessa) !== chave(p.commessa));
+  // pela commessa base: o complemento "2025-061P - REV.1" aceita as OPs da 2025-061P
+  return !!(p && pdf.commessa && p.commessa && !mesmaCommessa(pdf.commessa, p.commessa));
 }
 
+let leitura = 0;   // escolher arquivos de novo descarta a leitura que ainda estava em curso
 function lerArquivos(ev) {
   const arquivos = Array.from((ev && ev.target && ev.target.files) || []).slice(0, MAX_ARQUIVOS);
+  const minha = ++leitura, meus = [];
   lidos = [];
   $('oppdf-erro').textContent = '';
   $('oppdf-gravar').disabled = true;
   if (!arquivos.length) { $('oppdf-lista').innerHTML = ''; return; }
-  const aviso = function (txt) { $('oppdf-lista').innerHTML = '<div class="hint-txt">' + esc(txt) + '</div>'; };
+  const aviso = function (txt) { if (minha === leitura) $('oppdf-lista').innerHTML = '<div class="hint-txt">' + esc(txt) + '</div>'; };
   aviso(T('pdf.lendo', arquivos.length));
   // um arquivo por vez (o OCR é pesado); a lista avisa em qual está
   const lerTodos = Promise.resolve().then(function () {
     let cadeia = Promise.resolve();
     arquivos.forEach(function (arq, i) {
       cadeia = cadeia.then(function () {
-        if (arq.size > MAX_BYTES) { lidos.push({ arquivo: arq.name, situacao: 'grande' }); return; }
+        if (minha !== leitura) return;
+        if (arq.size > MAX_BYTES) { meus.push({ arquivo: arq.name, situacao: 'grande' }); return; }
         const aoOcr = function (n, total) { aviso(T('pdf.lendoOcr', i + 1, arquivos.length, arq.name, n, total)); };
         return arq.arrayBuffer().then(function (buf) { return paginasDoPdf(new Uint8Array(buf), aoOcr); }).then(function (r) {
           const pdf = OpPdf.lerOp(r.paginas);
-          if (!pdf.ok) { lidos.push({ arquivo: arq.name, situacao: r.porOcr && pdf.motivo === 'naoEhOp' ? 'ocrFalhou' : pdf.motivo }); return; }
+          if (!pdf.ok) { meus.push({ arquivo: arq.name, situacao: r.porOcr && pdf.motivo === 'naoEhOp' ? 'ocrFalhou' : pdf.motivo }); return; }
           const outra = commessaDiferente(pdf);
           const op = outra ? null : acharOp(pdf.numero);
-          const repetido = lidos.some(function (l) { return l.pdf && l.pdf.numero === pdf.numero; });
-          lidos.push({
+          const repetido = meus.some(function (l) { return l.pdf && l.pdf.numero === pdf.numero; });
+          meus.push({
             arquivo: arq.name, pdf: pdf, op: op, porOcr: r.porOcr > 0,
             situacao: outra ? 'outraCommessa' : (repetido ? 'repetido' : (op ? 'ok' : 'nova')),
             area: op ? op.area : OpPdf.areaProvavel(pdf),
@@ -91,13 +95,14 @@ function lerArquivos(ev) {
         }).catch(function (e) {
           console.warn(e);
           if (e && e.message === 'biblioteca-indisponivel') throw e;
-          lidos.push({ arquivo: arq.name, situacao: 'erro' });
+          meus.push({ arquivo: arq.name, situacao: 'erro' });
         });
       });
     });
     return cadeia;
   });
-  lerTodos.then(mostrar).catch(function (e) {
+  lerTodos.then(function () { if (minha !== leitura) return; lidos = meus; mostrar(); }).catch(function (e) {
+    if (minha !== leitura) return;
     console.warn(e);
     $('oppdf-lista').innerHTML = '';
     $('oppdf-erro').textContent = T('pdf.erroBiblioteca');
