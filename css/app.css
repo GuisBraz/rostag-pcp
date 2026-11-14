@@ -1380,3 +1380,46 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .cm-dia-dados dd small { color: var(--ink-dim); font-family: inherit; }
 .cm-dia-atraso { color: var(--rust); font-weight: 700; }
 .cm-dia-aviso { margin-top: 8px; font-size: 12px; color: var(--rust); font-weight: 600; }
+
+/* Carga Máquina: mapa de fabricação por máquina (linha do tempo com cartões) */
+.cm-tl-card { padding: 0; overflow: hidden; }
+.cm-tl-barra { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.cm-tl-tit { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.cm-tl-tit b { font-size: 15px; }
+.cm-tl-ctrl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cm-tl-zoom { margin: 0; }
+.cm-tl-nav { display: inline-flex; align-items: center; gap: 6px; }
+.cm-tl { position: relative; overflow: auto; height: 480px; cursor: grab; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.cm-tl.arrastando { cursor: grabbing; user-select: none; }
+.cm-tl::-webkit-scrollbar { height: 8px; width: 8px; }
+.cm-tl::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+.cm-tl::-webkit-scrollbar-track { background: transparent; }
+.cm-tl-in { position: relative; min-height: 100%; }
+.cm-tl-cab { position: sticky; top: 0; z-index: 4; background: #1F3864; color: #fff; }
+.cm-tl-dia { position: absolute; top: 0; bottom: 0; border-left: 2px solid rgba(255,255,255,.35); }
+.cm-tl-dia > b { display: block; padding: 5px 10px 0; font-size: 12px; font-weight: 800; letter-spacing: .02em; white-space: nowrap; text-transform: capitalize; }
+.cm-tl-dia.hoje { background: var(--rust); }
+.cm-tl-dia.folga { background: #44587F; }
+.cm-tl-dia.folga > b { padding: 5px 0 0; text-align: center; font-size: 11px; opacity: .85; }
+.cm-tl-regua { position: relative; height: 26px; }
+.cm-tl-hora { position: absolute; top: 4px; font: 700 12px var(--mono); white-space: nowrap; display: flex; flex-direction: column; line-height: 1.1; }
+.cm-tl-hora i { font: 600 9.5px var(--font, inherit); font-style: normal; opacity: .85; color: #FFE7A3; }
+.cm-tl-corpo { position: relative; }
+.cm-tl-dfundo { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--line); }
+.cm-tl-dfundo.hoje { background: color-mix(in srgb, var(--rust) 5%, transparent); }
+.cm-tl-dfundo.folga { background: repeating-linear-gradient(135deg, var(--bg-panel) 0 4px, var(--bg-panel-alt) 4px 8px); }
+.cm-tl-agora { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--rust); z-index: 2; pointer-events: none; }
+.cm-tl-setas { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 1; overflow: visible; }
+.cm-tl-setas path { fill: none; stroke: var(--ink-dim); stroke-width: 1.6; marker-end: url(#cm-seta); }
+.cm-tl-setas marker path { fill: var(--ink-dim); stroke: none; }
+.cm-tl-card-op { position: absolute; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 1px; padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--cor) 60%, #0F1B3D); border-left: 5px solid color-mix(in srgb, var(--cor) 55%, #0F1B3D); border-radius: 8px;
+  background: var(--cor); color: #0F1B3D; cursor: pointer; text-align: left; box-shadow: 0 1px 2px rgba(15,27,61,.12); }
+.cm-tl-card-op b { font: 800 13px var(--mono); white-space: nowrap; }
+.cm-tl-card-op small { font: 600 11px var(--mono); opacity: .8; white-space: nowrap; }
+.cm-tl-card-op:hover, .cm-tl-card-op:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 5; }
+.cm-tl-card-op.maq { box-shadow: 0 0 0 3px var(--teal); }
+.cm-tl-card-op.atraso { border-color: var(--rust); border-left-color: var(--rust); }
+.cm-tl-card-op.semh { border-style: dashed; }
+.cm-tl-card-op.cont { opacity: .85; }
+.cm-dia-sec { margin: 10px 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); border-bottom: 1px solid var(--line-soft); padding-bottom: 3px; }

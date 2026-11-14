@@ -562,7 +562,7 @@ export default {
   'cm.depoisDe':'after the previous operation (ends {0})', 'cm.filaVazia':'No operations on this machine — add below.',
   'cm.incluir':'+ Add work order', 'cm.incluirFim':'Add to the end of the queue', 'cm.incluirNota':'only {0} operations are listed · start and end are calculated',
   'cm.nadaAguardando':'No {0} operations waiting', 'cm.incluida':'Added to the {0} queue.', 'cm.tirada':'Operation back to waiting.',
-  'cm.mapaTit':'Shop map', 'cm.mapaNota':'each color is a work order · ✓✓ = more than one on the machine that day · hover for details',
+  'cm.mapaTit':'Shop map', 'cm.mapaNota':'each card is an order at its start time · click to see everything · drag or Shift+wheel to scroll',
   'cm.maqDia':'MACHINE / DAY', 'cm.mapaMaq':'{0} queued', 'cm.semana':'sun,mon,tue,wed,thu,fri,sat',
   'cm.tipo':'Machine type', 'cm.tipoPh':'Type (e.g. Boring mill)',
   'cm.semMaquinasEdit':'No machines yet. Add the machines (with the type of each one) in the ⚙ Machines and sectors tab.', 'cm.cadastrar':'⚙ Add machines',
@@ -576,4 +576,5 @@ export default {
   'cm.emMaquina':'On machine', 'cm.aguardandoSit':'Waiting', 'cm.fimCalc':'calculated from start + hours', 'cm.passaPrazo':'Ends after the project deadline ({0})', 'cm.dtInvalida':'Invalid time/date — use hh:mm dd/mm/yy (e.g. 14:30 13/11/26).',
   'cm.paraProgramar':'Work orders to schedule', 'cm.buscarProg':'Search order, commessa or description', 'cm.prazoVencido':'Project deadline passed', 'cm.inicioDica':'Blank: goes to the end of the queue',
   'cm.diaTit':'{0} — {1}', 'cm.diaN':'{0} operation(s) on this day', 'cm.diaHoras':'hours this day', 'cm.aMao':'manual', 'cm.verProg':'Open in schedule',
+  'cm.z.dia':'Day', 'cm.z.semana':'Week', 'cm.z.mes':'Month', 'cm.hoje':'Today', 'cm.ant':'Previous', 'cm.prox':'Next', 'cm.livre':'idle {0}', 'cm.semTurno':'no shift', 'cm.agora':'now', 'cm.mapaVazio':'No work orders scheduled on {0}.', 'cm.opTit':'Order {0}', 'cm.abrirOp':'Open order', 'cm.secProg':'Schedule on this machine', 'cm.secOp':'Order data', 'cm.dicaAtalho':'Ctrl ← → switches machine · Shift ← → schedule/map', 'a.cmMaq':'Machine load: switch machine', 'a.cmAba':'Machine load: schedule ↔ map',
 };
