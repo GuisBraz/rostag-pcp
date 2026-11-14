@@ -1423,3 +1423,6 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .cm-tl-card-op.semh { border-style: dashed; }
 .cm-tl-card-op.cont { opacity: .85; }
 .cm-dia-sec { margin: 10px 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); border-bottom: 1px solid var(--line-soft); padding-bottom: 3px; }
+
+/* mapa: só rola para o lado; para baixo quem rola é a página */
+.cm-tl { height: auto; overflow-x: auto; overflow-y: hidden; }

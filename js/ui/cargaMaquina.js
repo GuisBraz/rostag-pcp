@@ -468,24 +468,22 @@ function mapa(ag, h) {
 // depois de desenhar: altura até o fim da tela e rolagem no lugar (ou no hoje)
 function ajustarMapa() {
   const el = $('cm-tl'); if (!el) return;
-  const topo = el.getBoundingClientRect().top;
-  el.style.height = Math.max(320, Math.round(window.innerHeight - topo - 20)) + 'px';
+  // a altura acompanha as OPs (sem rolagem vertical própria): quem rola para baixo é a página
   const chave = el.dataset.chave;
-  if (ui.tlChave === chave && ui.tlScroll != null) { el.scrollLeft = ui.tlScroll; el.scrollTop = ui.tlScrollY || 0; }
-  else { el.scrollLeft = Math.max(0, ui.tlHoje - 40); ui.tlChave = chave; ui.tlScroll = el.scrollLeft; ui.tlScrollY = 0; }
-  el.addEventListener('scroll', function () { ui.tlScroll = el.scrollLeft; ui.tlScrollY = el.scrollTop; }, { passive: true });
+  if (ui.tlChave === chave && ui.tlScroll != null) el.scrollLeft = ui.tlScroll;
+  else { el.scrollLeft = Math.max(0, ui.tlHoje - 40); ui.tlChave = chave; ui.tlScroll = el.scrollLeft; }
+  el.addEventListener('scroll', function () { ui.tlScroll = el.scrollLeft; }, { passive: true });
   // arrastar o fundo para rolar
   el.addEventListener('mousedown', function (e) {
     if (e.button !== 0 || e.target.closest('button')) return;
-    const x0 = e.clientX, y0 = e.clientY, l0 = el.scrollLeft, t0 = el.scrollTop;
+    const x0 = e.clientX, y0 = e.clientY, l0 = el.scrollLeft, t0 = window.scrollY;
     el.classList.add('arrastando');
-    const mover = function (ev) { el.scrollLeft = l0 - (ev.clientX - x0); el.scrollTop = t0 - (ev.clientY - y0); };
+    const mover = function (ev) { el.scrollLeft = l0 - (ev.clientX - x0); window.scrollTo(window.scrollX, t0 - (ev.clientY - y0)); };
     const soltar = function () { el.classList.remove('arrastando'); document.removeEventListener('mousemove', mover); document.removeEventListener('mouseup', soltar); };
     document.addEventListener('mousemove', mover); document.addEventListener('mouseup', soltar);
     e.preventDefault();
   });
 }
-window.addEventListener('resize', function () { const el = $('cm-tl'); if (el) el.style.height = Math.max(320, Math.round(window.innerHeight - el.getBoundingClientRect().top - 20)) + 'px'; });
 
 // Pop-up do cartão: tudo da OP + a programação nesta máquina.
 function popupOp(mid, chave) {
