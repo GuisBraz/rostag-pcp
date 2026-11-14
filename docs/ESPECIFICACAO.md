@@ -237,7 +237,13 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   operação da OP só começa quando a anterior termina), Mapa de fabricação
   (máquinas × dias, uma cor por OP), Baixa do CQ (finalizar) e Máquinas e
   setores (cadastro com o tipo, setores do PDF, carga por semana). A fila
-  guarda `{opId, n (operação), horas, naoAntes}`; `maquina.tipo` agrupa.
+  guarda `{opId, n (operação), horas, inicio, fimAjustado}`; `maquina.tipo` agrupa.
+  Horas em hh:mm. Calendário (por enquanto igual para todas): seg–sex
+  06:00–23:00, sáb 07:00–14:00. O programador dá o início (data e hora) e a
+  fila se ordena por ele; sem início, vai para o fim. Fim = início + horas no
+  calendário; o fim ajustado à mão só fica registrado (estimado × feito).
+  Início em cima de outra OP pergunta "Tem certeza?" e empurra as outras.
+  OP sem horas fica destacada (importar o PDF ou digitar).
 - **Checklist padrão novo (14 tarefas):** Análise de escopo, Criar lista de
   avanço, SC itens críticos, Criar LM, Aproveitamento de laminados, SC
   laminados, Aproveitamento de chapas, SC chapas, Detalhamento de dobra (quando

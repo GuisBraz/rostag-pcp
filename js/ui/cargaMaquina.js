@@ -8,7 +8,7 @@
      ✔ Baixa do CQ — finalizar · ⚙ Máquinas e setores.
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto, opVisivel } from '../estado.js';
-import { esc, br, hoje, addDias, fds, difDias, numeroBr, compararNatural, dataValida } from '../nucleo/fmt.js';
+import { esc, br, hoje, addDias, fds, difDias, numeroBr, compararNatural } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Prog from '../dominio/programacao.js';
 import * as Auth from '../dados/auth.js';
@@ -28,8 +28,6 @@ const PALETA = ['#A7E3E6', '#9FC5F8', '#B5A6F2', '#F2A0C1', '#F6A99A', '#F9C9A5'
 const DIAS_MAPA = 28;
 // ícones dos botões da fila (SVG simples, herdam a cor do botão)
 const SVG = function (d) { return '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; };
-const SETA_CIMA = SVG('<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>');
-const SETA_BAIXO = SVG('<path d="M12 5v14"/><path d="M6 13l6 6 6-6"/>');
 const LIXEIRA = SVG('<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>');
 
 function podeEditar() { return Auth.souGerente() || Auth.areaProgramador() === 'usinagem'; }
@@ -41,6 +39,21 @@ function grupos() {
   ativas().forEach(function (m) { (g[tipoDe(m)] = g[tipoDe(m)] || []).push(m); });
   return Object.keys(g).sort(compararNatural).map(function (k) { return { tipo: k, maquinas: g[k].sort(function (a, b) { return compararNatural(a.nome, b.nome); }) }; });
 }
+// Horas em hh:mm (0,1 h → 0:06) e o contrário (aceita 1:30, 1h30, 2, 1,5).
+export function horasHM(h) {
+  const min = Math.round((Number(h) || 0) * 60);
+  return Math.floor(min / 60) + ':' + String(min % 60).padStart(2, '0');
+}
+export function lerHoras(txt) {
+  const t = String(txt || '').trim().toLowerCase().replace(/\s/g, '');
+  if (!t) return null;
+  let m = t.match(/^(\d{1,5})(?::|h)(\d{1,2})?$/);
+  if (m) return Number(m[1]) + (m[2] ? Number(m[2]) / 60 : 0);
+  m = t.match(/^(\d{1,5})(?:[.,](\d+))?h?$/);
+  if (m) return Number(m[1] + (m[2] ? '.' + m[2] : ''));
+  return null;
+}
+function brDt(dt) { return dt ? br(dt.slice(0, 10)) + ' ' + dt.slice(11, 16) : '—'; }
 function opsPorId() { const r = {}; estado.ops.forEach(function (o) { r[o.id] = o; }); return r; }
 function nomeOperacao(it) {
   const x = it.operacao;
@@ -93,7 +106,7 @@ function seletor(ag) {
       const itens = (ag[m.id] || []).filter(function (it) { return it.op && !it.concluida && !it.ausente; });
       const horas = itens.reduce(function (t, it) { return t + (it.horas || 0); }, 0);
       return '<button type="button" class="cm-chip' + (m.id === ui.maq ? ' ativo' : '') + '" data-acao="maqCargaMaq" data-arg="' + esc(m.id) + '">' + esc(m.nome) +
-        '<small>' + esc(T('cm.chipDet', itens.length, numeroBr(Math.round(horas)))) + '</small></button>';
+        '<small>' + esc(T('cm.chipDet', itens.length, horasHM(horas))) + '</small></button>';
     }).join('') + '</div></div>';
   }).join('') + '</div>';
 }
@@ -102,29 +115,35 @@ function planilha(ag, h) {
   if (!maqs.length) return semMaquinas();
   const m = maqs.find(function (x) { return x.id === ui.maq; });
   const editar = podeEditar();
-  const itens = (ag[m.id] || []);
-  const vivos = itens.filter(function (it) { return !it.ausente; });
+  const vivos = (ag[m.id] || []).filter(function (it) { return !it.ausente; });
   const pendentes = vivos.filter(function (it) { return !it.concluida; });
   const horas = pendentes.reduce(function (t, it) { return t + (it.horas || 0); }, 0);
-  const livre = pendentes.map(function (it) { return it.fim; }).filter(Boolean).sort().pop();
+  const livre = pendentes.map(function (it) { return it.fimDt; }).filter(Boolean).sort().pop();
   const linhas = vivos.map(function (it, i) {
-    const o = it.op, p = buscarProjeto(o.projetoId);
+    const o = it.op;
     const folga = it.fim && it.prazo ? difDias(it.fim, it.prazo) : null;
-    const sit = it.concluida ? 'feita' : (folga == null ? 'sem' : (folga < 0 ? 'atraso' : (folga <= 3 ? 'apertado' : 'ok')));
-    const sitTxt = it.concluida ? T('prog.sit.baixaCq') : (folga == null ? '—' : (folga >= 0 ? T('cm.folga', folga) : T('cm.atrasa', -folga)));
+    const semHoras = !it.concluida && !(it.horas > 0);
+    const sit = it.concluida ? 'feita' : (semHoras ? 'semhoras' : (folga == null ? 'sem' : (folga < 0 ? 'atraso' : (folga <= 3 ? 'apertado' : 'ok'))));
+    const sitTxt = it.concluida ? T('prog.sit.baixaCq') : (semHoras ? T('cm.semHorasCurto') : (folga == null ? '—' : (folga >= 0 ? T('cm.folga', folga) : T('cm.atrasa', -folga))));
     const ant = it.depoisDe ? '<div class="cm-dep">' + esc(T('cm.depoisDe', br(it.depoisDe))) + '</div>' : '';
+    const aviso = semHoras ? '<div class="cm-aviso-horas">⚠ ' + esc(T('cm.semHoras')) + '</div>' : '';
     const arg = esc(m.id) + '" data-arg2="' + esc(Prog.chaveItem(it.opId, it.n));
+    const vivo = editar && !it.concluida;
+    const inicioCel = vivo
+      ? '<input type="datetime-local" class="cm-dt" value="' + esc(it.inicioDt || '') + '" data-change="inicioCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('prog.inicio')) + '">' +
+        (it.empurrada ? '<div class="cm-dep">' + esc(T('cm.empurrada', brDt(it.inicioFixo))) + '</div>' : (it.inicioFixo ? '' : '<div class="hint-txt">' + esc(T('cm.inicioAuto')) + '</div>'))
+      : esc(brDt(it.inicioDt));
+    const fimCel = vivo
+      ? '<input type="datetime-local" class="cm-dt' + (it.fimAjustado ? ' cm-ajustado' : '') + '" value="' + esc(it.fimAjustado || it.fimDt || '') + '" data-change="fimCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('prog.fim')) + '">' +
+        (it.fimAjustado ? '<div class="cm-dep">' + esc(T('cm.ajustado', brDt(it.fimDt))) + ' <button type="button" class="link-btn" data-acao="fimCalcCargaMaq" data-arg="' + arg + '">' + esc(T('cm.voltarCalc')) + '</button></div>' : '')
+      : esc(brDt(it.fimAjustado || it.fimDt));
     return '<tr class="cm-' + sit + '"><td class="c"><b>' + (i + 1) + '</b></td>' +
       '<td class="mono"><span class="cm-cor" style="background:' + corOp(o.id) + '"></span><button type="button" class="link-btn mono" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '">' + esc(o.numero) + '</button></td>' +
-      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td>' + esc(o.descricao || o.desenho) + '</td><td>' + esc(nomeOperacao(it)) + ant + '</td>' +
-      '<td class="num">' + (editar && !it.concluida ? '<input type="number" class="cm-horas" min="0.5" max="10000" step="0.5" value="' + esc(it.horas) + '" data-change="horasCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('cm.horas')) + '">' : numeroBr(it.horas)) + '</td>' +
-      '<td>' + (editar && !it.concluida ? '<input type="date" class="cm-data" value="' + esc(it.naoAntes || '') + '" data-change="naoAntesCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('cm.naoAntes')) + '">' : (it.naoAntes ? br(it.naoAntes) : '—')) + '</td>' +
-      '<td class="num">' + (it.inicio ? br(it.inicio) : '—') + '</td><td class="num">' + (it.fim ? br(it.fim) : '—') + '</td><td class="num">' + (it.prazo ? br(it.prazo) : '—') + '</td>' +
+      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td>' + esc(o.descricao || o.desenho) + '</td><td>' + esc(nomeOperacao(it)) + ant + aviso + '</td>' +
+      '<td class="num">' + (vivo ? '<input type="text" inputmode="numeric" class="cm-horas' + (semHoras ? ' cm-horas-falta' : '') + '" value="' + esc(it.horas > 0 ? horasHM(it.horas) : '') + '" placeholder="hh:mm" data-change="horasCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('cm.horas')) + '">' : horasHM(it.horas)) + '</td>' +
+      '<td>' + inicioCel + '</td><td>' + fimCel + '</td><td class="num">' + (it.prazo ? br(it.prazo) : '—') + '</td>' +
       '<td><span class="pill-cm cm-p-' + sit + '">' + esc(sitTxt) + '</span></td>' +
-      (editar ? '<td class="c cm-acoes"><span class="cm-ordem">' +
-        '<button type="button" class="cm-ic" data-acao="moverCargaMaq" data-arg="' + arg + '|-1" title="' + esc(T('cm.subir')) + '" aria-label="' + esc(T('cm.subir')) + '"' + (i ? '' : ' disabled') + '>' + SETA_CIMA + '</button>' +
-        '<button type="button" class="cm-ic" data-acao="moverCargaMaq" data-arg="' + arg + '|1" title="' + esc(T('cm.descer')) + '" aria-label="' + esc(T('cm.descer')) + '"' + (i < vivos.length - 1 ? '' : ' disabled') + '>' + SETA_BAIXO + '</button></span>' +
-        '<button type="button" class="cm-ic cm-ic-tirar" data-acao="tirarCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.tirar')) + '" aria-label="' + esc(T('cm.tirar')) + '">' + LIXEIRA + '</button></td>' : '') + '</tr>';
+      (editar ? '<td class="c cm-acoes"><button type="button" class="cm-ic cm-ic-tirar" data-acao="tirarCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.tirar')) + '" aria-label="' + esc(T('cm.tirar')) + '">' + LIXEIRA + '</button></td>' : '') + '</tr>';
   }).join('');
   const esp = editar ? Prog.aguardandoNaMaquina(m, estado.ops.filter(opVisivel), estado.maquinas, estado.setores).sort(function (a, b) {
     const pa = buscarProjeto(a.op.projetoId), pb = buscarProjeto(b.op.projetoId);
@@ -133,17 +152,18 @@ function planilha(ag, h) {
   const incluir = editar ? '<div class="cm-incluir"><b>' + esc(T('cm.incluir')) + '</b><select id="cm-incluir-sel" aria-label="' + esc(T('cm.incluir')) + '">' + (esp.length ? esp.map(function (x) {
     const p = buscarProjeto(x.op.projetoId), tot = (x.op.operacoes || []).length;
     return '<option value="' + esc(x.chave) + '">' + esc(x.op.numero + ' · ' + x.op.commessa + ' · ' + (x.op.descricao || x.op.desenho) + ' — ' +
-      (x.operacao.n == null ? T('cm.opInteira') : (x.operacao.n + 1) + '/' + tot + ' ' + (x.operacao.texto || x.operacao.setor)) + ' · ' + numeroBr(x.operacao.horas) + ' h' + (p && p.prodFim ? ' · ' + T('prog.prazo', br(p.prodFim)) : '')) + '</option>';
+      (x.operacao.n == null ? T('cm.opInteira') : (x.operacao.n + 1) + '/' + tot + ' ' + (x.operacao.texto || x.operacao.setor)) + ' · ' + (x.operacao.horas > 0 ? horasHM(x.operacao.horas) : T('cm.semHorasCurto')) + (p && p.prodFim ? ' · ' + T('prog.prazo', br(p.prodFim)) : '')) + '</option>';
   }).join('') : '<option value="">' + esc(T('cm.nadaAguardando', tipoDe(m))) + '</option>') + '</select>' +
-    '<button type="button" class="btn btn-primary btn-mini" data-acao="incluirCargaMaq" data-arg="' + esc(m.id) + '"' + (esp.length ? '' : ' disabled') + '>' + esc(T('cm.incluirFim')) + '</button>' +
+    '<label class="cm-incluir-ini">' + esc(T('cm.inicioOpc')) + ' <input type="datetime-local" id="cm-incluir-ini" class="cm-dt"></label>' +
+    '<button type="button" class="btn btn-primary btn-mini" data-acao="incluirCargaMaq" data-arg="' + esc(m.id) + '"' + (esp.length ? '' : ' disabled') + '>' + esc(T('cm.incluirBtn')) + '</button>' +
     '<span class="hint-txt">' + esc(T('cm.incluirNota', tipoDe(m))) + '</span></div>' : '';
   return seletor(ag) + '<div class="card cm-plan"><div class="cm-plan-topo"><div><div class="panel-title" style="margin:0">' + esc(m.nome) + '</div><div class="hint-txt">' +
-    esc(T('cm.maqDet', tipoDe(m), numeroBr(m.horasDia), pendentes.length, numeroBr(Math.round(horas * 10) / 10), livre ? br(livre) : '—')) + '</div></div>' +
-    (editar && vivos.length > 1 ? '<button type="button" class="btn btn-outline btn-mini" data-acao="ordenarCargaMaq" data-arg="' + esc(m.id) + '">' + esc(T('cm.ordenar')) + '</button>' : '') + '</div>' +
+    esc(T('cm.maqDet', tipoDe(m), pendentes.length, horasHM(horas), livre ? brDt(livre) : '—')) + '</div></div>' +
+    '<div class="hint-txt cm-cal">' + esc(T('cm.calendario')) + '</div></div>' +
     '<div class="table-wrap"><table class="cm-tab"><thead><tr><th>#</th><th>OP</th><th>' + esc(T('fab.cCommessa')) + '</th><th>' + esc(T('fab.cDescricao')) + '</th><th>' + esc(T('cm.operacao')) +
-    '</th><th class="num">' + esc(T('cm.horas')) + '</th><th>' + esc(T('cm.naoAntes')) + '</th><th class="num">' + esc(T('prog.inicio')) + '</th><th class="num">' + esc(T('prog.fim')) + '</th><th class="num">' +
+    '</th><th class="num">' + esc(T('cm.horas')) + '</th><th>' + esc(T('prog.inicio')) + '</th><th>' + esc(T('cm.fimPrev')) + '</th><th class="num">' +
     esc(T('cm.prazo')) + '</th><th>' + esc(T('prog.situacao')) + '</th>' + (editar ? '<th></th>' : '') + '</tr></thead><tbody>' +
-    (linhas || '<tr><td colspan="12" class="hint-txt" style="padding:16px">' + esc(T('cm.filaVazia')) + '</td></tr>') + '</tbody></table></div>' + incluir + '</div>';
+    (linhas || '<tr><td colspan="11" class="hint-txt" style="padding:16px">' + esc(T('cm.filaVazia')) + '</td></tr>') + '</tbody></table></div>' + incluir + '</div>';
 }
 
 // Ainda sem máquinas: o cadastro fica na aba "Máquinas e setores".
@@ -162,7 +182,7 @@ function mapa(ag, h) {
     const l = (ag[m.id] || []).filter(function (it) { return it.porDia && it.porDia[dia] > 0 && !it.concluida; }).sort(function (a, b) { return b.porDia[dia] - a.porDia[dia]; });
     if (!l.length) return '<td class="cm-cel"></td>';
     l.forEach(function (it) { usados[it.opId] = it.op; });
-    const tit = br(dia) + ' — ' + m.nome + '\n' + l.map(function (it) { return it.op.numero + ' · ' + (it.op.descricao || it.op.desenho) + ' · ' + nomeOperacao(it) + ' · ' + numeroBr(Math.round(it.porDia[dia] * 10) / 10) + ' h'; }).join('\n');
+    const tit = br(dia) + ' — ' + m.nome + '\n' + l.map(function (it) { return it.op.numero + ' · ' + (it.op.descricao || it.op.desenho) + ' · ' + nomeOperacao(it) + ' · ' + horasHM(it.porDia[dia]); }).join('\n');
     return '<td class="cm-cel cm-marcado" style="background:' + corOp(l[0].opId) + '" title="' + esc(tit) + '"><span>' + (l.length > 1 ? '✓✓' : '✓') + '</span></td>';
   };
   const SEM = T('cm.semana').split(',');
@@ -174,7 +194,7 @@ function mapa(ag, h) {
     corpo += '<tr class="cm-grupo-l"><td class="cm-mq">' + esc(g.tipo.toUpperCase()) + '</td><td colspan="' + dias.length + '"></td></tr>';
     g.maquinas.forEach(function (m) {
       const n = (ag[m.id] || []).filter(function (it) { return it.op && !it.concluida && !it.ausente; }).length;
-      corpo += '<tr><td class="cm-mq"><b>' + esc(m.nome) + '</b><small>' + esc(T('cm.mapaMaq', numeroBr(m.horasDia), n)) + '</small></td>' + dias.map(function (d) { return cel(m, d); }).join('') + '</tr>';
+      corpo += '<tr><td class="cm-mq"><b>' + esc(m.nome) + '</b><small>' + esc(T('cm.mapaMaq', n)) + '</small></td>' + dias.map(function (d) { return cel(m, d); }).join('') + '</tr>';
     });
   });
   if (!corpo) return semMaquinas();
@@ -206,6 +226,34 @@ function salvar(m, fila, msg) { return DadosProg.salvarFila(m.id, fila).then(fun
 function idx(fila, chave) { return fila.findIndex(function (f) { return Prog.chaveItem(f.opId, f.n == null ? null : Number(f.n)) === chave; }); }
 function redesenhar() { renderCargaMaquina('cu-programacao'); }
 
+// Põe o item na fila: com início, na posição pelo horário (se cair em cima de
+// outra, pergunta; as outras são empurradas para frente); sem início, no fim.
+function colocar(m, item, msg, chaveAntiga) {
+  const resto = chaveAntiga ? semChave(m.fila || [], chaveAntiga) : (m.fila || []).slice();
+  const opsId = opsPorId(), proj = {};
+  estado.projetos.forEach(function (p) { proj[p.id] = p; });
+  const so = Object.assign({}, m, { fila: resto });
+  const ag = Prog.agendarTudo((estado.maquinas || []).map(function (x) { return x.id === m.id ? so : x; }), opsId, proj, estado.setores, agoraLocal())[m.id] || [];
+  const o = opsId[item.opId], op = o ? Prog.operacoesDaOp(o)[item.n == null ? 0 : item.n] : null;
+  const horasCalc = Number(item.horas) > 0 ? Number(item.horas) : (op ? op.horas : 0);
+  const r = Prog.encaixar(resto, ag, Object.assign({}, item, { horasCalc: horasCalc }));
+  const seguir = r.conflitos.length
+    ? confirmar(T('cm.conflitoQ', r.conflitos.map(function (c) { return c.op.numero + ' (' + brDt(c.inicioDt) + ' → ' + brDt(c.fimDt) + ')'; }).join(', ')), { titulo: T('cm.conflitoTit'), textoOk: T('cm.conflitoOk') })
+    : Promise.resolve(true);
+  seguir.then(function (ok) {
+    if (!ok) { redesenhar(); return; }
+    // as empurradas guardam o início novo (a ordem fica valendo)
+    const nova = r.fila.map(function (f) { return Object.assign({}, f); });
+    const ag2 = Prog.agendarTudo((estado.maquinas || []).map(function (x) { return x.id === m.id ? Object.assign({}, m, { fila: nova }) : x; }), opsId, proj, estado.setores, agoraLocal())[m.id] || [];
+    nova.forEach(function (f, i) { const a = ag2[i]; if (f.inicio && a && a.inicioDt && a.inicioDt !== f.inicio) f.inicio = a.inicioDt; });
+    salvar(m, nova, r.conflitos.length ? T('cm.empurradasOk', r.conflitos.length) : msg);
+  });
+}
+function agoraLocal() {
+  const d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
 registrarAcoes({
   abaCargaMaq: function (a) { if (ABAS.indexOf(a) >= 0) { ui.aba = a; redesenhar(); } },
   maqCargaMaq: function (id) { ui.maq = id; redesenhar(); },
@@ -215,15 +263,8 @@ registrarAcoes({
     if (!m || !v || !podeEditar()) return;
     if ((m.fila || []).length >= Prog.MAX_FILA) { toast(T('prog.erro.filaCheia'), { tipo: 'erro' }); return; }
     const p = v.split('#'), n = p[1] === '*' ? null : Number(p[1]);
-    salvar(m, (m.fila || []).concat([{ opId: p[0], n: n, horas: null, naoAntes: null }]), T('cm.incluida', m.nome));
-  },
-  moverCargaMaq: function (mid, arg2) {
-    const m = maquina(mid); if (!m) return;
-    const partes = String(arg2).split('|'), chave = partes[0], passo = Number(partes[1]);
-    const fila = (m.fila || []).slice(), i = idx(fila, chave), j = i + passo;
-    if (i < 0 || j < 0 || j >= fila.length) return;
-    const t = fila[i]; fila[i] = fila[j]; fila[j] = t;
-    salvar(m, fila);
+    const ini = $('cm-incluir-ini') && $('cm-incluir-ini').value;
+    colocar(m, { opId: p[0], n: n, horas: null, inicio: ini || null, fimAjustado: null }, T('cm.incluida', m.nome));
   },
   tirarCargaMaq: function (mid, chave) {
     const m = maquina(mid); if (!m) return;
@@ -236,21 +277,32 @@ registrarAcoes({
     const m = maquina(el.dataset.arg); if (!m) return;
     const fila = (m.fila || []).map(function (f) { return Object.assign({}, f); }), i = idx(fila, chave);
     if (i < 0) return;
-    const hNum = Number(v);
+    const hNum = lerHoras(v);
+    if (v && hNum == null) { toast(T('cm.horasInvalidas'), { tipo: 'erro' }); redesenhar(); return; }
     fila[i].horas = hNum > 0 ? Math.min(10000, hNum) : null;
     salvar(m, fila);
   },
-  naoAntesCargaMaq: function (v, chave, el) {
+  // mudar o início: a operação vai para a posição pelo início (pergunta se cair em cima de outra)
+  inicioCargaMaq: function (v, chave, el) {
+    const m = maquina(el.dataset.arg); if (!m) return;
+    const atual = (m.fila || []).find(function (f) { return Prog.chaveItem(f.opId, f.n == null ? null : Number(f.n)) === chave; });
+    if (!atual) return;
+    colocar(m, Object.assign({}, atual, { inicio: v || null }), null, chave);
+  },
+  // fim à mão: só registro (estimado × feito); igual ao calculado = volta ao cálculo
+  fimCargaMaq: function (v, chave, el) {
     const m = maquina(el.dataset.arg); if (!m) return;
     const fila = (m.fila || []).map(function (f) { return Object.assign({}, f); }), i = idx(fila, chave);
     if (i < 0) return;
-    fila[i].naoAntes = v && dataValida(v) ? v : null;
-    salvar(m, fila);
+    const it = (agendasAtuais()[m.id] || []).find(function (x) { return Prog.chaveItem(x.opId, x.n) === chave; });
+    fila[i].fimAjustado = v && (!it || v !== it.fimDt) ? v : null;
+    salvar(m, fila, fila[i].fimAjustado ? T('cm.fimAjustadoOk') : null);
   },
-  ordenarCargaMaq: function (mid) {
+  fimCalcCargaMaq: function (mid, chave) {
     const m = maquina(mid); if (!m) return;
-    const porId = opsPorId();
-    const prazo = function (f) { const o = porId[f.opId], p = o && buscarProjeto(o.projetoId); return String((p && p.prodFim) || '9'); };
-    salvar(m, (m.fila || []).slice().sort(function (a, b) { return prazo(a).localeCompare(prazo(b)); }), T('cm.ordenada'));
+    const fila = (m.fila || []).map(function (f) { return Object.assign({}, f); }), i = idx(fila, chave);
+    if (i < 0) return;
+    fila[i].fimAjustado = null;
+    salvar(m, fila);
   }
 });

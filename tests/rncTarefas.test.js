@@ -83,12 +83,33 @@ test('carga máquina por operação: tipo de máquina, dependência e aguardando
   const o1 = { id: 'o1', area: 'usinagem', status: 'aberta', projetoId: 'p', operacoes: [{ setor: 'SAN ROCCO', horas: 16 }, { setor: 'RADIAL', horas: 4 }, { setor: 'AJUSTE', horas: 2 }] };
   const o2 = { id: 'o2', area: 'usinagem', status: 'aberta', projetoId: 'p', operacoes: [{ setor: 'FOREST', horas: 8 }] };
   const porId = { o1, o2 };
-  // sexta 13/11: 16 h na San Rocco (8 h/dia) = sex e seg 16/11; a furação só começa depois (seg 16/11)
+  // sexta 13/11 06:00: 16 h na San Rocco = até 22:00; a furação (4 h) começa às 22:00:
+  // 1 h na sexta (até 23:00) e 3 h no sábado (07:00–10:00)
   const ag = ProgD.agendarTudo(maqs, porId, { p: { prodFim: '2026-11-30' } }, {}, '2026-11-13');
-  assert.deepEqual([ag.sr[0].inicio, ag.sr[0].fim], ['2026-11-13', '2026-11-16']);
-  assert.deepEqual([ag.ra[0].inicio, ag.ra[0].fim, ag.ra[0].depoisDe], ['2026-11-16', '2026-11-16', '2026-11-16']);
+  assert.deepEqual([ag.sr[0].inicioDt, ag.sr[0].fimDt], ['2026-11-13T06:00', '2026-11-13T22:00']);
+  assert.deepEqual([ag.ra[0].inicioDt, ag.ra[0].fimDt], ['2026-11-13T22:00', '2026-11-14T10:00']);
+  assert.deepEqual(ag.ra[0].porDia, { '2026-11-13': 1, '2026-11-14': 3 });
   // a mandrilhadora Forest é do mesmo tipo: pode receber a operação da San Rocco e a da OP 2
   assert.deepEqual(ProgD.maquinasDaOperacao({ n: 0, setor: 'SAN ROCCO' }, maqs, {}), ['sr', 'fo']);
   assert.deepEqual(ProgD.aguardandoNaMaquina(maqs[1], [o1, o2], maqs, {}).map((x) => x.chave), ['o2#0']);
   assert.deepEqual(ProgD.maquinasDaOperacao({ n: 2, setor: 'AJUSTE' }, maqs, {}), []);   // setor sem máquina
+});
+
+test('carga máquina: calendário, início com hora, fim previsto e encaixe com conflito', () => {
+  // sexta 20:00 + 10 h: 3 h na sexta e 7 h no sábado → sábado 14:00; domingo pula
+  assert.equal(ProgD.fimPrevisto('2026-11-13T20:00', 10), '2026-11-14T14:00');
+  assert.equal(ProgD.fimPrevisto('2026-11-14T13:00', 2), '2026-11-16T07:00');
+  const o = (id) => ({ id, area: 'usinagem', status: 'aberta', projetoId: 'p', horasPrevistas: 4 });
+  const porId = { a: o('a'), b: o('b'), c: o('c') };
+  const maq = { id: 'm', nome: 'M', horasDia: 17, fila: [{ opId: 'a', n: null, inicio: '2026-11-16T08:00' }, { opId: 'b', n: null }] };
+  let ag = ProgD.agendarTudo([maq], porId, {}, {}, '2026-11-16T07:00');
+  assert.deepEqual(ag.m.map((x) => [x.inicioDt, x.fimDt]), [['2026-11-16T08:00', '2026-11-16T12:00'], ['2026-11-16T12:00', '2026-11-16T16:00']]);
+  // nova OP às 10:00 cai em cima de "a": conflito; ela entra antes e as outras são empurradas
+  const r = ProgD.encaixar(maq.fila, ag.m, { opId: 'c', n: null, inicio: '2026-11-16T10:00', horasCalc: 4 });
+  assert.deepEqual(r.conflitos.map((x) => x.opId), ['a', 'b']);
+  assert.deepEqual(r.fila.map((f) => f.opId), ['c', 'a', 'b']);
+  ag = ProgD.agendarTudo([{ ...maq, fila: r.fila }], porId, {}, {}, '2026-11-16T07:00');
+  assert.deepEqual(ag.m.map((x) => [x.opId, x.inicioDt, x.empurrada]), [['c', '2026-11-16T10:00', false], ['a', '2026-11-16T14:00', true], ['b', '2026-11-16T18:00', false]]);
+  // sem início: vai para o fim
+  assert.deepEqual(ProgD.encaixar(maq.fila, ag.m, { opId: 'c', n: null }).fila.map((f) => f.opId), ['a', 'b', 'c']);
 });

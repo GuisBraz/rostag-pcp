@@ -61,7 +61,9 @@ function itemFila(f) {
   // operação do roteiro (índice); sem ela, a OP inteira
   r.n = f.n == null || f.n === '' ? null : Number(f.n);
   r.horas = Number(f.horas) > 0 ? Math.min(10000, Number(f.horas)) : null;
-  r.naoAntes = f.naoAntes || null;
+  // início dado pelo programador (data e hora) e fim ajustado à mão (só registro)
+  r.inicio = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(f.inicio || '') ? f.inicio : null;
+  r.fimAjustado = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(f.fimAjustado || '') ? f.fimAjustado : null;
   return r;
 }
 export function salvarFila(maquinaId, fila) {
