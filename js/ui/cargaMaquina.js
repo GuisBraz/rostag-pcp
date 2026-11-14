@@ -405,9 +405,10 @@ function mapa(ag, h) {
 
   // cabeçalho: dia + régua só com os horários de início e fim
   let cab = '', fundo = '';
-  dias.forEach(function (dd) {
+  dias.forEach(function (dd, k) {
     const sem = SEM[new Date(dd.dia + 'T12:00:00').getDay()];
-    const cls = (dd.dia === h ? ' hoje' : '') + (!dd.cal ? ' folga' : '');
+    // um dia branco, o seguinte gelo, alternando (só para separar os dias)
+    const cls = (dd.dia === h ? ' hoje' : '') + (!dd.cal ? ' folga' : '') + (k % 2 ? ' alt' : '');
     fundo += '<div class="cm-tl-dfundo' + cls + '" style="left:' + dd.x + 'px;width:' + dd.larg + 'px"></div>';
     if (!dd.cal) { cab += '<div class="cm-tl-dia folga" style="left:' + dd.x + 'px;width:' + dd.larg + 'px" title="' + esc(br(dd.dia) + ' · ' + T('cm.semTurno')) + '"><b>' + esc(sem) + '</b></div>'; return; }
     let reg = '';
