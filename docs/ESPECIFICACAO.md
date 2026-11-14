@@ -233,7 +233,7 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - **Carga Máquina (programador de usinagem), por operação do roteiro:**
   abas Programação por máquina (escolhe a máquina, agrupadas pelo tipo; a
   "planilha" da fila com incluir operação — só as do tipo da máquina —,
-  ordem, horas e "não antes de"; início e fim calculados, e a próxima
+  ordem, horas, início e fim; início e fim calculados, e a próxima
   operação da OP só começa quando a anterior termina), Mapa de fabricação
   (máquinas × dias, uma cor por OP), Baixa do CQ (finalizar) e Máquinas e
   setores (cadastro com o tipo, setores do PDF, carga por semana). A fila
@@ -244,6 +244,10 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   calendário; o fim ajustado à mão só fica registrado (estimado × feito).
   Início em cima de outra OP pergunta "Tem certeza?" e empurra as outras.
   OP sem horas fica destacada (importar o PDF ou digitar).
+  Início e fim digitados como "hh:mm dd/mm/aa" (só números, pula sozinho;
+  ano com 2 dígitos = 20aa; inválido fica vermelho). Explicações ficam na dica
+  do campo, sem texto embaixo. Situação: a primeira da fila "Em máquina", as
+  outras "Aguardando"; linha vermelha quando termina depois do prazo.
 - **Checklist padrão novo (14 tarefas):** Análise de escopo, Criar lista de
   avanço, SC itens críticos, Criar LM, Aproveitamento de laminados, SC
   laminados, Aproveitamento de chapas, SC chapas, Detalhamento de dobra (quando

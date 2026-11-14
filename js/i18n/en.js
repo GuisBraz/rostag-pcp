@@ -573,4 +573,5 @@ export default {
   'cm.fimPrev':'PLANNED END', 'cm.fimAjustadoOk':'Adjusted end saved (planned × actual).', 'cm.inicioOpc':'start (optional)', 'cm.incluirBtn':'Add',
   'cm.calendario':'mon–fri 06:00–23:00 · sat 07:00–14:00', 'cm.conflitoTit':'Are you sure?',
   'cm.conflitoQ':'Are you sure? This slot already has: {0}. If you go on, they are pushed forward.', 'cm.conflitoOk':'Yes, push', 'cm.empurradasOk':'Scheduled — {0} operation(s) pushed forward.',
+  'cm.emMaquina':'On machine', 'cm.aguardandoSit':'Waiting', 'cm.fimCalc':'calculated from start + hours', 'cm.passaPrazo':'Ends after the project deadline ({0})', 'cm.dtInvalida':'Invalid time/date — use hh:mm dd/mm/yy (e.g. 14:30 13/11/26).',
 };
