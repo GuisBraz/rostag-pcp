@@ -553,4 +553,16 @@ export default {
   'cf.jaReagendada':'Already rescheduled: {0} → {1}', 'cf.primeira':'First date: {0} (start {1})', 'cf.reagendadaOk':'Work order {0} rescheduled to {1} — technician and PM notified.',
   'notif.titulo.opReagendada':'Work order rescheduled', 'notif.opReagendada':'Work order {0} ({1}, {2}) rescheduled from {3} to {4} — {5}.',
   'n.prod-cald-atraso':'{0}: work order {1} late at the shop', 'n.prod-cald-atrasoM':'With {0} · was due {1} ({2} day(s) late).',
+  // machine load by operation
+  'cm.aba.plan':'📋 Schedule by machine', 'cm.aba.mapa':'🗓 Shop map', 'cm.aba.baixa':'✔ QC approved — finish', 'cm.aba.config':'⚙ Machines and sectors',
+  'cm.kAguardando':'operations waiting', 'cm.kProgramadas':'scheduled', 'cm.kAtraso':'past the deadline',
+  'cm.semTipo':'No type', 'cm.chipDet':'{0} queued · {1} h', 'cm.opInteira':'Whole work order (no routing)',
+  'cm.maqDet':'{0} · {1} h/day · {2} queued · {3} h · free from {4}', 'cm.ordenar':'↕ Sort by delivery', 'cm.ordenada':'Queue sorted by delivery.',
+  'cm.operacao':'OPERATION', 'cm.horas':'HOURS', 'cm.naoAntes':'NOT BEFORE', 'cm.prazo':'DUE', 'cm.folga':'slack {0} d', 'cm.atrasa':'late {0} d',
+  'cm.depoisDe':'after the previous operation (ends {0})', 'cm.filaVazia':'No operations on this machine — add below.',
+  'cm.incluir':'+ Add work order', 'cm.incluirFim':'Add to the end of the queue', 'cm.incluirNota':'only {0} operations are listed · start and end are calculated',
+  'cm.nadaAguardando':'No {0} operations waiting', 'cm.incluida':'Added to the {0} queue.', 'cm.tirada':'Operation back to waiting.',
+  'cm.mapaTit':'Shop map', 'cm.mapaNota':'each color is a work order · ✓✓ = more than one on the machine that day · hover for details',
+  'cm.maqDia':'MACHINE / DAY', 'cm.mapaMaq':'{0} h/day · {1} queued', 'cm.semana':'sun,mon,tue,wed,thu,fri,sat',
+  'cm.tipo':'Machine type', 'cm.tipoPh':'Type (e.g. Boring mill)',
 };

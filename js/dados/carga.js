@@ -37,7 +37,7 @@ export function pararEscuta() {
 }
 
 export function salvarMaquina(m) {
-  const dados = { nome: String(m.nome || '').trim().slice(0, 60), horasDia: Number(m.horasDia), ativa: m.ativa !== false, atualizadoEm: agoraIso() };
+  const dados = { nome: String(m.nome || '').trim().slice(0, 60), horasDia: Number(m.horasDia), ativa: m.ativa !== false, tipo: String(m.tipo || '').trim().slice(0, 40), atualizadoEm: agoraIso() };
   const col = equipe().collection('maquinas');
   if (m.id) return col.doc(m.id).update(dados);
   return col.add(Object.assign({ criadoEm: agoraIso() }, dados));

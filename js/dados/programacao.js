@@ -58,6 +58,8 @@ export function tirarDaFabrica(opId) { return refOp(opId).update({ programacao: 
 /* --------------------------------------------------------------- usinagem */
 function itemFila(f) {
   const r = { opId: String(f.opId) };
+  // operação do roteiro (índice); sem ela, a OP inteira
+  r.n = f.n == null || f.n === '' ? null : Number(f.n);
   r.horas = Number(f.horas) > 0 ? Math.min(10000, Number(f.horas)) : null;
   r.naoAntes = f.naoAntes || null;
   return r;

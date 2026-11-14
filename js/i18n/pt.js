@@ -864,4 +864,16 @@ export default {
   'cf.jaReagendada':'Já reagendada: {0} → {1}', 'cf.primeira':'Primeira previsão: {0} (início {1})', 'cf.reagendadaOk':'OP {0} reagendada para {1} — técnico e GP avisados.',
   'notif.titulo.opReagendada':'OP reagendada', 'notif.opReagendada':'OP {0} ({1}, {2}) reagendada de {3} para {4} — {5}.',
   'n.prod-cald-atraso':'{0}: OP {1} atrasada na fábrica', 'n.prod-cald-atrasoM':'Com {0} · previsão era {1} ({2} dia(s) de atraso).',
+  // carga máquina por operação
+  'cm.aba.plan':'📋 Programação por máquina', 'cm.aba.mapa':'🗓 Mapa de fabricação', 'cm.aba.baixa':'✔ Baixa do CQ — finalizar', 'cm.aba.config':'⚙ Máquinas e setores',
+  'cm.kAguardando':'operações aguardando', 'cm.kProgramadas':'programadas', 'cm.kAtraso':'passam do prazo',
+  'cm.semTipo':'Sem tipo', 'cm.chipDet':'{0} na fila · {1} h', 'cm.opInteira':'OP inteira (sem roteiro)',
+  'cm.maqDet':'{0} · {1} h/dia · {2} na fila · {3} h · livre a partir de {4}', 'cm.ordenar':'↕ Ordenar pela entrega', 'cm.ordenada':'Fila ordenada pela entrega.',
+  'cm.operacao':'OPERAÇÃO', 'cm.horas':'HORAS', 'cm.naoAntes':'NÃO ANTES DE', 'cm.prazo':'PRAZO', 'cm.folga':'folga {0} d', 'cm.atrasa':'atrasa {0} d',
+  'cm.depoisDe':'depois da operação anterior (termina {0})', 'cm.filaVazia':'Nenhuma operação nesta máquina — inclua abaixo.',
+  'cm.incluir':'+ Incluir OP', 'cm.incluirFim':'Incluir no fim da fila', 'cm.incluirNota':'só aparecem as operações de {0} · início e fim são calculados',
+  'cm.nadaAguardando':'Nenhuma operação de {0} aguardando', 'cm.incluida':'Incluída na fila da {0}.', 'cm.tirada':'Operação voltou para aguardando.',
+  'cm.mapaTit':'Mapa de fabricação', 'cm.mapaNota':'cada cor é uma OP · ✓✓ = mais de uma OP na máquina no dia · passe o mouse para ver os detalhes',
+  'cm.maqDia':'MÁQUINA / DIA', 'cm.mapaMaq':'{0} h/dia · {1} na fila', 'cm.semana':'dom,seg,ter,qua,qui,sex,sáb',
+  'cm.tipo':'Tipo da máquina', 'cm.tipoPh':'Tipo (ex.: Mandrilhadora)',
 };

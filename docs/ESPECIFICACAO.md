@@ -230,6 +230,14 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   previsão anterior em `programacao.historico` (OP "Reagendada") e avisa o
   técnico e o GP; previsão vencida com a OP na fábrica avisa os dois (alerta
   do Sistema).
+- **Carga Máquina (programador de usinagem), por operação do roteiro:**
+  abas Programação por máquina (escolhe a máquina, agrupadas pelo tipo; a
+  "planilha" da fila com incluir operação — só as do tipo da máquina —,
+  ordem, horas e "não antes de"; início e fim calculados, e a próxima
+  operação da OP só começa quando a anterior termina), Mapa de fabricação
+  (máquinas × dias, uma cor por OP), Baixa do CQ (finalizar) e Máquinas e
+  setores (cadastro com o tipo, setores do PDF, carga por semana). A fila
+  guarda `{opId, n (operação), horas, naoAntes}`; `maquina.tipo` agrupa.
 - **Checklist padrão novo (14 tarefas):** Análise de escopo, Criar lista de
   avanço, SC itens críticos, Criar LM, Aproveitamento de laminados, SC
   laminados, Aproveitamento de chapas, SC chapas, Detalhamento de dobra (quando

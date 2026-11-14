@@ -36,7 +36,9 @@ export function agendasAtuais(h) {
   const opsId = {};
   estado.ops.forEach(function (o) { opsId[o.id] = o; });
   const proj = projetosPorId(), maqs = ativas(), r = {};
-  maqs.forEach(function (m) { r[m.id] = Prog.agendar(m, opsId, proj, maqs, estado.setores, h || hoje()); });
+  // por operação do roteiro, com a ordem entre as operações da mesma OP
+  const tudo = Prog.agendarTudo(maqs, opsId, proj, estado.setores, h || hoje());
+  maqs.forEach(function (m) { r[m.id] = tudo[m.id] || []; });
   return r;
 }
 export function agendaPorOp(agendas) {
