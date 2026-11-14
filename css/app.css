@@ -1294,3 +1294,24 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .cm-leg i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
 .cm-tipo-in { max-width: 160px; }
 #cu-maq-tipo { max-width: 180px; }
+
+.cm-topo { position: relative; }
+.cm-recolher { border: 1px solid var(--line); background: var(--bg-panel); color: var(--ink-dim); border-radius: 8px; width: 30px; height: 30px; cursor: pointer; font-size: 13px; flex: none; }
+.cm-recolher:hover { border-color: var(--teal); color: var(--teal); }
+.cm-topo-mini { display: flex; align-items: center; gap: 12px; padding: 6px 10px; margin-bottom: 12px; flex-wrap: wrap; font-size: 13px; }
+.cm-mini-kpis { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.cm-mini-kpis .cm-kpi { padding: 3px 9px; }
+.cm-tab th { text-transform: uppercase; }
+
+/* botões da fila (subir, descer, tirar) */
+.cm-acoes { display: flex; gap: 8px; justify-content: center; align-items: center; }
+.cm-tab td.cm-acoes { display: table-cell; }
+.cm-tab td.cm-acoes > * { vertical-align: middle; }
+.cm-ordem { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--bg-panel); margin-right: 6px; }
+.cm-ordem .cm-ic { border: none; border-radius: 0; }
+.cm-ordem .cm-ic + .cm-ic { border-left: 1px solid var(--line); }
+.cm-ic { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg-panel); color: var(--ink-dim); cursor: pointer; padding: 0; transition: background .1s ease, color .1s ease; }
+.cm-ic:hover:not(:disabled) { background: var(--teal); color: #fff; }
+.cm-ic:disabled { opacity: .3; cursor: default; }
+.cm-ic-tirar { color: var(--rust); border-color: var(--rust-bg); background: var(--rust-bg); }
+.cm-ic-tirar:hover:not(:disabled) { background: var(--rust); color: #fff; }
