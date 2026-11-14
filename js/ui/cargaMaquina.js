@@ -80,7 +80,7 @@ function seletor(ag) {
 }
 function planilha(ag, h) {
   const maqs = ativas();
-  if (!maqs.length) return '<div class="card panel-pad empty-state">' + esc(T(podeEditar() ? 'cg.semMaquinasEdit' : 'cg.semMaquinas')) + '</div>';
+  if (!maqs.length) return semMaquinas();
   const m = maqs.find(function (x) { return x.id === ui.maq; });
   const editar = podeEditar();
   const itens = (ag[m.id] || []);
@@ -126,6 +126,12 @@ function planilha(ag, h) {
     (linhas || '<tr><td colspan="12" class="hint-txt" style="padding:16px">' + esc(T('cm.filaVazia')) + '</td></tr>') + '</tbody></table></div>' + incluir + '</div>';
 }
 
+// Ainda sem máquinas: o cadastro fica na aba "Máquinas e setores".
+function semMaquinas() {
+  return '<div class="card panel-pad empty-state">' + esc(T(podeEditar() ? 'cm.semMaquinasEdit' : 'cg.semMaquinas')) +
+    (podeEditar() ? '<div style="margin-top:12px"><button type="button" class="btn btn-primary" data-acao="abaCargaMaq" data-arg="config">' + esc(T('cm.cadastrar')) + '</button></div>' : '') + '</div>';
+}
+
 /* --------------------------------------------------- 2. mapa de fabricação */
 function mapa(ag, h) {
   const dias = [];
@@ -151,7 +157,7 @@ function mapa(ag, h) {
       corpo += '<tr><td class="cm-mq"><b>' + esc(m.nome) + '</b><small>' + esc(T('cm.mapaMaq', numeroBr(m.horasDia), n)) + '</small></td>' + dias.map(function (d) { return cel(m, d); }).join('') + '</tr>';
     });
   });
-  if (!corpo) return '<div class="card panel-pad empty-state">' + esc(T('cg.semMaquinas')) + '</div>';
+  if (!corpo) return semMaquinas();
   const leg = Object.keys(usados).sort(function (a, b) { return compararNatural(usados[a].numero, usados[b].numero); }).map(function (id) {
     const o = usados[id];
     return '<span><i style="background:' + corOp(id) + '"></i><b class="mono">' + esc(o.numero) + '</b> ' + esc(o.descricao || o.desenho) + ' · ' + esc(o.commessa) + '</span>';

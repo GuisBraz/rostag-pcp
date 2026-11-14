@@ -876,4 +876,5 @@ export default {
   'cm.mapaTit':'Mapa de fabricação', 'cm.mapaNota':'cada cor é uma OP · ✓✓ = mais de uma OP na máquina no dia · passe o mouse para ver os detalhes',
   'cm.maqDia':'MÁQUINA / DIA', 'cm.mapaMaq':'{0} h/dia · {1} na fila', 'cm.semana':'dom,seg,ter,qua,qui,sex,sáb',
   'cm.tipo':'Tipo da máquina', 'cm.tipoPh':'Tipo (ex.: Mandrilhadora)',
+  'cm.semMaquinasEdit':'Nenhuma máquina cadastrada ainda. Cadastre as máquinas (com o tipo de cada uma) na aba ⚙ Máquinas e setores.', 'cm.cadastrar':'⚙ Cadastrar máquinas',
 };

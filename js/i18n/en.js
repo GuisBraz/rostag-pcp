@@ -565,4 +565,5 @@ export default {
   'cm.mapaTit':'Shop map', 'cm.mapaNota':'each color is a work order · ✓✓ = more than one on the machine that day · hover for details',
   'cm.maqDia':'MACHINE / DAY', 'cm.mapaMaq':'{0} h/day · {1} queued', 'cm.semana':'sun,mon,tue,wed,thu,fri,sat',
   'cm.tipo':'Machine type', 'cm.tipoPh':'Type (e.g. Boring mill)',
+  'cm.semMaquinasEdit':'No machines yet. Add the machines (with the type of each one) in the ⚙ Machines and sectors tab.', 'cm.cadastrar':'⚙ Add machines',
 };
