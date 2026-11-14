@@ -873,7 +873,7 @@ export default {
   'cm.depoisDe':'depois da operação anterior (termina {0})', 'cm.filaVazia':'Nenhuma operação nesta máquina — inclua abaixo.',
   'cm.incluir':'+ Incluir OP', 'cm.incluirFim':'Incluir no fim da fila', 'cm.incluirNota':'só aparecem as operações de {0} · início e fim são calculados',
   'cm.nadaAguardando':'Nenhuma operação de {0} aguardando', 'cm.incluida':'Incluída na fila da {0}.', 'cm.tirada':'Operação voltou para aguardando.',
-  'cm.mapaTit':'Mapa de fabricação', 'cm.mapaNota':'cada cor é uma OP · ✓✓ = mais de uma OP na máquina no dia · passe o mouse para ver os detalhes',
+  'cm.mapaTit':'Mapa de fabricação', 'cm.mapaNota':'cada cartão é uma OP na hora em que começa · clique para ver tudo · arraste ou Shift+roda para rolar',
   'cm.maqDia':'MÁQUINA / DIA', 'cm.mapaMaq':'{0} na fila', 'cm.semana':'dom,seg,ter,qua,qui,sex,sáb',
   'cm.tipo':'Tipo da máquina', 'cm.tipoPh':'Tipo (ex.: Mandrilhadora)',
   'cm.semMaquinasEdit':'Nenhuma máquina cadastrada ainda. Cadastre as máquinas (com o tipo de cada uma) na aba ⚙ Máquinas e setores.', 'cm.cadastrar':'⚙ Cadastrar máquinas',
@@ -887,4 +887,5 @@ export default {
   'cm.emMaquina':'Em máquina', 'cm.aguardandoSit':'Aguardando', 'cm.fimCalc':'calculado pelo início + horas', 'cm.passaPrazo':'Termina depois do prazo do projeto ({0})', 'cm.dtInvalida':'Hora/data inválida — use hh:mm dd/mm/aa (ex.: 14:30 13/11/26).',
   'cm.paraProgramar':'OPs para programar', 'cm.buscarProg':'Buscar OP, commessa ou descrição', 'cm.prazoVencido':'Prazo do projeto vencido', 'cm.inicioDica':'Em branco: vai para o fim da fila',
   'cm.diaTit':'{0} — {1}', 'cm.diaN':'{0} operação(ões) neste dia', 'cm.diaHoras':'horas neste dia', 'cm.aMao':'à mão', 'cm.verProg':'Ver na programação',
+  'cm.z.dia':'Dia', 'cm.z.semana':'Semana', 'cm.z.mes':'Mês', 'cm.hoje':'Hoje', 'cm.ant':'Anterior', 'cm.prox':'Próximo', 'cm.livre':'livre {0}', 'cm.semTurno':'sem turno', 'cm.agora':'agora', 'cm.mapaVazio':'Nenhuma OP programada em {0}.', 'cm.opTit':'OP {0}', 'cm.abrirOp':'Abrir OP', 'cm.secProg':'Programação nesta máquina', 'cm.secOp':'Dados da OP', 'cm.dicaAtalho':'Ctrl ← → troca a máquina · Shift ← → programação/mapa', 'a.cmMaq':'Carga Máquina: trocar a máquina', 'a.cmAba':'Carga Máquina: programação ↔ mapa',
 };

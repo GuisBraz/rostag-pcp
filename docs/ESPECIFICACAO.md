@@ -235,9 +235,15 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   "planilha" da fila com incluir operação — só as do tipo da máquina —,
   ordem, horas, início e fim; início e fim calculados, e a próxima
   operação da OP só começa quando a anterior termina), Mapa de fabricação
-  (máquinas × dias, uma cor por OP; cabe na tela; só domingo fica como folga;
-  clicar no quadrado abre um pop-up com as OPs daquele dia: situação, operação,
-  horas no dia, início, fim previsto e prazo, e "Ver na programação"), Baixa do CQ (finalizar) e Máquinas e
+  (uma máquina por vez, mesma seleção da Programação: cada OP é um cartão
+  — 6 primeiros dígitos da OP quando termina em 01001, e a commessa — na hora
+  em que começa; a régua mostra só os horários de início e fim, com espaço
+  igual, "livre" quando a máquina para; uma OP por linha em escada com seta
+  até a próxima; OP que passa do turno continua no dia seguinte com ↪; linha
+  vermelha no agora; zoom Dia/Semana/Mês, ◀ Hoje ▶, rolagem lateral só aqui,
+  arrastar ou Shift+roda; altura até o fim da tela; clique no cartão abre a
+  programação e os dados da OP, com Abrir OP e Ver na programação. Atalhos:
+  Ctrl ← → troca a máquina, Shift ← → programação ↔ mapa), Baixa do CQ (finalizar) e Máquinas e
   setores (cadastro com o tipo, setores do PDF, carga por semana). A fila
   guarda `{opId, n (operação), horas, inicio, fimAjustado}`; `maquina.tipo` agrupa.
   Horas em hh:mm. Calendário (por enquanto igual para todas): seg–sex
