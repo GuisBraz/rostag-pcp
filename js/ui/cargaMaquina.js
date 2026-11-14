@@ -15,13 +15,22 @@ import * as Auth from '../dados/auth.js';
 import * as DadosProg from '../dados/programacao.js';
 import { $, registrarAcoes } from './dom.js';
 import { toast } from './toast.js';
+import { confirmar } from './modal.js';
 import { avisoErro } from './app.js';
 import { agendasAtuais } from './programacao.js';
 
 const ABAS = ['plan', 'mapa', 'baixa', 'config'];
-const ui = { aba: 'plan', maq: null };
+const ui = { aba: 'plan', maq: null, recolhido: lerRecolhido() };
+// cabeçalho (abas e números) recolhido ou não: lembrado neste navegador
+function lerRecolhido() { try { return localStorage.getItem('rostag.cm.recolhido') === '1'; } catch (e) { return false; } }
+function gravarRecolhido(v) { try { localStorage.setItem('rostag.cm.recolhido', v ? '1' : '0'); } catch (e) { /* sem armazenamento */ } }
 const PALETA = ['#A7E3E6', '#9FC5F8', '#B5A6F2', '#F2A0C1', '#F6A99A', '#F9C9A5', '#EEE79A', '#B9E3BE', '#D7C3F0', '#FFD38A', '#A9D8F5', '#C8E6A0', '#F5B8D2'];
 const DIAS_MAPA = 28;
+// ícones dos botões da fila (SVG simples, herdam a cor do botão)
+const SVG = function (d) { return '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; };
+const SETA_CIMA = SVG('<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>');
+const SETA_BAIXO = SVG('<path d="M12 5v14"/><path d="M6 13l6 6 6-6"/>');
+const LIXEIRA = SVG('<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>');
 
 function podeEditar() { return Auth.souGerente() || Auth.areaProgramador() === 'usinagem'; }
 function ativas() { return (estado.maquinas || []).filter(function (m) { return m.ativa !== false; }); }
@@ -55,12 +64,22 @@ export function renderCargaMaquina(alvoId) {
   Object.keys(ag).forEach(function (k) { ag[k].forEach(function (it) { if (it.op && !it.concluida && !it.ausente) { prog++; if (it.atraso) atraso++; } }); });
   const baixa = estado.ops.filter(function (o) { return o.area === 'usinagem' && opVisivel(o) && Prog.situacao(o, true) === 'baixaCq'; });
   const nAba = { plan: prog, mapa: maqs.length, baixa: baixa.length, config: (estado.maquinas || []).length };
+  const kpis = '<span class="cm-kpi"><b>' + aguard + '</b> ' + esc(T('cm.kAguardando')) + '</span><span class="cm-kpi"><b>' + prog + '</b> ' + esc(T('cm.kProgramadas')) + '</span>' +
+    '<span class="cm-kpi"><b style="color:var(' + (atraso ? '--rust' : '--green') + ')">' + atraso + '</b> ' + esc(T('cm.kAtraso')) + '</span>';
+  const botao = '<button type="button" class="cm-recolher" data-acao="recolherCargaMaq" aria-expanded="' + !ui.recolhido + '" title="' + esc(T(ui.recolhido ? 'cm.mostrar' : 'cm.recolher')) + '">' + (ui.recolhido ? '▾' : '▴') + '</button>';
+  if (ui.recolhido) {
+    // recolhido: uma linha só com a aba atual e os números
+    alvo.innerHTML = '<div class="card cm-topo-mini">' + botao + '<b>' + esc(T('cm.aba.' + ui.aba)) + '</b><span class="cm-mini-kpis">' + kpis + '</span></div>' +
+      '<div id="cm-conteudo">' + (ui.aba === 'plan' ? planilha(ag, h) : ui.aba === 'mapa' ? mapa(ag, h) : ui.aba === 'baixa' ? baixaHtml(baixa) : '') + '</div>';
+    const cfg0 = $('cu-config');
+    if (cfg0) cfg0.hidden = ui.aba !== 'config';
+    return;
+  }
   alvo.innerHTML =
-    '<div class="cm-topo"><div class="fab-visoes cm-abas" role="tablist">' + ABAS.map(function (a) {
+    '<div class="cm-topo">' + botao + '<div class="fab-visoes cm-abas" role="tablist">' + ABAS.map(function (a) {
       return '<button type="button" role="tab" aria-selected="' + (ui.aba === a) + '" class="' + (ui.aba === a ? 'ativa' : '') + '" data-acao="abaCargaMaq" data-arg="' + a + '">' + esc(T('cm.aba.' + a)) + '<b>' + nAba[a] + '</b></button>';
     }).join('') + '</div>' +
-    '<div class="cm-kpis"><span class="cm-kpi"><b>' + aguard + '</b> ' + esc(T('cm.kAguardando')) + '</span><span class="cm-kpi"><b>' + prog + '</b> ' + esc(T('cm.kProgramadas')) + '</span>' +
-      '<span class="cm-kpi"><b style="color:var(' + (atraso ? '--rust' : '--green') + ')">' + atraso + '</b> ' + esc(T('cm.kAtraso')) + '</span></div></div>' +
+    '<div class="cm-kpis">' + kpis + '</div></div>' +
     '<div id="cm-conteudo">' + (ui.aba === 'plan' ? planilha(ag, h) : ui.aba === 'mapa' ? mapa(ag, h) : ui.aba === 'baixa' ? baixaHtml(baixa) : '') + '</div>';
   // a aba "Máquinas e setores" mostra o bloco que já existe na página
   const cfg = $('cu-config');
@@ -102,9 +121,10 @@ function planilha(ag, h) {
       '<td>' + (editar && !it.concluida ? '<input type="date" class="cm-data" value="' + esc(it.naoAntes || '') + '" data-change="naoAntesCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('cm.naoAntes')) + '">' : (it.naoAntes ? br(it.naoAntes) : '—')) + '</td>' +
       '<td class="num">' + (it.inicio ? br(it.inicio) : '—') + '</td><td class="num">' + (it.fim ? br(it.fim) : '—') + '</td><td class="num">' + (it.prazo ? br(it.prazo) : '—') + '</td>' +
       '<td><span class="pill-cm cm-p-' + sit + '">' + esc(sitTxt) + '</span></td>' +
-      (editar ? '<td class="c cm-acoes"><button type="button" class="rm" data-acao="moverCargaMaq" data-arg="' + arg + '|-1" aria-label="' + esc(T('prog.subir')) + '"' + (i ? '' : ' disabled') + '>↑</button>' +
-        '<button type="button" class="rm" data-acao="moverCargaMaq" data-arg="' + arg + '|1" aria-label="' + esc(T('prog.descer')) + '"' + (i < vivos.length - 1 ? '' : ' disabled') + '>↓</button>' +
-        '<button type="button" class="rm" data-acao="tirarCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('prog.tirar')) + '">✕</button></td>' : '') + '</tr>';
+      (editar ? '<td class="c cm-acoes"><span class="cm-ordem">' +
+        '<button type="button" class="cm-ic" data-acao="moverCargaMaq" data-arg="' + arg + '|-1" title="' + esc(T('cm.subir')) + '" aria-label="' + esc(T('cm.subir')) + '"' + (i ? '' : ' disabled') + '>' + SETA_CIMA + '</button>' +
+        '<button type="button" class="cm-ic" data-acao="moverCargaMaq" data-arg="' + arg + '|1" title="' + esc(T('cm.descer')) + '" aria-label="' + esc(T('cm.descer')) + '"' + (i < vivos.length - 1 ? '' : ' disabled') + '>' + SETA_BAIXO + '</button></span>' +
+        '<button type="button" class="cm-ic cm-ic-tirar" data-acao="tirarCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.tirar')) + '" aria-label="' + esc(T('cm.tirar')) + '">' + LIXEIRA + '</button></td>' : '') + '</tr>';
   }).join('');
   const esp = editar ? Prog.aguardandoNaMaquina(m, estado.ops.filter(opVisivel), estado.maquinas, estado.setores).sort(function (a, b) {
     const pa = buscarProjeto(a.op.projetoId), pb = buscarProjeto(b.op.projetoId);
@@ -189,6 +209,7 @@ function redesenhar() { renderCargaMaquina('cu-programacao'); }
 registrarAcoes({
   abaCargaMaq: function (a) { if (ABAS.indexOf(a) >= 0) { ui.aba = a; redesenhar(); } },
   maqCargaMaq: function (id) { ui.maq = id; redesenhar(); },
+  recolherCargaMaq: function () { ui.recolhido = !ui.recolhido; gravarRecolhido(ui.recolhido); redesenhar(); },
   incluirCargaMaq: function (mid) {
     const m = maquina(mid), v = $('cm-incluir-sel') && $('cm-incluir-sel').value;
     if (!m || !v || !podeEditar()) return;
@@ -204,7 +225,13 @@ registrarAcoes({
     const t = fila[i]; fila[i] = fila[j]; fila[j] = t;
     salvar(m, fila);
   },
-  tirarCargaMaq: function (mid, chave) { const m = maquina(mid); if (m) salvar(m, semChave(m.fila || [], chave), T('cm.tirada')); },
+  tirarCargaMaq: function (mid, chave) {
+    const m = maquina(mid); if (!m) return;
+    const o = opsPorId()[String(chave).split('#')[0]];
+    confirmar(T('cm.tirarQ', o ? o.numero : '', m.nome), { titulo: T('cm.tirar'), textoOk: T('cm.tirarOk'), perigo: true }).then(function (ok) {
+      if (ok) salvar(m, semChave(m.fila || [], chave), T('cm.tirada'));
+    });
+  },
   horasCargaMaq: function (v, chave, el) {
     const m = maquina(el.dataset.arg); if (!m) return;
     const fila = (m.fila || []).map(function (f) { return Object.assign({}, f); }), i = idx(fila, chave);

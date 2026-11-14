@@ -566,4 +566,6 @@ export default {
   'cm.maqDia':'MACHINE / DAY', 'cm.mapaMaq':'{0} h/day · {1} queued', 'cm.semana':'sun,mon,tue,wed,thu,fri,sat',
   'cm.tipo':'Machine type', 'cm.tipoPh':'Type (e.g. Boring mill)',
   'cm.semMaquinasEdit':'No machines yet. Add the machines (with the type of each one) in the ⚙ Machines and sectors tab.', 'cm.cadastrar':'⚙ Add machines',
+  'cm.recolher':'Collapse the header', 'cm.mostrar':'Show the header',
+  'cm.subir':'Move up (goes earlier)', 'cm.descer':'Move down (goes later)', 'cm.tirar':'Remove from machine load', 'cm.tirarQ':'Remove work order {0} from the {1} queue? It goes back to waiting.', 'cm.tirarOk':'Remove',
 };

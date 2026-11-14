@@ -877,4 +877,6 @@ export default {
   'cm.maqDia':'MÁQUINA / DIA', 'cm.mapaMaq':'{0} h/dia · {1} na fila', 'cm.semana':'dom,seg,ter,qua,qui,sex,sáb',
   'cm.tipo':'Tipo da máquina', 'cm.tipoPh':'Tipo (ex.: Mandrilhadora)',
   'cm.semMaquinasEdit':'Nenhuma máquina cadastrada ainda. Cadastre as máquinas (com o tipo de cada uma) na aba ⚙ Máquinas e setores.', 'cm.cadastrar':'⚙ Cadastrar máquinas',
+  'cm.recolher':'Recolher o cabeçalho', 'cm.mostrar':'Mostrar o cabeçalho',
+  'cm.subir':'Subir na fila (vem antes)', 'cm.descer':'Descer na fila (vai depois)', 'cm.tirar':'Tirar da Carga Máquina', 'cm.tirarQ':'Tirar a OP {0} da fila da {1}? Ela volta para "aguardando programação".', 'cm.tirarOk':'Tirar da fila',
 };

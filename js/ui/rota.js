@@ -74,7 +74,8 @@ export function aplicarRota() {
   const nomeAba = aba === 'carga' && Auth.areaProgramador() === 'usinagem' ? 'cargaMaquina' : (aba === 'fabrica' && Auth.areaProgramador() === 'caldeiraria' ? 'cargaFabrica' : aba);
   $('page-title').innerHTML = esc(T('nav.' + nomeAba)) + (modulo ? '<span class="titulo-modulo"><span class="titulo-traco"> — </span>' + esc(T('modulo.' + modulo)) + '</span>' : '');
   // o Painel Geral não tem subtítulo (a saudação ocupa o topo)
-  $('page-sub').textContent = aba === 'painel' ? '' : T('sub.' + aba);
+  // o Painel Geral e a Carga não têm subtítulo (a Carga usa o espaço para a programação)
+  $('page-sub').textContent = aba === 'painel' || aba === 'carga' ? '' : T('sub.' + aba);
   fecharPopups();
   document.title = (modulo ? T('nav.painel') + ' — ' + T('modulo.' + modulo) + ' · ' : '') + 'ROSTAG PCP';   // o detalhe troca pelo nome do projeto
 
