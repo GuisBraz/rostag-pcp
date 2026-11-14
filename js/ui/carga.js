@@ -13,7 +13,8 @@ import * as Producao from '../dominio/producao.js';
 import * as Auth from '../dados/auth.js';
 import * as DadosCarga from '../dados/carga.js';
 import { kpi } from './componentes.js';
-import { renderFilaUsi, renderQuadroCald, agendasAtuais } from './programacao.js';
+import { renderQuadroCald, agendasAtuais } from './programacao.js';
+import { renderCargaMaquina } from './cargaMaquina.js';
 import { $, registrarAcoes } from './dom.js';
 import { confirmar } from './modal.js';
 import { toast } from './toast.js';
@@ -121,15 +122,18 @@ function renderUsinagem() {
 
   // programação: aguardando, fila de cada máquina, baixa do CQ e RNC
   const editar = podeEditar('usinagem');
-  renderFilaUsi('cu-programacao');
+  renderCargaMaquina('cu-programacao');
 
-  // máquinas
+  // máquinas (o tipo agrupa: operação de uma mandrilhadora pode ir em qualquer mandrilhadora)
   $('cu-maq-form').style.display = editar ? '' : 'none';
+  const tipos = Array.from(new Set((estado.maquinas || []).map(function (m) { return String(m.tipo || '').trim(); }).filter(Boolean))).sort();
+  $('cu-tipos').innerHTML = tipos.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
   renderSetores(editar);
   $('cu-maquinas').innerHTML = (estado.maquinas || []).length ? (estado.maquinas || []).map(function (m) {
-    if (!editar) return '<div class="carga-maq-linha"><b>' + esc(m.nome) + '</b><span class="hint-txt">' + esc(T('cg.capDia', fmtNum(m.horasDia, 1))) + (m.ativa === false ? ' · ' + esc(T('cg.inativa')) : '') + '</span></div>';
+    if (!editar) return '<div class="carga-maq-linha"><b>' + esc(m.nome) + '</b><span class="hint-txt">' + esc((m.tipo ? m.tipo + ' · ' : '') + T('cg.capDia', fmtNum(m.horasDia, 1))) + (m.ativa === false ? ' · ' + esc(T('cg.inativa')) : '') + '</span></div>';
     return '<div class="carga-maq-linha' + (m.ativa === false ? ' inativa' : '') + '">' +
       '<input value="' + esc(m.nome) + '" maxlength="60" data-change="editarMaquinaNome" data-arg="' + esc(m.id) + '" aria-label="' + esc(T('cg.nomeMaquina')) + '">' +
+      '<input class="cm-tipo-in" value="' + esc(m.tipo || '') + '" maxlength="40" list="cu-tipos" placeholder="' + esc(T('cm.tipoPh')) + '" data-change="editarMaquinaTipo" data-arg="' + esc(m.id) + '" aria-label="' + esc(T('cm.tipo')) + '">' +
       '<input type="number" min="0.5" max="24" step="0.5" value="' + esc(m.horasDia) + '" data-change="editarMaquinaHoras" data-arg="' + esc(m.id) + '" aria-label="' + esc(T('cg.horasDia')) + '">' +
       '<label class="carga-ativa"><input type="checkbox" ' + (m.ativa === false ? '' : 'checked') + ' data-change="editarMaquinaAtiva" data-arg="' + esc(m.id) + '"> ' + esc(T('cg.ativa')) + '</label>' +
       '<button type="button" class="rm" data-acao="excluirMaquina" data-arg="' + esc(m.id) + '" title="' + esc(T('btn.excluir')) + '" aria-label="' + esc(T('btn.excluir') + ' — ' + m.nome) + '">✕</button></div>';
@@ -208,14 +212,15 @@ registrarAcoes({
   },
   abaCarga: function (a) { abaCarga = a; renderCarga(); },
   adicionarMaquina: function () {
-    const nome = $('cu-maq-nome').value.trim(), horas = Number($('cu-maq-horas').value);
+    const nome = $('cu-maq-nome').value.trim(), horas = Number($('cu-maq-horas').value), tipo = $('cu-maq-tipo').value.trim();
     if (!nome || !(horas > 0 && horas <= 24)) { toast(T('cg.maquinaInvalida'), { tipo: 'erro' }); return; }
-    DadosCarga.salvarMaquina({ nome: nome, horasDia: horas, ativa: true }).then(function () {
+    DadosCarga.salvarMaquina({ nome: nome, horasDia: horas, ativa: true, tipo: tipo }).then(function () {
       $('cu-maq-nome').value = ''; toast(T('cg.maquinaSalva', nome));
     }).catch(function (e) { avisoErro(e); });
   },
   editarMaquinaNome: function (v, _b, el) { const m = maquinaPorId(el.dataset.arg); if (m) salvarMaq(m, { nome: v }); },
   editarMaquinaHoras: function (v, _b, el) { const m = maquinaPorId(el.dataset.arg); if (m) salvarMaq(m, { horasDia: Number(v) }); },
+  editarMaquinaTipo: function (v, _b, el) { const m = maquinaPorId(el.dataset.arg); if (m) salvarMaq(m, { tipo: v }); },
   editarMaquinaAtiva: function (_v, _b, el) { const m = maquinaPorId(el.dataset.arg); if (m) salvarMaq(m, { ativa: el.checked }); },
   excluirMaquina: function (id) {
     const m = maquinaPorId(id); if (!m) return;

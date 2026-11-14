@@ -73,3 +73,22 @@ test('carga fábrica: SOFIR sempre na lista, prazo, reagendada e aviso de atraso
   assert.equal(ProgD.avisosCaldAtraso(ops, 'gp', h).length, 1);
   assert.equal(ProgD.avisosCaldAtraso(ops, 'outro', h).length, 0);
 });
+
+test('carga máquina por operação: tipo de máquina, dependência e aguardando', () => {
+  const maqs = [
+    { id: 'sr', nome: 'San Rocco', tipo: 'Mandrilhadora', horasDia: 8, fila: [{ opId: 'o1', n: 0 }] },
+    { id: 'fo', nome: 'Forest', tipo: 'Mandrilhadora', horasDia: 8, fila: [] },
+    { id: 'ra', nome: 'Radial', tipo: 'Furadeira', horasDia: 8, fila: [{ opId: 'o1', n: 1 }] }
+  ];
+  const o1 = { id: 'o1', area: 'usinagem', status: 'aberta', projetoId: 'p', operacoes: [{ setor: 'SAN ROCCO', horas: 16 }, { setor: 'RADIAL', horas: 4 }, { setor: 'AJUSTE', horas: 2 }] };
+  const o2 = { id: 'o2', area: 'usinagem', status: 'aberta', projetoId: 'p', operacoes: [{ setor: 'FOREST', horas: 8 }] };
+  const porId = { o1, o2 };
+  // sexta 13/11: 16 h na San Rocco (8 h/dia) = sex e seg 16/11; a furação só começa depois (seg 16/11)
+  const ag = ProgD.agendarTudo(maqs, porId, { p: { prodFim: '2026-11-30' } }, {}, '2026-11-13');
+  assert.deepEqual([ag.sr[0].inicio, ag.sr[0].fim], ['2026-11-13', '2026-11-16']);
+  assert.deepEqual([ag.ra[0].inicio, ag.ra[0].fim, ag.ra[0].depoisDe], ['2026-11-16', '2026-11-16', '2026-11-16']);
+  // a mandrilhadora Forest é do mesmo tipo: pode receber a operação da San Rocco e a da OP 2
+  assert.deepEqual(ProgD.maquinasDaOperacao({ n: 0, setor: 'SAN ROCCO' }, maqs, {}), ['sr', 'fo']);
+  assert.deepEqual(ProgD.aguardandoNaMaquina(maqs[1], [o1, o2], maqs, {}).map((x) => x.chave), ['o2#0']);
+  assert.deepEqual(ProgD.maquinasDaOperacao({ n: 2, setor: 'AJUSTE' }, maqs, {}), []);   // setor sem máquina
+});

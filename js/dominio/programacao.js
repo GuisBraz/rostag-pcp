@@ -14,7 +14,7 @@
 import { hoje, addDias, fds, difDias } from '../nucleo/fmt.js';
 import { statusOp } from './producao.js';
 import * as Projeto from './projeto.js';
-import { horasPorMaquina } from './carga.js';
+import { horasPorMaquina, maquinaDoSetor } from './carga.js';
 
 export const DIAS_SEM_PROGRAMACAO = 2;
 export const DIAS_OP_VENCENDO = 2;
@@ -212,4 +212,103 @@ export function avisosCaldAtraso(ops, uid, h) {
     return { id: 'prod-cald-atraso:' + o.id, tipo: 'prod-cald-atraso', nivel: 'alerta', projetoId: o.projetoId, commessa: o.commessa || '',
       numero: o.numero, empresa: o.programacao.terceirizada || '', data: o.programacao.previsaoFim, dias: difDias(o.programacao.previsaoFim, h) };
   });
+}
+
+/* ------------------------------------- carga máquina por operação (usinagem) */
+// Cada operação do roteiro (PDF) é uma linha na fila da máquina do tipo dela;
+// a próxima operação da OP só começa quando a anterior termina. OP sem
+// roteiro vai inteira (n = null), em qualquer máquina.
+function grupoMaq(m) { return String((m && m.tipo) || '').trim().toUpperCase() || ('#' + (m && m.id)); }
+export function chaveItem(opId, n) { return opId + '#' + (n == null ? '*' : n); }
+
+// Operações agendáveis da OP: [{ n, setor, texto, horas }] (n = índice no roteiro).
+export function operacoesDaOp(o) {
+  if (Array.isArray(o.operacoes) && o.operacoes.length) {
+    return o.operacoes.map(function (x, n) { return { n: n, setor: x.setor || '', texto: x.texto || x.setor || '', horas: Number(x.horas) || 0, num: x.n || String(n + 1) }; });
+  }
+  return [{ n: null, setor: '', texto: '', horas: Number(o.horasPrevistas) || 0, num: '' }];
+}
+// Máquinas que podem fazer a operação: a do setor do PDF e as do mesmo tipo dela.
+export function maquinasDaOperacao(op, maquinas, mapa) {
+  const ativas = (maquinas || []).filter(function (m) { return m.ativa !== false; });
+  if (op.n == null) return ativas.map(function (m) { return m.id; });
+  const id = maquinaDoSetor(op.setor, ativas, mapa);
+  if (!id) return [];
+  const g = grupoMaq(ativas.find(function (m) { return m.id === id; }));
+  return ativas.filter(function (m) { return grupoMaq(m) === g; }).map(function (m) { return m.id; });
+}
+
+/**
+ * Agenda de todas as máquinas ativas, com a dependência entre as operações
+ * da mesma OP. Itens no mesmo formato de agendar() e mais n e operacao.
+ * → { maquinaId: [itens] }
+ */
+export function agendarTudo(maquinas, opsPorId, projetosPorId, mapa, h) {
+  h = h || hoje();
+  const ativas = (maquinas || []).filter(function (m) { return m.ativa !== false; });
+  let fins = {};   // chaveItem → fim (data)
+  let r = {};
+  for (let passo = 0; passo < 10; passo++) {
+    const novos = {};
+    r = {};
+    ativas.forEach(function (m) {
+      const cap = Number(m.horasDia) || 0;
+      let dia = proximoUtil(h), usado = 0;
+      r[m.id] = (m.fila || []).map(function (item) {
+        const o = opsPorId[item.opId];
+        const n = item.n == null ? null : Number(item.n);
+        if (!o) return { opId: item.opId, n: n, ausente: true };
+        const ops = operacoesDaOp(o);
+        const operacao = n == null ? ops[0] : ops[n];
+        const s = situacao(o, true);
+        const p = projetosPorId ? projetosPorId[o.projetoId] : null;
+        const prazo = p ? p.prodFim || null : null;
+        const base = n == null ? horasNaMaquina(o, m.id, ativas, mapa) : (operacao ? operacao.horas : 0);
+        const horas = Number(item.horas) > 0 ? Number(item.horas) : base;
+        const comum = { opId: item.opId, n: n, op: o, operacao: operacao || null, horas: horas, prazo: prazo, naoAntes: item.naoAntes || null };
+        if (s === 'baixaCq' || s === 'encerrada' || s === 'morta') return Object.assign(comum, { concluida: true });
+        if (cap <= 0) return Object.assign(comum, { semCapacidade: true });
+        // depois da operação anterior da mesma OP (a que estiver programada)
+        let depois = null;
+        if (n != null) for (let k = n - 1; k >= 0; k--) { const f = fins[chaveItem(o.id, k)]; if (f) { depois = f; break; } }
+        const limite = [item.naoAntes, depois].filter(Boolean).sort().pop();
+        if (limite && limite > dia) { dia = proximoUtil(limite); usado = 0; }
+        if (usado >= cap - 1e-9) { dia = proximoUtil(addDias(dia, 1)); usado = 0; }
+        const inicio = dia, porDia = {};
+        let resta = horas;
+        while (resta > 1e-9) {
+          const livre = cap - usado;
+          if (livre <= 1e-9) { dia = proximoUtil(addDias(dia, 1)); usado = 0; continue; }
+          const q = Math.min(livre, resta);
+          porDia[dia] = (porDia[dia] || 0) + q;
+          usado += q; resta -= q;
+        }
+        novos[chaveItem(o.id, n)] = dia;
+        return Object.assign(comum, { inicio: inicio, fim: dia, porDia: porDia, depoisDe: depois, atraso: !!(prazo && dia > prazo) });
+      });
+    });
+    const mudou = Object.keys(novos).some(function (k) { return novos[k] !== fins[k]; }) || Object.keys(fins).length !== Object.keys(novos).length;
+    fins = novos;
+    if (!mudou) break;
+  }
+  return r;
+}
+
+// Operações de usinagem esperando programação que a máquina pode fazer.
+export function aguardandoNaMaquina(maquina, ops, maquinas, mapa) {
+  const naFila = {};
+  (maquinas || []).forEach(function (m) { (m.fila || []).forEach(function (f) { naFila[chaveItem(f.opId, f.n == null ? null : Number(f.n))] = true; }); });
+  const r = [];
+  (ops || []).forEach(function (o) {
+    if (o.area !== 'usinagem' || !emProducao(o) || situacao(o, true) !== 'programada' && situacao(o, true) !== 'emAberto') return;
+    // OP inteira já na fila: nada a programar
+    if (naFila[chaveItem(o.id, null)]) return;
+    operacoesDaOp(o).forEach(function (x) {
+      if (naFila[chaveItem(o.id, x.n)]) return;
+      if (maquinasDaOperacao(x, maquinas, mapa).indexOf(maquina.id) < 0) return;
+      if (x.n == null && Array.isArray(o.operacoes) && o.operacoes.length) return;
+      r.push({ op: o, operacao: x, chave: chaveItem(o.id, x.n) });
+    });
+  });
+  return r;
 }

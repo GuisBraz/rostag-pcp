@@ -486,7 +486,8 @@ service cloud.firestore {
       match /maquinas/{maquinaId} {
         allow read: if membroDe(equipeId);
         allow create, update: if (souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId))
-          && request.resource.data.keys().hasOnly(['nome', 'horasDia', 'ativa', 'criadoEm', 'atualizadoEm', 'fila'])
+          && request.resource.data.keys().hasOnly(['nome', 'horasDia', 'ativa', 'tipo', 'criadoEm', 'atualizadoEm', 'fila'])
+          && request.resource.data.get('tipo', '') is string && request.resource.data.get('tipo', '').size() <= 40
           && request.resource.data.get('fila', []) is list && request.resource.data.get('fila', []).size() <= 300
           && request.resource.data.nome is string
           && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 60

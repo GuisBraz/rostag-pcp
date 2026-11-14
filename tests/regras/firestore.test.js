@@ -1050,3 +1050,12 @@ describe('carga fábrica: programar, início e reagendar', () => {
     await assertSucceeds(como(K).collection('notificacoes').add({ paraUid: T, tipo: 'opReagendada', mensagem: 'x', projetoId: 'doT', equipeId: 'E1', deUid: K, deNome: 'K', lida: false, criadoEm: 'x' }));
   });
 });
+
+describe('máquina com tipo e fila por operação', () => {
+  test('programador de usinagem grava o tipo e a fila com a operação; tipo longo é recusado', async () => {
+    const maq = (extra) => ({ nome: 'San Rocco', horasDia: 16, ativa: true, tipo: 'Mandrilhadora', criadoEm: 'x', atualizadoEm: 'x', fila: [{ opId: 'op1', n: 0, horas: null, naoAntes: null }], ...extra });
+    await assertSucceeds(como(U).doc('equipes/E1/maquinas/m1').set(maq()));
+    await assertFails(como(U).doc('equipes/E1/maquinas/m2').set(maq({ tipo: 'x'.repeat(41) })));
+    await assertFails(como(K).doc('equipes/E1/maquinas/m3').set(maq()));
+  });
+});

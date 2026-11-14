@@ -148,8 +148,9 @@ export function cargaMaquinas(ops, projetos, maquinas, sems, h, mapaSetores, age
     }
     const hm = horasPorMaquina(o, maquinas, mapaSetores);
     const programada = Object.keys(naFila).some(function (k) { return k.split('|')[1] === o.id; });
+    // OP já na programação (alguma operação na fila): conta só pelas datas da fila
+    if (programada) return;
     const ids = Object.keys(hm.porMaquina).filter(function (id) { return linhas[id] && !naFila[id + '|' + o.id]; });
-    if (programada && !ids.length) return;
     if (!ids.length) {
       if (!hm.doPdf && o.maquinaId && linhas[o.maquinaId]) resumo.semHoras++;
       else resumo.semMaquina++;
