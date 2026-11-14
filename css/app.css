@@ -1326,3 +1326,14 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .cm-p-semhoras { background: var(--amber-bg); color: var(--amber-ink); border: 1px solid var(--amber); }
 .cm-incluir-ini { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-dim); }
 .cm-cal { text-align: right; }
+
+/* Carga Máquina: campo hh:mm dd/mm/aa, situação em máquina / aguardando */
+.cm-dt.cm-dtm { width: 150px; font-family: var(--mono); letter-spacing: .02em; }
+.cm-dt.invalid { border-color: var(--rust); background: var(--rust-bg); }
+.cm-dt.cm-empurrada { border-color: var(--violet); }
+.cm-fim-cel { display: inline-flex; align-items: center; gap: 6px; }
+.cm-ic.cm-ic-mini { width: 26px; height: 26px; font-size: 14px; font-weight: 800; }
+.cm-p-maquina { background: var(--teal); color: #fff; }
+.cm-p-aguardando { background: var(--bg-panel-alt); color: var(--ink-dim); border: 1px solid var(--line); }
+.cm-tab tr.cm-maquina td:first-child { box-shadow: inset 3px 0 0 var(--teal); }
+.cm-tab tr.cm-atraso td { background: var(--rust-bg); }

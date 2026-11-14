@@ -54,6 +54,47 @@ export function lerHoras(txt) {
   return null;
 }
 function brDt(dt) { return dt ? br(dt.slice(0, 10)) + ' ' + dt.slice(11, 16) : '—'; }
+
+/* Campo de hora e data com máscara: "hh:mm dd/mm/aa", só números, pulando
+   sozinho de um pedaço para o outro; ano com 2 dígitos vira 20aa. */
+export function paraMascara(dt) {
+  const m = String(dt || '').match(/^\d{2}(\d{2})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  return m ? m[4] + ':' + m[5] + ' ' + m[3] + '/' + m[2] + '/' + m[1] : '';
+}
+export function formatarDigitos(dig) {
+  const d = String(dig || '').replace(/\D/g, '').slice(0, 10), seps = [':', ' ', '/', '/'];
+  let r = '';
+  for (let i = 0; i < d.length; i++) { if (i && i % 2 === 0) r += seps[i / 2 - 1]; r += d[i]; }
+  return r;
+}
+// "14:30 13/11/26" → "2026-11-13T14:30" (null se incompleto ou inválido)
+export function daMascara(txt) {
+  const d = String(txt || '').replace(/\D/g, '');
+  if (d.length !== 10) return null;
+  const hh = +d.slice(0, 2), mi = +d.slice(2, 4), dd = +d.slice(4, 6), mm = +d.slice(6, 8), aa = 2000 + +d.slice(8, 10);
+  if (hh > 23 || mi > 59 || mm < 1 || mm > 12 || dd < 1) return null;
+  const ultimo = new Date(Date.UTC(aa, mm, 0)).getUTCDate();
+  if (dd > ultimo) return null;
+  const p = function (n) { return String(n).padStart(2, '0'); };
+  return aa + '-' + p(mm) + '-' + p(dd) + 'T' + p(hh) + ':' + p(mi);
+}
+function campoDt(dt, acao, arg, rotulo, dica, classe) {
+  return '<input type="text" class="cm-dt cm-dtm' + (classe || '') + '" inputmode="numeric" autocomplete="off" placeholder="hh:mm dd/mm/aa" value="' + esc(paraMascara(dt)) + '"' +
+    ' data-change="' + acao + '" data-arg="' + arg + '" aria-label="' + esc(rotulo) + '"' + (dica ? ' title="' + esc(dica) + '"' : '') + '>';
+}
+// digitação: refaz a máscara a cada tecla; apagar um separador apaga o número antes dele
+document.addEventListener('input', function (e) {
+  const el = e.target;
+  if (!el || !el.classList || !el.classList.contains('cm-dtm')) return;
+  let dig = el.value.replace(/\D/g, '');
+  const antes = el.dataset.dig || '';
+  if (e.inputType && e.inputType.indexOf('delete') === 0 && dig.length === antes.length && dig.length) dig = dig.slice(0, -1);
+  el.dataset.dig = dig.slice(0, 10);
+  el.value = formatarDigitos(dig);
+  el.classList.remove('invalid');
+});
+document.addEventListener('focusin', function (e) { const el = e.target; if (el && el.classList && el.classList.contains('cm-dtm')) el.dataset.dig = el.value.replace(/\D/g, ''); });
+document.addEventListener('keydown', function (e) { const el = e.target; if (e.key === 'Enter' && el && el.classList && el.classList.contains('cm-dtm')) { e.preventDefault(); el.blur(); } });
 function opsPorId() { const r = {}; estado.ops.forEach(function (o) { r[o.id] = o; }); return r; }
 function nomeOperacao(it) {
   const x = it.operacao;
@@ -119,28 +160,29 @@ function planilha(ag, h) {
   const pendentes = vivos.filter(function (it) { return !it.concluida; });
   const horas = pendentes.reduce(function (t, it) { return t + (it.horas || 0); }, 0);
   const livre = pendentes.map(function (it) { return it.fimDt; }).filter(Boolean).sort().pop();
+  // a primeira da fila (que não foi para o CQ) é a que está em máquina; as outras aguardam
+  const primeira = pendentes[0] ? Prog.chaveItem(pendentes[0].opId, pendentes[0].n) : null;
   const linhas = vivos.map(function (it, i) {
     const o = it.op;
-    const folga = it.fim && it.prazo ? difDias(it.fim, it.prazo) : null;
     const semHoras = !it.concluida && !(it.horas > 0);
-    const sit = it.concluida ? 'feita' : (semHoras ? 'semhoras' : (folga == null ? 'sem' : (folga < 0 ? 'atraso' : (folga <= 3 ? 'apertado' : 'ok'))));
-    const sitTxt = it.concluida ? T('prog.sit.baixaCq') : (semHoras ? T('cm.semHorasCurto') : (folga == null ? '—' : (folga >= 0 ? T('cm.folga', folga) : T('cm.atrasa', -folga))));
-    const ant = it.depoisDe ? '<div class="cm-dep">' + esc(T('cm.depoisDe', br(it.depoisDe))) + '</div>' : '';
-    const aviso = semHoras ? '<div class="cm-aviso-horas">⚠ ' + esc(T('cm.semHoras')) + '</div>' : '';
+    const naMaquina = !it.concluida && Prog.chaveItem(it.opId, it.n) === primeira;
+    const sit = it.concluida ? 'feita' : (semHoras ? 'semhoras' : (naMaquina ? 'maquina' : 'aguardando'));
+    const sitTxt = it.concluida ? T('prog.sit.baixaCq') : (semHoras ? T('cm.semHorasCurto') : T(naMaquina ? 'cm.emMaquina' : 'cm.aguardandoSit'));
+    const atrasada = !it.concluida && it.atraso;
+    // as informações de apoio ficam na dica (passar o mouse), sem texto embaixo dos campos
+    const dicaIni = [it.inicioFixo ? '' : T('cm.inicioAuto'), it.empurrada ? T('cm.empurrada', brDt(it.inicioFixo)) : '', it.depoisDe ? T('cm.depoisDe', br(it.depoisDe)) : ''].filter(Boolean).join(' · ');
+    const dicaFim = it.fimAjustado ? T('cm.ajustado', brDt(it.fimDt)) : T('cm.fimCalc');
     const arg = esc(m.id) + '" data-arg2="' + esc(Prog.chaveItem(it.opId, it.n));
     const vivo = editar && !it.concluida;
-    const inicioCel = vivo
-      ? '<input type="datetime-local" class="cm-dt" value="' + esc(it.inicioDt || '') + '" data-change="inicioCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('prog.inicio')) + '">' +
-        (it.empurrada ? '<div class="cm-dep">' + esc(T('cm.empurrada', brDt(it.inicioFixo))) + '</div>' : (it.inicioFixo ? '' : '<div class="hint-txt">' + esc(T('cm.inicioAuto')) + '</div>'))
-      : esc(brDt(it.inicioDt));
+    const inicioCel = vivo ? campoDt(it.inicioDt, 'inicioCargaMaq', arg, T('prog.inicio'), dicaIni, it.empurrada ? ' cm-empurrada' : '') : esc(brDt(it.inicioDt));
     const fimCel = vivo
-      ? '<input type="datetime-local" class="cm-dt' + (it.fimAjustado ? ' cm-ajustado' : '') + '" value="' + esc(it.fimAjustado || it.fimDt || '') + '" data-change="fimCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('prog.fim')) + '">' +
-        (it.fimAjustado ? '<div class="cm-dep">' + esc(T('cm.ajustado', brDt(it.fimDt))) + ' <button type="button" class="link-btn" data-acao="fimCalcCargaMaq" data-arg="' + arg + '">' + esc(T('cm.voltarCalc')) + '</button></div>' : '')
+      ? '<span class="cm-fim-cel">' + campoDt(it.fimAjustado || it.fimDt, 'fimCargaMaq', arg, T('prog.fim'), dicaFim, it.fimAjustado ? ' cm-ajustado' : '') +
+        (it.fimAjustado ? '<button type="button" class="cm-ic cm-ic-mini" data-acao="fimCalcCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.voltarCalc')) + '" aria-label="' + esc(T('cm.voltarCalc')) + '">↺</button>' : '') + '</span>'
       : esc(brDt(it.fimAjustado || it.fimDt));
-    return '<tr class="cm-' + sit + '"><td class="c"><b>' + (i + 1) + '</b></td>' +
+    return '<tr class="cm-' + sit + (atrasada ? ' cm-atraso' : '') + '"' + (atrasada ? ' title="' + esc(T('cm.passaPrazo', br(it.prazo))) + '"' : '') + '><td class="c"><b>' + (i + 1) + '</b></td>' +
       '<td class="mono"><span class="cm-cor" style="background:' + corOp(o.id) + '"></span><button type="button" class="link-btn mono" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '">' + esc(o.numero) + '</button></td>' +
-      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td>' + esc(o.descricao || o.desenho) + '</td><td>' + esc(nomeOperacao(it)) + ant + aviso + '</td>' +
-      '<td class="num">' + (vivo ? '<input type="text" inputmode="numeric" class="cm-horas' + (semHoras ? ' cm-horas-falta' : '') + '" value="' + esc(it.horas > 0 ? horasHM(it.horas) : '') + '" placeholder="hh:mm" data-change="horasCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('cm.horas')) + '">' : horasHM(it.horas)) + '</td>' +
+      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td>' + esc(o.descricao || o.desenho) + '</td><td' + (semHoras ? ' title="' + esc(T('cm.semHoras')) + '"' : '') + '>' + esc(nomeOperacao(it)) + '</td>' +
+      '<td class="num">' + (vivo ? '<input type="text" inputmode="numeric" class="cm-horas' + (semHoras ? ' cm-horas-falta' : '') + '" value="' + esc(it.horas > 0 ? horasHM(it.horas) : '') + '" placeholder="hh:mm" data-change="horasCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('cm.horas')) + '"' + (semHoras ? ' title="' + esc(T('cm.semHoras')) + '"' : '') + '>' : horasHM(it.horas)) + '</td>' +
       '<td>' + inicioCel + '</td><td>' + fimCel + '</td><td class="num">' + (it.prazo ? br(it.prazo) : '—') + '</td>' +
       '<td><span class="pill-cm cm-p-' + sit + '">' + esc(sitTxt) + '</span></td>' +
       (editar ? '<td class="c cm-acoes"><button type="button" class="cm-ic cm-ic-tirar" data-acao="tirarCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.tirar')) + '" aria-label="' + esc(T('cm.tirar')) + '">' + LIXEIRA + '</button></td>' : '') + '</tr>';
@@ -154,7 +196,7 @@ function planilha(ag, h) {
     return '<option value="' + esc(x.chave) + '">' + esc(x.op.numero + ' · ' + x.op.commessa + ' · ' + (x.op.descricao || x.op.desenho) + ' — ' +
       (x.operacao.n == null ? T('cm.opInteira') : (x.operacao.n + 1) + '/' + tot + ' ' + (x.operacao.texto || x.operacao.setor)) + ' · ' + (x.operacao.horas > 0 ? horasHM(x.operacao.horas) : T('cm.semHorasCurto')) + (p && p.prodFim ? ' · ' + T('prog.prazo', br(p.prodFim)) : '')) + '</option>';
   }).join('') : '<option value="">' + esc(T('cm.nadaAguardando', tipoDe(m))) + '</option>') + '</select>' +
-    '<label class="cm-incluir-ini">' + esc(T('cm.inicioOpc')) + ' <input type="datetime-local" id="cm-incluir-ini" class="cm-dt"></label>' +
+    '<label class="cm-incluir-ini">' + esc(T('cm.inicioOpc')) + ' <input type="text" id="cm-incluir-ini" class="cm-dt cm-dtm" inputmode="numeric" placeholder="hh:mm dd/mm/aa" autocomplete="off"></label>' +
     '<button type="button" class="btn btn-primary btn-mini" data-acao="incluirCargaMaq" data-arg="' + esc(m.id) + '"' + (esp.length ? '' : ' disabled') + '>' + esc(T('cm.incluirBtn')) + '</button>' +
     '<span class="hint-txt">' + esc(T('cm.incluirNota', tipoDe(m))) + '</span></div>' : '';
   return seletor(ag) + '<div class="card cm-plan"><div class="cm-plan-topo"><div><div class="panel-title" style="margin:0">' + esc(m.nome) + '</div><div class="hint-txt">' +
@@ -263,8 +305,9 @@ registrarAcoes({
     if (!m || !v || !podeEditar()) return;
     if ((m.fila || []).length >= Prog.MAX_FILA) { toast(T('prog.erro.filaCheia'), { tipo: 'erro' }); return; }
     const p = v.split('#'), n = p[1] === '*' ? null : Number(p[1]);
-    const ini = $('cm-incluir-ini') && $('cm-incluir-ini').value;
-    colocar(m, { opId: p[0], n: n, horas: null, inicio: ini || null, fimAjustado: null }, T('cm.incluida', m.nome));
+    const campo = $('cm-incluir-ini'), txt = campo ? campo.value.trim() : '', ini = txt ? daMascara(txt) : null;
+    if (txt && !ini) { campo.classList.add('invalid'); toast(T('cm.dtInvalida'), { tipo: 'erro' }); return; }
+    colocar(m, { opId: p[0], n: n, horas: null, inicio: ini, fimAjustado: null }, T('cm.incluida', m.nome));
   },
   tirarCargaMaq: function (mid, chave) {
     const m = maquina(mid); if (!m) return;
@@ -287,7 +330,9 @@ registrarAcoes({
     const m = maquina(el.dataset.arg); if (!m) return;
     const atual = (m.fila || []).find(function (f) { return Prog.chaveItem(f.opId, f.n == null ? null : Number(f.n)) === chave; });
     if (!atual) return;
-    colocar(m, Object.assign({}, atual, { inicio: v || null }), null, chave);
+    const ini = v ? daMascara(v) : null;
+    if (v && !ini) { el.classList.add('invalid'); toast(T('cm.dtInvalida'), { tipo: 'erro' }); return; }
+    colocar(m, Object.assign({}, atual, { inicio: ini }), null, chave);
   },
   // fim à mão: só registro (estimado × feito); igual ao calculado = volta ao cálculo
   fimCargaMaq: function (v, chave, el) {
@@ -295,7 +340,9 @@ registrarAcoes({
     const fila = (m.fila || []).map(function (f) { return Object.assign({}, f); }), i = idx(fila, chave);
     if (i < 0) return;
     const it = (agendasAtuais()[m.id] || []).find(function (x) { return Prog.chaveItem(x.opId, x.n) === chave; });
-    fila[i].fimAjustado = v && (!it || v !== it.fimDt) ? v : null;
+    const fim = v ? daMascara(v) : null;
+    if (v && !fim) { el.classList.add('invalid'); toast(T('cm.dtInvalida'), { tipo: 'erro' }); return; }
+    fila[i].fimAjustado = fim && (!it || fim !== it.fimDt) ? fim : null;
     salvar(m, fila, fila[i].fimAjustado ? T('cm.fimAjustadoOk') : null);
   },
   fimCalcCargaMaq: function (mid, chave) {
