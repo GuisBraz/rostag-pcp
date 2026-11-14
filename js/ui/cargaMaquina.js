@@ -263,7 +263,7 @@ function planilha(ag, h) {
       : esc(brDt(it.fimAjustado || it.fimDt));
     return '<tr class="cm-' + sit + (atrasada ? ' cm-atraso' : '') + '"' + (atrasada ? ' title="' + esc(T('cm.passaPrazo', br(it.prazo))) + '"' : '') + '><td class="c"><b>' + (i + 1) + '</b></td>' +
       '<td class="mono"><span class="cm-cor" style="background:' + corOp(o.id) + '"></span><button type="button" class="link-btn mono" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '">' + esc(o.numero) + '</button></td>' +
-      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td>' + esc(o.descricao || o.desenho) + '</td><td' + (semHoras ? ' title="' + esc(T('cm.semHoras')) + '"' : '') + '>' + esc(nomeOperacao(it)) + '</td>' +
+      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td class="cm-txt">' + esc(o.descricao || o.desenho) + '</td><td class="cm-txt"' + (semHoras ? ' title="' + esc(T('cm.semHoras')) + '"' : '') + '>' + esc(nomeOperacao(it)) + '</td>' +
       '<td class="num">' + (vivo ? '<input type="text" inputmode="numeric" class="cm-horas' + (semHoras ? ' cm-horas-falta' : '') + '" value="' + esc(it.horas > 0 ? horasHM(it.horas) : '') + '" placeholder="hh:mm" data-change="horasCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('cm.horas')) + '"' + (semHoras ? ' title="' + esc(T('cm.semHoras')) + '"' : '') + '>' : horasHM(it.horas)) + '</td>' +
       '<td>' + inicioCel + '</td><td>' + fimCel + '</td><td class="num">' + (it.prazo ? br(it.prazo) : '—') + '</td>' +
       '<td><span class="pill-cm cm-p-' + sit + '">' + esc(sitTxt) + '</span></td>' +
@@ -301,7 +301,7 @@ function listaProgramar(m, esp) {
     const arg = esc(m.id) + '" data-arg2="' + esc(x.chave);
     return '<tr data-busca="' + esc(chave) + '"' + (busca && chave.indexOf(busca) < 0 ? ' hidden' : '') + '>' +
       '<td class="mono"><span class="cm-cor" style="background:' + corOp(o.id) + '"></span><button type="button" class="link-btn mono" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '">' + esc(o.numero) + '</button></td>' +
-      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td>' + esc(o.descricao || o.desenho) + '</td><td>' + esc(oper) + '</td>' +
+      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td class="cm-txt">' + esc(o.descricao || o.desenho) + '</td><td class="cm-txt">' + esc(oper) + '</td>' +
       '<td class="num">' + (x.operacao.horas > 0 ? horasHM(x.operacao.horas) : '<span class="cm-prog-sem">' + esc(T('cm.semHorasCurto')) + '</span>') + '</td>' +
       '<td class="num' + (vencido ? ' cm-prog-vencido' : '') + '"' + (vencido ? ' title="' + esc(T('cm.prazoVencido')) + '"' : '') + '>' + (prazo ? br(prazo) : '—') + '</td>' +
       '<td><input type="text" class="cm-dt cm-dtm" inputmode="numeric" autocomplete="off" placeholder="' + MOLDE_TXT + '" aria-label="' + esc(T('cm.inicioOpc')) + '" title="' + esc(T('cm.inicioDica')) + '"></td>' +
