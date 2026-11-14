@@ -1426,3 +1426,12 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 
 /* mapa: só rola para o lado; para baixo quem rola é a página */
 .cm-tl { height: auto; overflow-x: auto; overflow-y: hidden; }
+
+/* mapa: dias alternando branco / gelo */
+.cm-tl-dfundo { background: var(--bg-panel); }
+.cm-tl-dfundo.alt { background: color-mix(in srgb, var(--ink) 5%, var(--bg-panel)); }
+.cm-tl-dia.alt { background: #2A4677; }
+.cm-tl-dfundo.hoje { background: color-mix(in srgb, var(--rust) 5%, var(--bg-panel)); }
+.cm-tl-dfundo.folga { background: repeating-linear-gradient(135deg, var(--bg-panel) 0 4px, var(--bg-panel-alt) 4px 8px); }
+.cm-tl-dia.hoje { background: var(--rust); }
+.cm-tl-dia.folga { background: #44587F; }
