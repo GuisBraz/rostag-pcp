@@ -1337,3 +1337,16 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .cm-p-aguardando { background: var(--bg-panel-alt); color: var(--ink-dim); border: 1px solid var(--line); }
 .cm-tab tr.cm-maquina td:first-child { box-shadow: inset 3px 0 0 var(--teal); }
 .cm-tab tr.cm-atraso td { background: var(--rust-bg); }
+
+/* Carga Máquina: lista "OPs para programar" (retrátil) */
+.cm-prog { border-top: 1px solid var(--line); background: var(--bg-panel-alt); border-radius: 0 0 var(--raio, 14px) var(--raio, 14px); }
+.cm-prog-topo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; }
+.cm-prog-tit { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 0; font: inherit; font-weight: 700; font-size: 15px; color: var(--ink); cursor: pointer; }
+.cm-prog-seta { display: inline-block; width: 14px; color: var(--ink-dim); }
+.cm-prog-n { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--teal); color: #fff; font-size: 12px; text-align: center; }
+.cm-prog-busca { flex: 0 1 280px; min-width: 160px; padding: 5px 9px; font-size: 13px; }
+.cm-prog .table-wrap { padding: 0 16px 14px; }
+.cm-prog-tab { background: var(--bg-panel); }
+.cm-prog-vazio { padding: 0 16px 14px; }
+.cm-prog-sem { color: var(--terracotta); font-weight: 600; }
+.cm-prog-vencido { color: var(--rust); font-weight: 700; }
