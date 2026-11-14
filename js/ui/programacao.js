@@ -37,7 +37,10 @@ export function agendasAtuais(h) {
   estado.ops.forEach(function (o) { opsId[o.id] = o; });
   const proj = projetosPorId(), maqs = ativas(), r = {};
   // por operação do roteiro, com a ordem entre as operações da mesma OP
-  const tudo = Prog.agendarTudo(maqs, opsId, proj, estado.setores, h || hoje());
+  // agora (data e hora): a fila começa no próximo minuto de trabalho
+  const d = new Date(), p2 = function (n) { return String(n).padStart(2, '0'); };
+  const agora = h && h !== hoje() ? h : d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + 'T' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+  const tudo = Prog.agendarTudo(maqs, opsId, proj, estado.setores, agora);
   maqs.forEach(function (m) { r[m.id] = tudo[m.id] || []; });
   return r;
 }

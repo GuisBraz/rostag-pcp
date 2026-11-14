@@ -238,53 +238,89 @@ export function maquinasDaOperacao(op, maquinas, mapa) {
   return ativas.filter(function (m) { return grupoMaq(m) === g; }).map(function (m) { return m.id; });
 }
 
+/* ------------------------------------------------ calendário das máquinas */
+// Por enquanto o mesmo para todas: seg a sex 06:00–23:00, sáb 07:00–14:00,
+// domingo parado. O tempo é contado em minutos (data e hora locais, sem fuso).
+export const CALENDARIO = { 1: [360, 1380], 2: [360, 1380], 3: [360, 1380], 4: [360, 1380], 5: [360, 1380], 6: [420, 840] };
+function minutosDe(dt) {   // 'AAAA-MM-DDTHH:MM' (ou só a data) → minutos
+  const m = String(dt || '').match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (!m) return null;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)) / 60000;
+}
+export function dataHoraDe(min) {
+  const d = new Date(min * 60000), p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()) + 'T' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+}
+function janela(dia) { return CALENDARIO[new Date(dia * 1440 * 60000).getUTCDay()] || null; }
+// O primeiro minuto de trabalho a partir de t.
+function proximoMinuto(t) {
+  for (let k = 0; k < 14; k++) {
+    const dia = Math.floor(t / 1440), m = t - dia * 1440, w = janela(dia);
+    if (w && m < w[0]) return dia * 1440 + w[0];
+    if (w && m < w[1]) return t;
+    t = (dia + 1) * 1440;
+  }
+  return t;
+}
+// Soma minutos de trabalho a t; devolve o fim e os minutos usados em cada dia.
+function somarMinutos(t, minutos) {
+  const porDia = {};
+  t = proximoMinuto(t);
+  let resta = minutos;
+  while (resta > 0) {
+    const dia = Math.floor(t / 1440), w = janela(dia), ate = dia * 1440 + w[1], usa = Math.min(resta, ate - t);
+    const d = dataHoraDe(dia * 1440).slice(0, 10);
+    porDia[d] = (porDia[d] || 0) + usa / 60;
+    resta -= usa; t += usa;
+    if (resta > 0) t = proximoMinuto(t);
+  }
+  return { fim: t, porDia: porDia };
+}
+export function fimPrevisto(inicioDt, horas) { const r = somarMinutos(minutosDe(inicioDt), Math.round((Number(horas) || 0) * 60)); return dataHoraDe(r.fim); }
+
 /**
- * Agenda de todas as máquinas ativas, com a dependência entre as operações
- * da mesma OP. Itens no mesmo formato de agendar() e mais n e operacao.
- * → { maquinaId: [itens] }
+ * Agenda de todas as máquinas ativas. A fila de cada máquina vale na ordem
+ * gravada; cada item começa no início que o programador deu (data e hora) ou,
+ * sem ele, quando o anterior termina — nunca antes do anterior terminar, nem
+ * antes da operação anterior da mesma OP. O fim ajustado à mão só é guardado
+ * (estimado × feito); não empurra as outras.
+ * agora: 'AAAA-MM-DDTHH:MM' (ou só a data = 00:00 do dia).
+ * → { maquinaId: [{ opId, n, op, operacao, horas, inicio, fim, inicioDt, fimDt, fimAjustado, porDia, prazo, atraso, ... }] }
  */
-export function agendarTudo(maquinas, opsPorId, projetosPorId, mapa, h) {
-  h = h || hoje();
+export function agendarTudo(maquinas, opsPorId, projetosPorId, mapa, agora) {
+  agora = agora || hoje();
   const ativas = (maquinas || []).filter(function (m) { return m.ativa !== false; });
-  let fins = {};   // chaveItem → fim (data)
-  let r = {};
+  const t0 = proximoMinuto(minutosDe(agora));
+  let fins = {}, r = {};
   for (let passo = 0; passo < 10; passo++) {
     const novos = {};
     r = {};
     ativas.forEach(function (m) {
-      const cap = Number(m.horasDia) || 0;
-      let dia = proximoUtil(h), usado = 0;
+      let livre = t0;
       r[m.id] = (m.fila || []).map(function (item) {
         const o = opsPorId[item.opId];
         const n = item.n == null ? null : Number(item.n);
         if (!o) return { opId: item.opId, n: n, ausente: true };
         const ops = operacoesDaOp(o);
         const operacao = n == null ? ops[0] : ops[n];
-        const s = situacao(o, true);
         const p = projetosPorId ? projetosPorId[o.projetoId] : null;
         const prazo = p ? p.prodFim || null : null;
         const base = n == null ? horasNaMaquina(o, m.id, ativas, mapa) : (operacao ? operacao.horas : 0);
         const horas = Number(item.horas) > 0 ? Number(item.horas) : base;
-        const comum = { opId: item.opId, n: n, op: o, operacao: operacao || null, horas: horas, prazo: prazo, naoAntes: item.naoAntes || null };
+        const inicioFixo = item.inicio || (item.naoAntes ? item.naoAntes + 'T06:00' : null);
+        const comum = { opId: item.opId, n: n, op: o, operacao: operacao || null, horas: horas, prazo: prazo, inicioFixo: inicioFixo, fimAjustado: item.fimAjustado || null };
+        const s = situacao(o, true);
         if (s === 'baixaCq' || s === 'encerrada' || s === 'morta') return Object.assign(comum, { concluida: true });
-        if (cap <= 0) return Object.assign(comum, { semCapacidade: true });
-        // depois da operação anterior da mesma OP (a que estiver programada)
         let depois = null;
-        if (n != null) for (let k = n - 1; k >= 0; k--) { const f = fins[chaveItem(o.id, k)]; if (f) { depois = f; break; } }
-        const limite = [item.naoAntes, depois].filter(Boolean).sort().pop();
-        if (limite && limite > dia) { dia = proximoUtil(limite); usado = 0; }
-        if (usado >= cap - 1e-9) { dia = proximoUtil(addDias(dia, 1)); usado = 0; }
-        const inicio = dia, porDia = {};
-        let resta = horas;
-        while (resta > 1e-9) {
-          const livre = cap - usado;
-          if (livre <= 1e-9) { dia = proximoUtil(addDias(dia, 1)); usado = 0; continue; }
-          const q = Math.min(livre, resta);
-          porDia[dia] = (porDia[dia] || 0) + q;
-          usado += q; resta -= q;
-        }
-        novos[chaveItem(o.id, n)] = dia;
-        return Object.assign(comum, { inicio: inicio, fim: dia, porDia: porDia, depoisDe: depois, atraso: !!(prazo && dia > prazo) });
+        if (n != null) for (let k = n - 1; k >= 0; k--) { const f = fins[chaveItem(o.id, k)]; if (f != null) { depois = f; break; } }
+        const ini = proximoMinuto(Math.max(livre, inicioFixo ? minutosDe(inicioFixo) : livre, depois == null ? livre : depois));
+        const conta = somarMinutos(ini, Math.round(horas * 60));
+        livre = conta.fim;
+        novos[chaveItem(o.id, n)] = conta.fim;
+        const inicioDt = dataHoraDe(ini), fimDt = dataHoraDe(conta.fim);
+        return Object.assign(comum, { inicio: inicioDt.slice(0, 10), fim: fimDt.slice(0, 10), inicioDt: inicioDt, fimDt: fimDt, porDia: conta.porDia,
+          empurrada: !!(inicioFixo && dataHoraDe(minutosDe(inicioFixo)) !== inicioDt), depoisDe: depois == null ? null : dataHoraDe(depois).slice(0, 10),
+          atraso: !!(prazo && fimDt.slice(0, 10) > prazo) });
       });
     });
     const mudou = Object.keys(novos).some(function (k) { return novos[k] !== fins[k]; }) || Object.keys(fins).length !== Object.keys(novos).length;
@@ -292,6 +328,26 @@ export function agendarTudo(maquinas, opsPorId, projetosPorId, mapa, h) {
     if (!mudou) break;
   }
   return r;
+}
+
+/**
+ * Pôr uma operação na fila da máquina com início (data e hora) ou no fim.
+ * Devolve { fila, conflitos } — a fila nova (na posição pelo início) e as
+ * operações que estavam nesse horário e serão empurradas para frente.
+ * fila: a fila atual (sem o item) · agenda: os itens agendados dessa fila
+ */
+export function encaixar(fila, agenda, item) {
+  const lista = (fila || []).slice();
+  if (!item.inicio) return { fila: lista.concat([item]), conflitos: [] };
+  const ini = minutosDe(item.inicio), fim = minutosDe(fimPrevisto(item.inicio, item.horasCalc || 0));
+  const vivos = (agenda || []).filter(function (a) { return a && a.inicioDt && !a.concluida && !a.ausente; });
+  const conflitos = vivos.filter(function (a) { return minutosDe(a.inicioDt) < fim && minutosDe(a.fimDt) > ini; });
+  // entra antes da primeira que termina depois do início dela
+  const primeira = vivos.find(function (a) { return minutosDe(a.fimDt) > ini; });
+  const pos = primeira ? lista.findIndex(function (f) { return chaveItem(f.opId, f.n == null ? null : Number(f.n)) === chaveItem(primeira.opId, primeira.n); }) : -1;
+  if (pos < 0) lista.push(item); else lista.splice(pos, 0, item);
+  // as que vêm depois e tinham início fixo antes do fim desta: passam a começar depois (empurradas)
+  return { fila: lista, conflitos: conflitos };
 }
 
 // Operações de usinagem esperando programação que a máquina pode fazer.
