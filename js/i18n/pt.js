@@ -886,4 +886,5 @@ export default {
   'cm.conflitoQ':'Tem certeza? Nesse horário já estão: {0}. Se continuar, elas são empurradas para frente.', 'cm.conflitoOk':'Sim, empurrar', 'cm.empurradasOk':'Programada — {0} operação(ões) empurrada(s) para frente.',
   'cm.emMaquina':'Em máquina', 'cm.aguardandoSit':'Aguardando', 'cm.fimCalc':'calculado pelo início + horas', 'cm.passaPrazo':'Termina depois do prazo do projeto ({0})', 'cm.dtInvalida':'Hora/data inválida — use hh:mm dd/mm/aa (ex.: 14:30 13/11/26).',
   'cm.paraProgramar':'OPs para programar', 'cm.buscarProg':'Buscar OP, commessa ou descrição', 'cm.prazoVencido':'Prazo do projeto vencido', 'cm.inicioDica':'Em branco: vai para o fim da fila',
+  'cm.diaTit':'{0} — {1}', 'cm.diaN':'{0} operação(ões) neste dia', 'cm.diaHoras':'horas neste dia', 'cm.aMao':'à mão', 'cm.verProg':'Ver na programação',
 };

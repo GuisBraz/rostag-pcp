@@ -15,7 +15,7 @@ import * as Auth from '../dados/auth.js';
 import * as DadosProg from '../dados/programacao.js';
 import { $, registrarAcoes } from './dom.js';
 import { toast } from './toast.js';
-import { confirmar } from './modal.js';
+import { confirmar, abrirModal, fecharModal } from './modal.js';
 import { avisoErro } from './app.js';
 import { agendasAtuais } from './programacao.js';
 
@@ -325,21 +325,22 @@ function semMaquinas() {
 }
 
 /* --------------------------------------------------- 2. mapa de fabricação */
+// dia sem turno no calendário (hoje: só domingo)
+function semTurno(dia) { return !Prog.CALENDARIO[new Date(dia + 'T12:00:00').getDay()]; }
 function mapa(ag, h) {
   const dias = [];
   for (let d = 0; dias.length < DIAS_MAPA; d++) dias.push(addDias(h, d - 3));
   const usados = {};
   const cel = function (m, dia) {
-    if (fds(dia)) return '<td class="cm-cel cm-fds"></td>';
     const l = (ag[m.id] || []).filter(function (it) { return it.porDia && it.porDia[dia] > 0 && !it.concluida; }).sort(function (a, b) { return b.porDia[dia] - a.porDia[dia]; });
-    if (!l.length) return '<td class="cm-cel"></td>';
+    if (!l.length) return '<td class="cm-cel' + (semTurno(dia) ? ' cm-fds' : '') + '"></td>';
     l.forEach(function (it) { usados[it.opId] = it.op; });
     const tit = br(dia) + ' — ' + m.nome + '\n' + l.map(function (it) { return it.op.numero + ' · ' + (it.op.descricao || it.op.desenho) + ' · ' + nomeOperacao(it) + ' · ' + horasHM(it.porDia[dia]); }).join('\n');
-    return '<td class="cm-cel cm-marcado" style="background:' + corOp(l[0].opId) + '" title="' + esc(tit) + '"><span>' + (l.length > 1 ? '✓✓' : '✓') + '</span></td>';
+    return '<td class="cm-cel cm-marcado" style="background:' + corOp(l[0].opId) + '" title="' + esc(tit) + '" data-acao="mapaDiaCargaMaq" data-arg="' + esc(m.id) + '" data-arg2="' + dia + '" tabindex="0" role="button"><span>' + (l.length > 1 ? '✓✓' : '✓') + '</span></td>';
   };
   const SEM = T('cm.semana').split(',');
   const cab = '<tr><th class="cm-mq">' + esc(T('cm.maqDia')) + '</th>' + dias.map(function (d) {
-    return '<th class="' + (fds(d) ? 'cm-fds-h' : '') + (d === h ? ' cm-hoje' : '') + '">' + d.slice(8) + '<small>' + esc(SEM[new Date(d + 'T12:00:00').getDay()]) + '</small></th>';
+    return '<th class="' + (semTurno(d) ? 'cm-fds-h' : '') + (d === h ? ' cm-hoje' : '') + '">' + d.slice(8) + '<small>' + esc(SEM[new Date(d + 'T12:00:00').getDay()]) + '</small></th>';
   }).join('') + '</tr>';
   let corpo = '';
   grupos().forEach(function (g) {
@@ -357,6 +358,38 @@ function mapa(ag, h) {
   return '<div class="card"><div class="cm-mapa-topo"><div class="panel-title" style="margin:0">' + esc(T('cm.mapaTit')) + '</div><div class="hint-txt">' + esc(T('cm.mapaNota')) + '</div></div>' +
     '<div class="table-wrap cm-mapa-wrap"><table class="cm-mapa"><thead>' + cab + '</thead><tbody>' + corpo + '</tbody></table></div>' +
     (leg ? '<div class="cm-leg">' + leg + '</div>' : '') + '</div>';
+}
+
+// Pop-up do quadrado do mapa: as operações daquela máquina naquele dia.
+function popupDia(mid, dia) {
+  const m = maquina(mid); if (!m) return;
+  const fila = (agendasAtuais()[m.id] || []).filter(function (it) { return it.op && !it.ausente && !it.concluida; });
+  const primeira = fila[0] ? Prog.chaveItem(fila[0].opId, fila[0].n) : null;
+  const l = fila.filter(function (it) { return it.porDia && it.porDia[dia] > 0; }).sort(function (a, b) { return String(a.inicioDt).localeCompare(String(b.inicioDt)); });
+  if (!l.length) return;
+  $('cm-dia-titulo').textContent = T('cm.diaTit', br(dia), m.nome);
+  $('cm-dia-sub').textContent = tipoDe(m) + ' · ' + T('cm.diaN', l.length);
+  $('cm-dia-lista').innerHTML = l.map(function (it) {
+    const o = it.op, naMaq = Prog.chaveItem(it.opId, it.n) === primeira, semH = !(it.horas > 0);
+    const sit = semH ? 'semhoras' : (naMaq ? 'maquina' : 'aguardando');
+    const fim = it.fimAjustado || it.fimDt;
+    const dado = function (r, v, cls) { return '<div><dt>' + esc(r) + '</dt><dd' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</dd></div>'; };
+    return '<div class="cm-dia-op' + (it.atraso ? ' cm-atraso' : '') + '" style="--cor:' + corOp(o.id) + '">' +
+      '<div class="cm-dia-topo"><button type="button" class="link-btn mono" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '"><b>' + esc(o.numero) + '</b></button>' +
+      '<span class="pill-cm cm-p-' + sit + '">' + esc(semH ? T('cm.semHorasCurto') : T(naMaq ? 'cm.emMaquina' : 'cm.aguardandoSit')) + '</span></div>' +
+      '<div class="cm-dia-desc">' + esc(o.descricao || o.desenho) + '</div>' +
+      '<dl class="cm-dia-dados">' +
+        dado(T('fab.cCommessa'), esc(o.commessa), 'mono') +
+        dado(T('cm.operacao'), esc(nomeOperacao(it))) +
+        dado(T('cm.diaHoras'), esc(horasHM(it.porDia[dia])), 'mono') +
+        dado(T('cm.horas'), it.horas > 0 ? esc(horasHM(it.horas)) : '—', 'mono') +
+        dado(T('prog.inicio'), esc(brDt(it.inicioDt)), 'mono') +
+        dado(T('cm.fimPrev'), esc(brDt(fim)) + (it.fimAjustado ? ' <small>(' + esc(T('cm.aMao')) + ')</small>' : ''), 'mono') +
+        dado(T('cm.prazo'), it.prazo ? esc(br(it.prazo)) : '—', 'mono' + (it.atraso ? ' cm-dia-atraso' : '')) +
+      '</dl>' + (it.atraso ? '<div class="cm-dia-aviso">⚠ ' + esc(T('cm.passaPrazo', br(it.prazo))) + '</div>' : '') + '</div>';
+  }).join('');
+  $('cm-dia-ver').dataset.arg = m.id;
+  abrirModal('modal-cm-dia');
 }
 
 /* ----------------------------------------------------- 3. baixa do CQ */
@@ -409,6 +442,8 @@ function agoraLocal() {
 registrarAcoes({
   abaCargaMaq: function (a) { if (ABAS.indexOf(a) >= 0) { ui.aba = a; redesenhar(); } },
   maqCargaMaq: function (id) { ui.maq = id; redesenhar(); },
+  mapaDiaCargaMaq: function (mid, dia) { popupDia(mid, dia); },
+  verProgCargaMaq: function (mid) { fecharModal('modal-cm-dia'); ui.aba = 'plan'; ui.maq = mid; redesenhar(); window.scrollTo(0, 0); },
   recolherCargaMaq: function () { ui.recolhido = !ui.recolhido; gravarRecolhido(ui.recolhido); redesenhar(); },
   recolherListaCargaMaq: function () {
     ui.listaRecolhida = !ui.listaRecolhida;
