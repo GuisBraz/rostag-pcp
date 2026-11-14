@@ -575,4 +575,5 @@ export default {
   'cm.conflitoQ':'Are you sure? This slot already has: {0}. If you go on, they are pushed forward.', 'cm.conflitoOk':'Yes, push', 'cm.empurradasOk':'Scheduled — {0} operation(s) pushed forward.',
   'cm.emMaquina':'On machine', 'cm.aguardandoSit':'Waiting', 'cm.fimCalc':'calculated from start + hours', 'cm.passaPrazo':'Ends after the project deadline ({0})', 'cm.dtInvalida':'Invalid time/date — use hh:mm dd/mm/yy (e.g. 14:30 13/11/26).',
   'cm.paraProgramar':'Work orders to schedule', 'cm.buscarProg':'Search order, commessa or description', 'cm.prazoVencido':'Project deadline passed', 'cm.inicioDica':'Blank: goes to the end of the queue',
+  'cm.diaTit':'{0} — {1}', 'cm.diaN':'{0} operation(s) on this day', 'cm.diaHoras':'hours this day', 'cm.aMao':'manual', 'cm.verProg':'Open in schedule',
 };

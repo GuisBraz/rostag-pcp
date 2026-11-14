@@ -1361,3 +1361,22 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .cm-fim-cel { gap: 4px; }
 .cm-tab .cm-ic { width: 30px; height: 28px; }
 .cm-tab .cm-ic.cm-ic-mini { width: 24px; height: 24px; }
+
+/* Carga Máquina: mapa cabe na tela e o quadrado abre o pop-up do dia */
+.cm-mapa { width: 100%; table-layout: fixed; }
+.cm-mapa thead th { min-width: 0; }
+.cm-mapa th.cm-mq, .cm-mapa td.cm-mq { width: 150px; min-width: 0; }
+.cm-cel.cm-marcado { cursor: pointer; }
+.cm-cel.cm-marcado:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.cm-dia-box { max-width: 560px; }
+.cm-dia-lista { display: flex; flex-direction: column; gap: 10px; }
+.cm-dia-op { border: 1px solid var(--line); border-left: 6px solid var(--cor); border-radius: 10px; padding: 10px 12px; background: var(--bg-panel); }
+.cm-dia-op.cm-atraso { background: var(--rust-bg); }
+.cm-dia-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
+.cm-dia-desc { font-weight: 600; margin: 2px 0 8px; }
+.cm-dia-dados { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 14px; margin: 0; }
+.cm-dia-dados dt { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-faint); }
+.cm-dia-dados dd { margin: 0; font-size: 13px; }
+.cm-dia-dados dd small { color: var(--ink-dim); font-family: inherit; }
+.cm-dia-atraso { color: var(--rust); font-weight: 700; }
+.cm-dia-aviso { margin-top: 8px; font-size: 12px; color: var(--rust); font-weight: 600; }
