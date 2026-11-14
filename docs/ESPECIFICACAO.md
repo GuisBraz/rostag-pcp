@@ -244,8 +244,11 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   calendário; o fim ajustado à mão só fica registrado (estimado × feito).
   Início em cima de outra OP pergunta "Tem certeza?" e empurra as outras.
   OP sem horas fica destacada (importar o PDF ou digitar).
-  Início e fim digitados como "hh:mm dd/mm/aa" (só números, pula sozinho;
-  ano com 2 dígitos = 20aa; inválido fica vermelho). Explicações ficam na dica
+  Início e fim digitados como "hh:mm dd/mm/aa", por pedaços (clicou na hora,
+  troca só a hora e pula; ⌫ apaga só o pedaço; ← → andam; ↑ ↓ somam; Esc
+  desfaz; ano com 2 dígitos = 20aa; inválido fica vermelho). Abaixo da fila,
+  a lista retrátil "OPs para programar" (operações do tipo da máquina, por
+  prazo, com busca, início opcional e Incluir na linha). Explicações ficam na dica
   do campo, sem texto embaixo. Situação: a primeira da fila "Em máquina", as
   outras "Aguardando"; linha vermelha quando termina depois do prazo.
 - **Checklist padrão novo (14 tarefas):** Análise de escopo, Criar lista de

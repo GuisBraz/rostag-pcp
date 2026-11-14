@@ -20,9 +20,10 @@ import { avisoErro } from './app.js';
 import { agendasAtuais } from './programacao.js';
 
 const ABAS = ['plan', 'mapa', 'baixa', 'config'];
-const ui = { aba: 'plan', maq: null, recolhido: lerRecolhido() };
+const ui = { aba: 'plan', maq: null, recolhido: lerRecolhido(), listaRecolhida: lerLista(), busca: '' };
 // cabeçalho (abas e números) recolhido ou não: lembrado neste navegador
 function lerRecolhido() { try { return localStorage.getItem('rostag.cm.recolhido') === '1'; } catch (e) { return false; } }
+function lerLista() { try { return localStorage.getItem('rostag.cm.listaRecolhida') === '1'; } catch (e) { return false; } }
 function gravarRecolhido(v) { try { localStorage.setItem('rostag.cm.recolhido', v ? '1' : '0'); } catch (e) { /* sem armazenamento */ } }
 const PALETA = ['#A7E3E6', '#9FC5F8', '#B5A6F2', '#F2A0C1', '#F6A99A', '#F9C9A5', '#EEE79A', '#B9E3BE', '#D7C3F0', '#FFD38A', '#A9D8F5', '#C8E6A0', '#F5B8D2'];
 const DIAS_MAPA = 28;
@@ -61,12 +62,6 @@ export function paraMascara(dt) {
   const m = String(dt || '').match(/^\d{2}(\d{2})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   return m ? m[4] + ':' + m[5] + ' ' + m[3] + '/' + m[2] + '/' + m[1] : '';
 }
-export function formatarDigitos(dig) {
-  const d = String(dig || '').replace(/\D/g, '').slice(0, 10), seps = [':', ' ', '/', '/'];
-  let r = '';
-  for (let i = 0; i < d.length; i++) { if (i && i % 2 === 0) r += seps[i / 2 - 1]; r += d[i]; }
-  return r;
-}
 // "14:30 13/11/26" → "2026-11-13T14:30" (null se incompleto ou inválido)
 export function daMascara(txt) {
   const d = String(txt || '').replace(/\D/g, '');
@@ -82,19 +77,106 @@ function campoDt(dt, acao, arg, rotulo, dica, classe) {
   return '<input type="text" class="cm-dt cm-dtm' + (classe || '') + '" inputmode="numeric" autocomplete="off" placeholder="hh:mm dd/mm/aa" value="' + esc(paraMascara(dt)) + '"' +
     ' data-change="' + acao + '" data-arg="' + arg + '" aria-label="' + esc(rotulo) + '"' + (dica ? ' title="' + esc(dica) + '"' : '') + '>';
 }
-// digitação: refaz a máscara a cada tecla; apagar um separador apaga o número antes dele
-document.addEventListener('input', function (e) {
-  const el = e.target;
-  if (!el || !el.classList || !el.classList.contains('cm-dtm')) return;
-  let dig = el.value.replace(/\D/g, '');
-  const antes = el.dataset.dig || '';
-  if (e.inputType && e.inputType.indexOf('delete') === 0 && dig.length === antes.length && dig.length) dig = dig.slice(0, -1);
-  el.dataset.dig = dig.slice(0, 10);
-  el.value = formatarDigitos(dig);
+/* Digitação por pedaços (hora, minuto, dia, mês, ano), como o campo de data
+   do Windows: clicou num pedaço, ele fica selecionado; 2 números trocam só ele
+   e pulam para o próximo; ⌫ apaga só o pedaço (vazio: volta e apaga o
+   anterior); ← → andam; ↑ ↓ somam/tiram 1; Enter confirma; Esc desfaz. */
+const MOLDE = ['hh', 'mm', 'dd', 'mm', 'aa'], SEPS = [':', ' ', '/', '/', ''];
+const MAX1 = [2, 5, 3, 1, 9], MAXP = [23, 59, 31, 12, 99], MINP = [0, 0, 1, 1, 0];
+const MOLDE_TXT = 'hh:mm dd/mm/aa';
+export function pedacosDt(v) {
+  const s = String(v || '');
+  return MOLDE.map(function (_, i) { return s.slice(i * 3, i * 3 + 2).replace(/\D/g, ''); });
+}
+export function montarDt(p) {
+  if (p.every(function (x) { return !x; })) return '';
+  return p.map(function (x, i) { return (x.length === 2 ? x : x.length === 1 ? x + '_' : MOLDE[i]) + SEPS[i]; }).join('');
+}
+function ehDtm(el) { return !!(el && el.classList && el.classList.contains('cm-dtm')); }
+function selPedaco(el, i) {
+  el.dataset.seg = i; el.dataset.novo = '1';
+  if (!el.value) el.value = MOLDE_TXT;
+  el.setSelectionRange(i * 3, i * 3 + 2);
+}
+function gravarDt(el, p, i) {
+  el.value = montarDt(p) || MOLDE_TXT;
   el.classList.remove('invalid');
+  el.dataset.seg = i;
+  el.setSelectionRange(i * 3, i * 3 + 2);
+}
+function digitoDt(el, d) {
+  const p = pedacosDt(el.value), i = +el.dataset.seg || 0;
+  if (el.dataset.novo !== '0') {
+    if (+d > MAX1[i]) { p[i] = '0' + d; gravarDt(el, p, i); selPedaco(el, Math.min(4, i + 1)); return; }
+    p[i] = d; gravarDt(el, p, i); el.dataset.novo = '0'; return;
+  }
+  p[i] = (p[i] || '') + d;
+  gravarDt(el, p, i); selPedaco(el, Math.min(4, i + 1));
+}
+function apagarDt(el, frente) {
+  const p = pedacosDt(el.value); let i = +el.dataset.seg || 0;
+  if (!p[i] && !frente && i > 0) i--;
+  p[i] = ''; gravarDt(el, p, i); el.dataset.novo = '1';
+}
+function somarDt(el, n) {
+  const p = pedacosDt(el.value), i = +el.dataset.seg || 0;
+  let v = p[i] ? +p[i] + n : MINP[i];
+  if (v > MAXP[i]) v = MINP[i];
+  if (v < MINP[i]) v = MAXP[i];
+  p[i] = String(v).padStart(2, '0'); gravarDt(el, p, i); el.dataset.novo = '1';
+}
+function colarDt(el, txt) {
+  const d = String(txt || '').replace(/\D/g, '').slice(0, 10), p = [];
+  for (let i = 0; i < 5; i++) p.push(d.slice(i * 2, i * 2 + 2));
+  gravarDt(el, p, Math.min(4, Math.floor(d.length / 2))); el.dataset.novo = '1';
+}
+document.addEventListener('focusin', function (e) {
+  const el = e.target; if (!ehDtm(el)) return;
+  el.dataset.antes = el.value;
+  setTimeout(function () {
+    if (document.activeElement !== el) return;
+    // entrou pelo Tab: vai para o primeiro pedaço incompleto (ou a hora)
+    if (el.dataset.clicou !== '1') { const v = pedacosDt(el.value).findIndex(function (x) { return x.length < 2; }); selPedaco(el, v < 0 ? 0 : v); }
+    el.dataset.clicou = '0';
+  });
 });
-document.addEventListener('focusin', function (e) { const el = e.target; if (el && el.classList && el.classList.contains('cm-dtm')) el.dataset.dig = el.value.replace(/\D/g, ''); });
-document.addEventListener('keydown', function (e) { const el = e.target; if (e.key === 'Enter' && el && el.classList && el.classList.contains('cm-dtm')) { e.preventDefault(); el.blur(); } });
+document.addEventListener('mousedown', function (e) { if (ehDtm(e.target)) e.target.dataset.clicou = '1'; });
+document.addEventListener('mouseup', function (e) {
+  const el = e.target; if (!ehDtm(el)) return;
+  setTimeout(function () { selPedaco(el, el.value ? Math.min(4, Math.floor((el.selectionStart || 0) / 3)) : 0); });
+});
+document.addEventListener('keydown', function (e) {
+  const el = e.target; if (!ehDtm(el) || e.ctrlKey || e.metaKey || e.altKey) return;
+  const i = +el.dataset.seg || 0, k = e.key;
+  if (k === 'ArrowLeft') { e.preventDefault(); selPedaco(el, Math.max(0, i - 1)); }
+  else if (k === 'ArrowRight') { e.preventDefault(); selPedaco(el, Math.min(4, i + 1)); }
+  else if (k === 'Home') { e.preventDefault(); selPedaco(el, 0); }
+  else if (k === 'End') { e.preventDefault(); selPedaco(el, 4); }
+  else if (k === 'ArrowUp') { e.preventDefault(); somarDt(el, 1); }
+  else if (k === 'ArrowDown') { e.preventDefault(); somarDt(el, -1); }
+  else if (k === 'Enter') { e.preventDefault(); el.blur(); }
+  else if (k === 'Escape') { e.preventDefault(); el.value = el.dataset.antes || ''; el.classList.remove('invalid'); el.blur(); }
+});
+// digitar / apagar / colar (o beforeinput também pega o teclado do celular)
+document.addEventListener('beforeinput', function (e) {
+  const el = e.target; if (!ehDtm(el)) return;
+  e.preventDefault();
+  const t = e.inputType;
+  if (t === 'insertText' && /^\d+$/.test(e.data || '')) { for (const d of e.data) digitoDt(el, d); }
+  else if (t === 'insertFromPaste' || t === 'insertFromDrop') colarDt(el, e.data || (e.dataTransfer && e.dataTransfer.getData('text')));
+  else if (t === 'deleteContentBackward' || t === 'deleteWordBackward') apagarDt(el, false);
+  else if (t === 'deleteContentForward' || t === 'deleteWordForward' || t === 'deleteByCut') apagarDt(el, true);
+});
+document.addEventListener('paste', function (e) {
+  const el = e.target; if (!ehDtm(el)) return;
+  e.preventDefault(); colarDt(el, (e.clipboardData || window.clipboardData).getData('text'));
+});
+// saiu do campo: tudo vazio = limpa; mudou = dispara o "change" (salva)
+document.addEventListener('focusout', function (e) {
+  const el = e.target; if (!ehDtm(el)) return;
+  if (pedacosDt(el.value).every(function (x) { return !x; })) el.value = '';
+  if (el.value !== (el.dataset.antes || '')) { el.dataset.antes = el.value; el.dispatchEvent(new Event('change', { bubbles: true })); }
+});
 function opsPorId() { const r = {}; estado.ops.forEach(function (o) { r[o.id] = o; }); return r; }
 function nomeOperacao(it) {
   const x = it.operacao;
@@ -191,14 +273,7 @@ function planilha(ag, h) {
     const pa = buscarProjeto(a.op.projetoId), pb = buscarProjeto(b.op.projetoId);
     return String((pa && pa.prodFim) || '9').localeCompare(String((pb && pb.prodFim) || '9')) || compararNatural(a.op.numero, b.op.numero);
   }) : [];
-  const incluir = editar ? '<div class="cm-incluir"><b>' + esc(T('cm.incluir')) + '</b><select id="cm-incluir-sel" aria-label="' + esc(T('cm.incluir')) + '">' + (esp.length ? esp.map(function (x) {
-    const p = buscarProjeto(x.op.projetoId), tot = (x.op.operacoes || []).length;
-    return '<option value="' + esc(x.chave) + '">' + esc(x.op.numero + ' · ' + x.op.commessa + ' · ' + (x.op.descricao || x.op.desenho) + ' — ' +
-      (x.operacao.n == null ? T('cm.opInteira') : (x.operacao.n + 1) + '/' + tot + ' ' + (x.operacao.texto || x.operacao.setor)) + ' · ' + (x.operacao.horas > 0 ? horasHM(x.operacao.horas) : T('cm.semHorasCurto')) + (p && p.prodFim ? ' · ' + T('prog.prazo', br(p.prodFim)) : '')) + '</option>';
-  }).join('') : '<option value="">' + esc(T('cm.nadaAguardando', tipoDe(m))) + '</option>') + '</select>' +
-    '<label class="cm-incluir-ini">' + esc(T('cm.inicioOpc')) + ' <input type="text" id="cm-incluir-ini" class="cm-dt cm-dtm" inputmode="numeric" placeholder="hh:mm dd/mm/aa" autocomplete="off"></label>' +
-    '<button type="button" class="btn btn-primary btn-mini" data-acao="incluirCargaMaq" data-arg="' + esc(m.id) + '"' + (esp.length ? '' : ' disabled') + '>' + esc(T('cm.incluirBtn')) + '</button>' +
-    '<span class="hint-txt">' + esc(T('cm.incluirNota', tipoDe(m))) + '</span></div>' : '';
+  const incluir = editar ? listaProgramar(m, esp) : '';
   return seletor(ag) + '<div class="card cm-plan"><div class="cm-plan-topo"><div><div class="panel-title" style="margin:0">' + esc(m.nome) + '</div><div class="hint-txt">' +
     esc(T('cm.maqDet', tipoDe(m), pendentes.length, horasHM(horas), livre ? brDt(livre) : '—')) + '</div></div>' +
     '<div class="hint-txt cm-cal">' + esc(T('cm.calendario')) + '</div></div>' +
@@ -207,6 +282,41 @@ function planilha(ag, h) {
     esc(T('cm.prazo')) + '</th><th>' + esc(T('prog.situacao')) + '</th>' + (editar ? '<th></th>' : '') + '</tr></thead><tbody>' +
     (linhas || '<tr><td colspan="11" class="hint-txt" style="padding:16px">' + esc(T('cm.filaVazia')) + '</td></tr>') + '</tbody></table></div>' + incluir + '</div>';
 }
+
+// Lista das operações que esperam esta máquina: incluir direto da linha.
+function listaProgramar(m, esp) {
+  const hj = hoje(), aberta = !ui.listaRecolhida;
+  const topo = '<div class="cm-prog-topo"><button type="button" class="cm-prog-tit" data-acao="recolherListaCargaMaq" aria-expanded="' + aberta + '">' +
+    '<span class="cm-prog-seta">' + (aberta ? '▾' : '▸') + '</span>' + esc(T('cm.paraProgramar')) + ' <span class="cm-prog-n">' + esp.length + '</span></button>' +
+    (aberta && esp.length ? '<input type="search" id="cm-prog-busca" class="cm-prog-busca" placeholder="' + esc(T('cm.buscarProg')) + '" value="' + esc(ui.busca || '') + '" autocomplete="off">' : '') +
+    '<span class="hint-txt">' + esc(T('cm.incluirNota', tipoDe(m))) + '</span></div>';
+  if (!aberta) return '<div class="cm-prog cm-prog-fechada">' + topo + '</div>';
+  if (!esp.length) return '<div class="cm-prog">' + topo + '<div class="hint-txt cm-prog-vazio">' + esc(T('cm.nadaAguardando', tipoDe(m))) + '</div></div>';
+  const busca = String(ui.busca || '').trim().toLowerCase();
+  const linhas = esp.map(function (x) {
+    const o = x.op, p = buscarProjeto(o.projetoId), prazo = p && p.prodFim, tot = (o.operacoes || []).length;
+    const oper = x.operacao.n == null ? T('cm.opInteira') : (x.operacao.n + 1) + '/' + tot + ' ' + (x.operacao.texto || x.operacao.setor);
+    const chave = String(o.numero + ' ' + o.commessa + ' ' + (o.descricao || o.desenho || '')).toLowerCase();
+    const vencido = prazo && prazo < hj;
+    const arg = esc(m.id) + '" data-arg2="' + esc(x.chave);
+    return '<tr data-busca="' + esc(chave) + '"' + (busca && chave.indexOf(busca) < 0 ? ' hidden' : '') + '>' +
+      '<td class="mono"><span class="cm-cor" style="background:' + corOp(o.id) + '"></span><button type="button" class="link-btn mono" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '">' + esc(o.numero) + '</button></td>' +
+      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td>' + esc(o.descricao || o.desenho) + '</td><td>' + esc(oper) + '</td>' +
+      '<td class="num">' + (x.operacao.horas > 0 ? horasHM(x.operacao.horas) : '<span class="cm-prog-sem">' + esc(T('cm.semHorasCurto')) + '</span>') + '</td>' +
+      '<td class="num' + (vencido ? ' cm-prog-vencido' : '') + '"' + (vencido ? ' title="' + esc(T('cm.prazoVencido')) + '"' : '') + '>' + (prazo ? br(prazo) : '—') + '</td>' +
+      '<td><input type="text" class="cm-dt cm-dtm" inputmode="numeric" autocomplete="off" placeholder="' + MOLDE_TXT + '" aria-label="' + esc(T('cm.inicioOpc')) + '" title="' + esc(T('cm.inicioDica')) + '"></td>' +
+      '<td class="c"><button type="button" class="btn btn-primary btn-mini" data-acao="incluirCargaMaq" data-arg="' + arg + '">' + esc(T('cm.incluirBtn')) + '</button></td></tr>';
+  }).join('');
+  return '<div class="cm-prog">' + topo + '<div class="table-wrap"><table class="cm-tab cm-prog-tab"><thead><tr><th>OP</th><th>' + esc(T('fab.cCommessa')) + '</th><th>' +
+    esc(T('fab.cDescricao')) + '</th><th>' + esc(T('cm.operacao')) + '</th><th class="num">' + esc(T('cm.horas')) + '</th><th class="num">' + esc(T('cm.prazo')) +
+    '</th><th>' + esc(T('cm.inicioOpc')) + '</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div></div>';
+}
+// busca da lista: filtra na hora, sem redesenhar
+document.addEventListener('input', function (e) {
+  const el = e.target; if (!el || el.id !== 'cm-prog-busca') return;
+  ui.busca = el.value; const b = el.value.trim().toLowerCase();
+  document.querySelectorAll('.cm-prog-tab tbody tr').forEach(function (tr) { tr.hidden = !!b && tr.dataset.busca.indexOf(b) < 0; });
+});
 
 // Ainda sem máquinas: o cadastro fica na aba "Máquinas e setores".
 function semMaquinas() {
@@ -300,12 +410,18 @@ registrarAcoes({
   abaCargaMaq: function (a) { if (ABAS.indexOf(a) >= 0) { ui.aba = a; redesenhar(); } },
   maqCargaMaq: function (id) { ui.maq = id; redesenhar(); },
   recolherCargaMaq: function () { ui.recolhido = !ui.recolhido; gravarRecolhido(ui.recolhido); redesenhar(); },
-  incluirCargaMaq: function (mid) {
-    const m = maquina(mid), v = $('cm-incluir-sel') && $('cm-incluir-sel').value;
+  recolherListaCargaMaq: function () {
+    ui.listaRecolhida = !ui.listaRecolhida;
+    try { localStorage.setItem('rostag.cm.listaRecolhida', ui.listaRecolhida ? '1' : '0'); } catch (e) { /* sem armazenamento */ }
+    redesenhar();
+  },
+  incluirCargaMaq: function (mid, v, el) {
+    const m = maquina(mid);
     if (!m || !v || !podeEditar()) return;
     if ((m.fila || []).length >= Prog.MAX_FILA) { toast(T('prog.erro.filaCheia'), { tipo: 'erro' }); return; }
-    const p = v.split('#'), n = p[1] === '*' ? null : Number(p[1]);
-    const campo = $('cm-incluir-ini'), txt = campo ? campo.value.trim() : '', ini = txt ? daMascara(txt) : null;
+    const p = String(v).split('#'), n = p[1] === '*' ? null : Number(p[1]);
+    const campo = el && el.closest('tr') ? el.closest('tr').querySelector('.cm-dtm') : null;
+    const txt = campo ? campo.value.trim() : '', ini = txt ? daMascara(txt) : null;
     if (txt && !ini) { campo.classList.add('invalid'); toast(T('cm.dtInvalida'), { tipo: 'erro' }); return; }
     colocar(m, { opId: p[0], n: n, horas: null, inicio: ini, fimAjustado: null }, T('cm.incluida', m.nome));
   },
