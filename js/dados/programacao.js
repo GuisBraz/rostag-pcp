@@ -33,6 +33,47 @@ export function salvarTerceirizada(nome) {
 }
 export function excluirTerceirizada(id) { return equipe().collection('terceirizadas').doc(id).delete(); }
 
+/* --------------------------------- recursos da caldeiraria (config/recursosCald) */
+let pararRec = null;
+export function escutarRecursos(aoReceber) {
+  pararRecursos();
+  pararRec = equipe().collection('config').doc('recursosCald').onSnapshot(function (snap) {
+    aoReceber(snap.exists ? snap.data() : {});
+  }, function (e) { console.warn('recursos indisponíveis:', e && e.code); aoReceber({}); });
+}
+export function pararRecursos() { if (pararRec) { pararRec(); pararRec = null; } }
+export function salvarRecursos(cfg) {
+  return equipe().collection('config').doc('recursosCald').set({
+    tipos: cfg.tipos, empresas: cfg.empresas, dias: cfg.dias, extras: cfg.extras,
+    atualizadoEm: agoraIso(), atualizadoPorUid: Auth.uid()
+  });
+}
+// Programa (ou reprograma) as OPs por etapas: empresa, recurso, pessoas, início e
+// fim. Várias OPs juntas dividem a equipe (mesmo grupo). Se o término mudar, o
+// anterior entra no histórico (a OP fica "reagendada").
+export function programarEtapas(ops, empresa, etapas, grupo, semRecurso) {
+  const lote = db().batch(), agora = agoraIso();
+  const ini = etapas.map(function (e) { return e.i; }).sort()[0], fim = etapas.map(function (e) { return e.f; }).sort().pop();
+  (ops || []).forEach(function (o) {
+    const ant = o.programacao || null;
+    const hist = ant && ant.previsaoFim && ant.previsaoFim !== fim ? (ant.historico || []).concat([ant.previsaoFim]).slice(-30) : ((ant && ant.historico) || []);
+    lote.update(refOp(o.id), { programacao: { terceirizadaId: empresa.id, terceirizada: String(empresa.nome || '').slice(0, 60), inicio: ini, previsaoFim: fim,
+      historico: hist, etapas: etapas, grupo: grupo || null, semRecurso: !!semRecurso, em: (ant && ant.em) || agora, porUid: Auth.uid() } });
+  });
+  return lote.commit();
+}
+// Baixa de uma etapa (ex.: montagem concluída): o recurso fica livre a partir daí.
+export function baixaEtapa(ops, indice, dia) {
+  const lote = db().batch();
+  (ops || []).forEach(function (o) {
+    const pr = Object.assign({}, o.programacao);
+    pr.etapas = pr.etapas.map(function (e, i) { return i === indice ? Object.assign({}, e, { b: dia }) : e; });
+    pr.porUid = Auth.uid();
+    lote.update(refOp(o.id), { programacao: pr });
+  });
+  return lote.commit();
+}
+
 /* ------------------------------------------------------------ caldeiraria */
 export function programarCald(opId, terceirizada, previsaoFim, inicio) {
   return programarVariasCald([opId], terceirizada, inicio, previsaoFim);

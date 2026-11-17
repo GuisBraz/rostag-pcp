@@ -33,9 +33,10 @@ let ordem = { campo: 'numero', dir: 1 };   // vale entre aberturas, como no Expl
  * modo: { projetoId } (as OPs de um projeto) ou { grupo: 'andamento' | 'rnc' }.
  */
 export function abrirListaOps(modo) {
-  aberta = { projetoId: modo.projetoId || null, grupo: modo.grupo || null, sit: 'todas', alerta: '', area: '', projeto: '', busca: '', planilha: undefined };
-  $('lops-busca').value = '';
-  $('lops-area').value = '';
+  const areaIni = modo.area || Auth.areaProgramador() || '';
+  aberta = { projetoId: modo.projetoId || null, grupo: modo.grupo || null, sit: modo.sit || 'todas', alerta: '', area: areaIni, projeto: '', busca: modo.busca || '', planilha: undefined };
+  $('lops-busca').value = aberta.busca;
+  $('lops-area').value = areaIni;
   abrirModal('modal-lista-ops', { aoFechar: function () { aberta = null; } });
   render();
   // números de OP da planilha de avanço do projeto (para achar as OPs fora dela)

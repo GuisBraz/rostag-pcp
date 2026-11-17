@@ -7,6 +7,7 @@
    gratuito do Firebase não há rotina agendada no servidor). Os alertas do
    Sistema que continuam valendo ganham estado novo e voltam como não lidos.
 --------------------------------------------------------------------------- */
+import * as Recursos from '../dominio/recursos.js';
 import { estado, buscarProjeto } from '../estado.js';
 import { esc, br, brCurto, hoje, addDias, dataDoInstante, horaDoInstante } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
@@ -80,7 +81,7 @@ function alertasCalculados() {
   if (!Auth.podeEntrar()) return [];
   const semana = Semana.inicioSemana(hoje()), equipeId = Auth.equipeAtualId();
   const novos = [];
-  const lista = Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops }).concat(avisosProgramador()).concat(avisosServicos()).concat(avisosTarefas()).concat(avisosCaldAtraso()).map(function (n) {
+  const lista = Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops }).concat(avisosProgramador()).concat(avisosServicos()).concat(avisosTarefas()).concat(avisosCaldAtraso()).concat(avisosSemRecurso()).map(function (n) {
     const chave = Semana.chaveAlerta(semana, equipeId, n.id);
     const st = estadoAlertas && estadoAlertas[chave];
     if (estadoAlertas && !st && !registrando.has(chave)) {
@@ -131,6 +132,18 @@ function avisosCaldAtraso() {
   return Prog.avisosCaldAtraso(estado.ops, Auth.uid(), hoje()).map(function (a) {
     return { id: a.id, tipo: a.tipo, nivel: a.nivel, projetoId: a.projetoId, origem: 'sistema', quando: a.data,
       titulo: T('n.prod-cald-atraso', a.commessa, a.numero), meta: T('n.prod-cald-atrasoM', a.empresa || '—', br(a.data), a.dias) };
+  });
+}
+
+// Carga Fábrica: OP programada sem recurso (recurso deslocado ou acabou) — avisa quem programa.
+function avisosSemRecurso() {
+  if (Auth.areaProgramador() !== 'caldeiraria') return [];
+  const h = hoje();
+  const ops = estado.ops.filter(function (o) { return o.area === 'caldeiraria' && o.programacao && !o.encerradaEm && o.status !== 'aprovada' && o.status !== 'desvio'; });
+  const sem = Recursos.semRecurso(Recursos.normalizar(estado.recursosCald), ops, h);
+  return ops.filter(function (o) { return sem[o.id]; }).map(function (o) {
+    return { id: 'prod-sem-recurso:' + o.id, tipo: 'prod-sem-recurso', nivel: 'alerta', projetoId: o.projetoId, origem: 'sistema', quando: h,
+      titulo: T('n.prod-sem-recurso', o.commessa, o.numero), meta: T('n.prod-sem-recursoM', (o.programacao && o.programacao.terceirizada) || '—') };
   });
 }
 

@@ -1,6 +1,7 @@
 /* ---------------------------------------------------------------------------
    Filtros do Painel e da lista de Projetos.
 --------------------------------------------------------------------------- */
+import * as Auth from '../dados/auth.js';
 import { estado } from '../estado.js';
 import { T, meses } from '../i18n/index.js';
 import { esc } from '../nucleo/fmt.js';
@@ -43,7 +44,11 @@ export function filtrarDash() {
 export function filtrarProj() {
   const f = estado.filtroProj;
   const busca = f.busca.toLowerCase();
+  // programador: só os projetos que têm OPs da área dele
+  const area = Auth.areaProgramador();
+  const daArea = area ? new Set(estado.ops.filter(function (o) { return o.area === area; }).map(function (o) { return o.projetoId; })) : null;
   return estado.projetos.filter(function (p) {
+    if (daArea && !daArea.has(p.id)) return false;
     if (f.status && Projeto.status(p) !== f.status) return false;
     if (!casaPcp(p, f.pcp)) return false;
     if (f.gp && p.gp !== f.gp) return false;

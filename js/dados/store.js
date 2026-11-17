@@ -52,6 +52,26 @@ export function escutar(aoReceber, aoFalhar) {
   });
 }
 
+// Todos os projetos da equipe, só para consulta (Linha do Tempo, visão
+// "Fábrica"): a regra deixa qualquer membro ler; o resto do app continua
+// usando só os projetos de cada um (escutar acima).
+let pararTodosFn = null;
+export function escutarTodos(aoReceber, aoFalhar) {
+  if (pararTodosFn) return;
+  pararTodosFn = colProjetos().onSnapshot(function (qs) {
+    const lista = [];
+    qs.forEach(function (doc) {
+      try { lista.push(migrarProjeto(Object.assign({}, doc.data(), { id: doc.id }))); } catch (e) { console.warn('projeto ilegível ignorado:', doc.id, e); }
+    });
+    aoReceber(lista);
+  }, function (e) {
+    console.warn('todos os projetos indisponíveis:', e && e.code);
+    pararTodosFn = null;
+    if (aoFalhar) aoFalhar(e);
+  });
+}
+export function pararTodos() { if (pararTodosFn) { pararTodosFn(); pararTodosFn = null; } }
+
 export function pararEscuta() {
   if (parar) { parar(); parar = null; }
   servidor = new Map();

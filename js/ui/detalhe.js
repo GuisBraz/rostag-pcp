@@ -385,7 +385,7 @@ function salvarObs(apagar) {
 /* --------------------------------------------------------------- chat */
 let pararChat = null, chatDoProjeto = null;
 export function atualizarInscricaoChat() {
-  const alvo = Auth.logado() ? estado.idDetalhe : null;
+  const alvo = Auth.logado() && !Auth.areaProgramador() ? estado.idDetalhe : null;
   if (alvo === chatDoProjeto && pararChat) return;
   if (pararChat) { pararChat(); pararChat = null; }
   chatDoProjeto = alvo;

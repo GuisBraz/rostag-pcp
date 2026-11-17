@@ -351,12 +351,13 @@ export function encaixar(fila, agenda, item) {
 }
 
 // Operações de usinagem esperando programação que a máquina pode fazer.
-export function aguardandoNaMaquina(maquina, ops, maquinas, mapa) {
+export function aguardandoNaMaquina(maquina, ops, maquinas, mapa, area) {
+  const ar = area || 'usinagem';
   const naFila = {};
   (maquinas || []).forEach(function (m) { (m.fila || []).forEach(function (f) { naFila[chaveItem(f.opId, f.n == null ? null : Number(f.n))] = true; }); });
   const r = [];
   (ops || []).forEach(function (o) {
-    if (o.area !== 'usinagem' || !emProducao(o) || situacao(o, true) !== 'programada' && situacao(o, true) !== 'emAberto') return;
+    if (o.area !== ar || !emProducao(o) || situacao(o, true) !== 'programada' && situacao(o, true) !== 'emAberto') return;
     // OP inteira já na fila: nada a programar
     if (naFila[chaveItem(o.id, null)]) return;
     operacoesDaOp(o).forEach(function (x) {

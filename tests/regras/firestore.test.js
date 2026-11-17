@@ -81,11 +81,12 @@ async function consumir(db, codigo, uid) {
 /* ---------------------------------------------------------------- projetos */
 describe('projetos: técnico', () => {
   for (const [quem, uid, meu, outro] of [['papel antigo "planejador"', P, 'doP', 'doT'], ['papel "tecnico"', T, 'doT', 'doP']]) {
-    test(quem + ': lê só o projeto em que é responsável', async () => {
+    test(quem + ': lê todos os projetos da equipe (Linha do Tempo "Fábrica"), mas só mexe no seu', async () => {
       await assertSucceeds(como(uid).doc('equipes/E1/projetos/' + meu).get());
-      await assertFails(como(uid).doc('equipes/E1/projetos/' + outro).get());
+      await assertSucceeds(como(uid).doc('equipes/E1/projetos/' + outro).get());
       await assertSucceeds(como(uid).collection('equipes/E1/projetos').where('responsavelUid', '==', uid).get());
-      await assertFails(como(uid).collection('equipes/E1/projetos').get());
+      await assertSucceeds(como(uid).collection('equipes/E1/projetos').get());
+      await assertFails(como(uid).doc('equipes/E1/projetos/' + outro).update({ checklist: [] }));
     });
   }
   test('altera só o checklist do próprio projeto', async () => {
@@ -106,11 +107,12 @@ describe('projetos: técnico', () => {
 });
 
 describe('projetos: GP', () => {
-  test('lê e lista só os projetos em que é o GP', async () => {
+  test('lê todos os projetos da equipe; o chat só dos seus', async () => {
     await assertSucceeds(como(G).doc('equipes/E1/projetos/doP').get());
-    await assertFails(como(G).doc('equipes/E1/projetos/doT').get());
+    await assertSucceeds(como(G).doc('equipes/E1/projetos/doT').get());
     await assertSucceeds(como(G).collection('equipes/E1/projetos').where('gpUid', '==', G).get());
-    await assertFails(como(G).collection('equipes/E1/projetos').get());
+    await assertSucceeds(como(G).collection('equipes/E1/projetos').get());
+    await assertFails(como(G).collection('equipes/E1/projetos/doT/chat').get());
   });
   test('cria projeto sendo ele o GP; não cria em nome de outro GP', async () => {
     await assertSucceeds(como(G).doc('equipes/E1/projetos/novo').set({ nome: 'n', gpUid: G, responsavelUid: T }));
@@ -149,8 +151,9 @@ describe('projetos: fábrica e quem é de fora', () => {
       await assertFails(como(uid).doc('equipes/E1/projetos/doP').delete());
     }
   });
-  test('CQ não vê projetos; ninguém da fábrica cria projeto', async () => {
-    await assertFails(como(Q).doc('equipes/E1/projetos/doP').get());
+  test('CQ lê os projetos (Linha do Tempo) sem editar; ninguém da fábrica cria projeto', async () => {
+    await assertSucceeds(como(Q).doc('equipes/E1/projetos/doP').get());
+    await assertFails(como(Q).doc('equipes/E1/projetos/doP').update({ checklist: [] }));
     for (const uid of [U, K, Q]) await assertFails(como(uid).doc('equipes/E1/projetos/novo').set({ nome: 'n', gpUid: uid }));
   });
   test('quem é de fora não lê nada da equipe', async () => {
@@ -580,7 +583,7 @@ describe('cargos e remoção de membros', () => {
     await semear('equipes/E1', { nome: 'Equipe 1', coordenadorUid: C, criadoPorUid: C, papeisMigrados: true });
     // C ficou com o papel antigo "gp" gravado: não é mais Gerência
     await assertFails(como(C).doc('equipes/E1/membros/' + P).update({ papel: 'tecnico' }));
-    await assertFails(como(C).doc('equipes/E1/projetos/doT').get());
+    await assertFails(como(C).doc('equipes/E1/projetos/doT').delete());
     await assertSucceeds(como(M).doc('equipes/E1/projetos/doT').get());
   });
   test('cada um muda só o próprio nome de exibição', async () => {
@@ -820,13 +823,42 @@ describe('planilha de avanço completa, PDF da OP e RNC por peças', () => {
     await assertFails(como(Q).doc('equipes/E1/ops/op1').update({ qtdNc: 5 }));
     await assertFails(como(P).doc('equipes/E1/ops/op1').update({ qtdNc: 1 }));
   });
-  test('setores do PDF → máquina: programador de usinagem e gerente', async () => {
+  test('setores do PDF → máquina: programadores e gerente', async () => {
     const cfg = (uid) => ({ mapa: { MANDRILHADORAFOREST: 'm1', AJUSTADOR: '' }, atualizadoEm: 'x', atualizadoPorUid: uid });
     await assertSucceeds(como(U).doc('equipes/E1/config/setores').set(cfg(U)));
     await assertSucceeds(como(M).doc('equipes/E1/config/setores').set(cfg(M)));
-    for (const uid of [K, T, Q, G]) await assertFails(como(uid).doc('equipes/E1/config/setores').set(cfg(uid)));
+    await assertSucceeds(como(K).doc('equipes/E1/config/setores').set(cfg(K)));
+    for (const uid of [T, Q, G]) await assertFails(como(uid).doc('equipes/E1/config/setores').set(cfg(uid)));
     await assertFails(como(U).doc('equipes/E1/config/setores').set({ ...cfg(U), extra: 1 }));
     await assertSucceeds(como(Q).doc('equipes/E1/config/setores').get());
+  });
+});
+
+describe('carga máquina de cortes e recursos da caldeiraria', () => {
+  const maq = (area, extra) => ({ nome: 'Laser', horasDia: 8, ativa: true, tipo: 'Corte', ...(area ? { area } : {}), criadoEm: 'x', atualizadoEm: 'x', fila: [], ...extra });
+  test('cada programador mexe só nas máquinas da sua área', async () => {
+    await assertSucceeds(como(K).doc('equipes/E1/maquinas/laser').set(maq('caldeiraria')));
+    await assertFails(como(K).doc('equipes/E1/maquinas/torno').set(maq('usinagem')));
+    await assertFails(como(K).doc('equipes/E1/maquinas/sem').set(maq(null)));
+    await assertSucceeds(como(U).doc('equipes/E1/maquinas/torno').set(maq('usinagem')));
+    await assertFails(como(U).doc('equipes/E1/maquinas/laser').update({ fila: [] }));
+    await assertFails(como(K).doc('equipes/E1/maquinas/torno').update({ fila: [] }));
+    await assertSucceeds(como(K).doc('equipes/E1/maquinas/laser').update({ fila: [{ opId: 'o1', n: null, horas: 2, inicio: null, fimAjustado: null }] }));
+    await assertFails(como(K).doc('equipes/E1/maquinas/laser').update({ area: 'usinagem' }));
+    await assertSucceeds(como(M).doc('equipes/E1/maquinas/laser').update({ area: 'caldeiraria' }));
+    await assertFails(como(U).doc('equipes/E1/maquinas/x').set(maq('outra')));
+    await assertSucceeds(como(K).doc('equipes/E1/maquinas/laser').delete());
+  });
+  test('recursos da caldeiraria: programadora de caldeiraria e gerente gravam', async () => {
+    const rec = (uid, extra) => ({ tipos: [{ id: 'montagem', nome: 'Caldeireiros', etapa: 'Montagem' }], empresas: [{ id: 'yani', nome: 'YANI', qtd: { montagem: 3 } }],
+      dias: [false, true, true, true, true, true, false], extras: { '2026-12-25': false }, atualizadoEm: 'x', atualizadoPorUid: uid, ...extra });
+    await assertSucceeds(como(K).doc('equipes/E1/config/recursosCald').set(rec(K)));
+    await assertSucceeds(como(M).doc('equipes/E1/config/recursosCald').set(rec(M)));
+    for (const uid of [U, T, Q, G]) await assertFails(como(uid).doc('equipes/E1/config/recursosCald').set(rec(uid)));
+    await assertFails(como(K).doc('equipes/E1/config/recursosCald').set(rec(M)));
+    await assertFails(como(K).doc('equipes/E1/config/recursosCald').set(rec(K, { dias: [true] })));
+    await assertFails(como(K).doc('equipes/E1/config/recursosCald').set(rec(K, { outro: 1 })));
+    await assertSucceeds(como(Q).doc('equipes/E1/config/recursosCald').get());
   });
 });
 
@@ -1047,6 +1079,13 @@ describe('carga fábrica: programar, início e reagendar', () => {
     await assertFails(como(K).doc('equipes/E1/ops/op2').update(prog(K, { historico: 'x' })));
     await assertFails(como(K).doc('equipes/E1/ops/op2').update(prog(K, { outro: 1 })));
     await assertFails(como(U).doc('equipes/E1/ops/op2').update(prog(U)));
+    // por etapas: empresa, recurso, pessoas, datas, grupo e "sem recurso"
+    const et = [{ t: 'montagem', q: 2, i: '2026-11-16', f: '2026-11-20', b: null }];
+    await assertSucceeds(como(K).doc('equipes/E1/ops/op2').update(prog(K, { terceirizadaId: 'yani', terceirizada: 'YANI', etapas: et, grupo: 'g1', semRecurso: false })));
+    await assertFails(como(K).doc('equipes/E1/ops/op2').update(prog(K, { etapas: 'x' })));
+    await assertFails(como(K).doc('equipes/E1/ops/op2').update(prog(K, { etapas: Array(13).fill(et[0]) })));
+    await assertFails(como(K).doc('equipes/E1/ops/op2').update(prog(K, { grupo: 5 })));
+    await assertFails(como(K).doc('equipes/E1/ops/op2').update(prog(K, { semRecurso: 'sim' })));
     await assertSucceeds(como(K).collection('notificacoes').add({ paraUid: T, tipo: 'opReagendada', mensagem: 'x', projetoId: 'doT', equipeId: 'E1', deUid: K, deNome: 'K', lida: false, criadoEm: 'x' }));
   });
 });

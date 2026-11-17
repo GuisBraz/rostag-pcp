@@ -141,6 +141,10 @@ function escutarEquipe() {
   // terceirizadas da caldeiraria: quem programa a caldeiraria (e a Gerência)
   if (papelCarregado === 'prog_caldeiraria' || Papeis.ehGerente(papelCarregado)) DadosProg.escutarTerceirizadas(function (l) { estado.terceirizadas = l; redesenhar(); });
   else DadosProg.pararEscuta();
+  // recursos da caldeiraria (empresas, pessoas, dias de trabalho): Carga Fábrica
+  estado.recursosCald = {};
+  if (papelCarregado === 'prog_caldeiraria' || Papeis.ehGerente(papelCarregado)) DadosProg.escutarRecursos(function (c) { estado.recursosCald = c; redesenhar(); });
+  else DadosProg.pararRecursos();
   if (Papeis.veCarga(papelCarregado)) {
     DadosCarga.escutar(function (m) { estado.maquinas = m; redesenhar(); }, function (c) { estado.cfgFabrica = c; redesenhar(); }, function (s) { estado.setores = s; redesenhar(); });
   } else {
@@ -178,18 +182,28 @@ function aplicarRestricoesPapel() {
   const area = Papeis.areaDoProgramador(papel);
   // Gerência e GP: as OPs ficam em Ordens de Produção (sem Carga, Fábrica e Todas as OPs)
   const gerOuGp = Papeis.ehGerente(papel) || papel === 'gp';
-  [['painel', leProjetos || Papeis.ehCQ(papel) || !Auth.membro()], ['projetos', veProjetos], ['linha', leProjetos],
-    ['carga', Papeis.veCarga(papel) && area !== 'caldeiraria' && !gerOuGp], ['fabrica', area !== 'usinagem' && papel !== 'tecnico' && !gerOuGp],
-    ['ordens', !!area || gerOuGp || papel === 'tecnico'], ['finalizadas', Auth.membro() && !gerOuGp]].forEach(function (x) {
+  // programadores: Projetos (só leitura), sem "Todas as OPs"; a caldeiraria tem a
+  // Carga Fábrica e a Carga Máquina (cortes); Linha do Tempo para todos os cargos
+  [['painel', leProjetos || Papeis.ehCQ(papel) || !Auth.membro()], ['projetos', veProjetos || !!area], ['linha', Auth.membro()],
+    ['carga', Papeis.veCarga(papel) && !gerOuGp], ['fabrica', area !== 'usinagem' && papel !== 'tecnico' && !gerOuGp],
+    ['ordens', !!area || gerOuGp || papel === 'tecnico'], ['finalizadas', Auth.membro() && !gerOuGp && !area]].forEach(function (x) {
     const b = document.querySelector('.side-item[data-tab="' + x[0] + '"]');
     if (b) b.style.display = x[1] ? '' : 'none';
+  });
+  // ordem do menu dos programadores
+  const ORDEM = area === 'usinagem' ? ['painel', 'carga', 'projetos', 'linha', 'ordens', 'rnc', 'tarefas', 'notificacoes']
+    : area === 'caldeiraria' ? ['painel', 'fabrica', 'carga', 'projetos', 'linha', 'ordens', 'rnc', 'tarefas', 'notificacoes'] : null;
+  document.querySelectorAll('.sidebar-nav .side-item').forEach(function (b) {
+    const k = b.dataset.tab || (b.dataset.acao === 'abrirMinhasTarefas' ? 'tarefas' : '');
+    const i = ORDEM ? ORDEM.indexOf(k) : -1;
+    b.style.order = ORDEM ? String(i < 0 ? 99 : i) : '';
   });
   // a usinagem programa na "Carga Máquina"
   // a caldeiraria programa na "Carga Fábrica"
   const rotFab = document.querySelector('.side-item[data-tab="fabrica"] .label');
   if (rotFab) rotFab.textContent = T(area === 'caldeiraria' ? 'nav.cargaFabrica' : 'nav.fabrica');
   const rotCarga = document.querySelector('.side-item[data-tab="carga"] .label');
-  if (rotCarga) rotCarga.textContent = T(area === 'usinagem' ? 'nav.cargaMaquina' : 'nav.carga');
+  if (rotCarga) rotCarga.textContent = T(area === 'usinagem' ? 'nav.cargaMaquina' : area === 'caldeiraria' ? 'nav.cargaCortes' : 'nav.carga');
   const bRnc = document.querySelector('.side-item[data-tab="rnc"]');
   if (bRnc) bRnc.style.display = Papeis.veRnc(papel) || Papeis.ehCQ(papel) || !!area ? '' : 'none';
 }
@@ -210,6 +224,9 @@ function aplicarUsuario() {
 // continuam escutadas no hub, e só param quando a conta sai (ver atualizarSessao).
 function sairDoApp() {
   Store.pararEscuta();
+  Store.pararTodos();
+  estado.projetosFabrica = null;
+  DadosProg.pararRecursos();
   Ops.pararEscuta();
   DadosRncs.pararEscuta();
   DadosChecklist.pararEscuta();
