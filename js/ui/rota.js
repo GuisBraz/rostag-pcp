@@ -34,7 +34,7 @@ export function abaPermitida(aba) {
   const gerOuGp = Papeis.ehGerente(papel) || papel === 'gp';   // as OPs deles ficam em Ordens de Produção
   if (aba === 'finalizadas') return !gerOuGp && !area;
   if (aba === 'linha') return true;   // a situação geral da fábrica: todos os cargos
-  if (aba === 'projetos' && area) return true;   // programadores: só leitura
+  if (aba === 'projetos' && (area || Papeis.ehCQ(papel))) return true;   // programadores e CQ: só consulta
   if (aba === 'config' || aba === 'notificacoes') return true;
   if (aba === 'fabrica') return area !== 'usinagem' && papel !== 'tecnico' && !gerOuGp;   // o técnico vê as OPs dentro do projeto
   if (aba === 'ordens') return !!area || gerOuGp || papel === 'tecnico';

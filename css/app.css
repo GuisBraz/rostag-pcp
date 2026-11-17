@@ -1491,3 +1491,14 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .cf-cel-cheio { background: color-mix(in srgb, var(--amber) 35%, var(--bg-panel)); }
 .cf-cel-estouro { background: var(--rust); color: #fff; }
 .cf-cel-livre { color: var(--ink-faint); font-weight: 500; }
+
+/* projeto aberto só para consulta (programadores e CQ): sem PCP, informações,
+   cronograma, chat e botões de editar/excluir */
+.visao-consulta #janela-pcp, .visao-consulta .detail-grid > .card:first-child, .visao-consulta #tec-checklist-card,
+.visao-consulta #detail-chat, .visao-consulta #detail-btn-editar, .visao-consulta #detail-btn-excluir { display: none !important; }
+.visao-consulta .janelas-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.visao-consulta .detail-grid { grid-template-columns: 1fr; }
+
+/* lista de OPs do projeto: marcar para apagar */
+.lops-marca { width: 34px; text-align: center; }
+.ord-tab tr.lops-marcada td { background: var(--rust-bg); }
