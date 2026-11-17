@@ -596,4 +596,8 @@ export default {
   'cf.tipoOk':'Stage {0} added.', 'cf.tipoEmUso':'This resource is used by scheduled orders.', 'cf.extraOk':'Date {0} added.',
   'cf.programarNota2':'Per stage: how many people, start and end. Leave dates blank if the order has no such stage. 0 people with dates = scheduled without resource.',
   'n.prod-sem-recurso':'{0}: order {1} scheduled without resource', 'n.prod-sem-recursoM':'With {0} · give it people again or reschedule.',
+  'tec.opsArea':'Work orders · {0}', 'lops.apagarSel':'🗑 Delete selected ({0})', 'lops.apagarTodas':'Delete all orders of the project', 'lops.marcarTodas':'Select all',
+  'lops.marcar':'Select order {0}', 'lops.travaRnc':'Has an open NCR: close it before deleting.', 'lops.travaCq':'Already went through QC: only Management or the PM can delete.',
+  'lops.nadaApagar':'None of these orders can be deleted.', 'lops.apagarQ':'Delete {0} order(s) of project {1}? This cannot be undone.', 'lops.apagarProg':'{0} of them are scheduled (they leave the schedule).',
+  'lops.apagarFicam':'{0} stay (open NCR or already through QC).', 'lops.digiteCommessa':'To confirm, type the job number: {0}', 'lops.commessaErrada':'Job number does not match — nothing deleted.', 'lops.apagadas':'{0} order(s) deleted.',
 };

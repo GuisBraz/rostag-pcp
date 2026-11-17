@@ -122,8 +122,8 @@ function escutarEquipe() {
   atualizarChip(navigator.onLine === false ? 'offline' : undefined);
   redesenhar();
   aplicarRota();
-  // O CQ não trabalha com projetos: nem escuta a coleção. Programadores só leem.
-  if (Papeis.leProjetos(papelCarregado)) {
+  // Programadores e CQ só leem os projetos (aba Projetos em modo consulta).
+  if (Papeis.leProjetos(papelCarregado) || Papeis.ehCQ(papelCarregado)) {
     Store.escutar(aoReceberProjetos, aoFalharProjetos);
   } else {
     Store.pararEscuta();
@@ -175,6 +175,8 @@ function aplicarRestricoesPapel() {
   document.body.classList.toggle('visao-cq', Papeis.ehCQ(papel));
   document.body.classList.toggle('sem-atencao', Papeis.ehGerente(papel) || papel === 'gp');
   document.body.classList.toggle('visao-programador', Papeis.ehProgramador(papel));
+  // programadores e CQ abrem o projeto só para consultar (sem cronograma, checklist e chat)
+  document.body.classList.toggle('visao-consulta', Papeis.ehProgramador(papel) || Papeis.ehCQ(papel));
   $('btn-novo-projeto').style.display = gestor ? '' : 'none';
   $('dados-acoes-escrita').style.display = gestor ? 'contents' : 'none';
   // programadores: painel e linha do tempo (só leitura), sem a lista de projetos
@@ -184,7 +186,7 @@ function aplicarRestricoesPapel() {
   const gerOuGp = Papeis.ehGerente(papel) || papel === 'gp';
   // programadores: Projetos (só leitura), sem "Todas as OPs"; a caldeiraria tem a
   // Carga Fábrica e a Carga Máquina (cortes); Linha do Tempo para todos os cargos
-  [['painel', leProjetos || Papeis.ehCQ(papel) || !Auth.membro()], ['projetos', veProjetos || !!area], ['linha', Auth.membro()],
+  [['painel', leProjetos || Papeis.ehCQ(papel) || !Auth.membro()], ['projetos', veProjetos || !!area || Papeis.ehCQ(papel)], ['linha', Auth.membro()],
     ['carga', Papeis.veCarga(papel) && !gerOuGp], ['fabrica', area !== 'usinagem' && papel !== 'tecnico' && !gerOuGp],
     ['ordens', !!area || gerOuGp || papel === 'tecnico'], ['finalizadas', Auth.membro() && !gerOuGp && !area]].forEach(function (x) {
     const b = document.querySelector('.side-item[data-tab="' + x[0] + '"]');

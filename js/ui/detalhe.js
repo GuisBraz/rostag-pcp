@@ -21,7 +21,7 @@ import { renderProjetos } from './projetos.js';
 import { renderNotificacoes } from './notificacoes.js';
 import { souGerencia, veAreasProjeto, renderAreasProjeto } from './gerencia.js';
 import * as Pedidos from './pedidos.js';
-import { renderCartoesTecnico } from './projetoTecnico.js';
+import { renderCartoesTecnico, renderCartoesConsulta } from './projetoTecnico.js';
 import * as Ops from '../dados/ops.js';
 import * as DadosAvanco from '../dados/avanco.js';
 import * as DadosComerciais from '../dados/comerciais.js';
@@ -157,6 +157,7 @@ export function renderDetalhe() {
     evs.map(function (e) { return '<div class="ev"><b>' + br(e.d) + '</b> · ' + esc(e.t) + '</div>'; }).join('');
 
   // --- cronograma: Gerência e GP acompanham (só leitura); o técnico edita o checklist ---
+  if (Auth.areaProgramador() || Auth.souCQ()) { renderCartoesConsulta(p); return; }
   if (veAreasProjeto()) { renderAreasProjeto(p); return; }
   renderCartoesTecnico(p);
   $('detail-progress-bar').style.width = pr + '%';
@@ -385,7 +386,7 @@ function salvarObs(apagar) {
 /* --------------------------------------------------------------- chat */
 let pararChat = null, chatDoProjeto = null;
 export function atualizarInscricaoChat() {
-  const alvo = Auth.logado() && !Auth.areaProgramador() ? estado.idDetalhe : null;
+  const alvo = Auth.logado() && !Auth.areaProgramador() && !Auth.souCQ() ? estado.idDetalhe : null;
   if (alvo === chatDoProjeto && pararChat) return;
   if (pararChat) { pararChat(); pararChat = null; }
   chatDoProjeto = alvo;

@@ -173,8 +173,16 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   Notificações. **Caldeiraria:** Painel Geral, Carga Fábrica, Carga Máquina
   (cortes), Projetos, Linha do Tempo, Ordens de Produção, RNC (só da
   caldeiraria), Minhas tarefas, Notificações. "Todas as OPs" sai dos dois.
-- **Projetos para programadores:** só leitura (sem Novo projeto, Finalizar e
-  chat), só os projetos com OPs da área dele.
+- **Projetos para programadores e CQ (só consulta):** o projeto abre sem PCP,
+  informações gerais, cronograma, checklist, chat e botões de editar.
+  Programador (só os projetos com OPs da área dele): planilha de avanço, OPs
+  da área, itens comerciais e serviços, sem alterar nada. CQ (projetos com
+  OPs): planilha de avanço (só leitura) e OPs — no detalhe da OP vê a
+  programação, dá a baixa e abre RNC.
+- **Apagar OPs do projeto:** na lista de OPs do projeto, Gerência, GP do
+  projeto e técnico responsável marcam OPs e apagam as selecionadas ou todas
+  (todas pede a commessa digitada). O técnico só apaga OP em aberto; OP com
+  RNC aberta não sai; OP programada sai da programação (avisa antes).
 - **Linha do Tempo para todos os cargos:** visão 🏭 Fábrica (todos os projetos
   da equipe, com o GP de cada um; o de outra pessoa só mostra, não abre) e
   👤 Meus projetos (GP, técnico e programadores). A regra deixa qualquer membro

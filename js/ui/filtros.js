@@ -44,9 +44,9 @@ export function filtrarDash() {
 export function filtrarProj() {
   const f = estado.filtroProj;
   const busca = f.busca.toLowerCase();
-  // programador: só os projetos que têm OPs da área dele
+  // programador: só os projetos que têm OPs da área dele; CQ: os que têm OPs
   const area = Auth.areaProgramador();
-  const daArea = area ? new Set(estado.ops.filter(function (o) { return o.area === area; }).map(function (o) { return o.projetoId; })) : null;
+  const daArea = area || Auth.souCQ() ? new Set(estado.ops.filter(function (o) { return !area || o.area === area; }).map(function (o) { return o.projetoId; })) : null;
   return estado.projetos.filter(function (p) {
     if (daArea && !daArea.has(p.id)) return false;
     if (f.status && Projeto.status(p) !== f.status) return false;

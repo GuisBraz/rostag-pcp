@@ -59,6 +59,26 @@ export function renderCartoesTecnico(p) {
   $('tec-checklist-card').hidden = !checklistAberto;
 }
 
+// Programadores e CQ: só consultam. Programador: planilha, OPs (da área dele),
+// itens comerciais e serviços. CQ: planilha e OPs (no detalhe da OP ele dá a
+// baixa e abre RNC). Nada aqui grava.
+export function renderCartoesConsulta(p) {
+  const area = Auth.areaProgramador();
+  const ops = opsDoProjeto(p.id).filter(function (o) { return !area || o.area === area; });
+  const st = Producao.estatisticas(ops), tudo = Producao.estatisticas(opsDoProjeto(p.id));
+  let html = cartao('abrirEspelho', p.id, T('tec.planilha'), tudo.total ? tudo.pct + '<small>%</small>' : '—',
+      tudo.total ? T('tec.planilhaDet', numeroBr(tudo.pecasFeitas), numeroBr(tudo.pecas)) : T('tec.semPlanilha'), tudo.total ? '--violet' : '--ink-faint') +
+    cartao('abrirListaOpsProjeto', p.id, area ? T('tec.opsArea', T('area.' + area)).toUpperCase() : T('tec.ops'), String(st.total),
+      st.total ? T('tec.opsDet', st.abertas, st.retrabalho) : T('d.semOps'), st.retrabalho ? '--rust' : '--ink');
+  if (area) {
+    const com = resumoComerciais(p.id), serv = resumoServicos(p.id);
+    html += cartao('abrirComerciais', p.id, T('tec.comerciais'), com ? com.valor : '—', com ? com.detalhe : T('com.abrir'), com ? com.cor : '--ink-faint') +
+      cartao('abrirServicos', p.id, T('tec.servicos'), serv ? serv.valor : '—', serv ? serv.detalhe : T('serv.abrir'), serv ? serv.cor : '--ink-faint');
+  }
+  $('tec-areas').innerHTML = html;
+  $('tec-checklist-card').hidden = true;
+}
+
 /* --------------------------------------------- planilha de avanço (espelho) */
 function podeMexer(p) { return !!p && Projeto.aberto(p) && (Auth.souGerente() || p.responsavelUid === Auth.uid()); }
 

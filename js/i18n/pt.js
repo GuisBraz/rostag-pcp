@@ -907,4 +907,8 @@ export default {
   'cf.tipoOk':'Etapa {0} cadastrada.', 'cf.tipoEmUso':'Esse recurso está em OPs programadas.', 'cf.extraOk':'Data {0} cadastrada.',
   'cf.programarNota2':'Por etapa: quantas pessoas, início e fim. Deixe as datas em branco se a OP não tem a etapa. 0 pessoas com datas = programada sem recurso.',
   'n.prod-sem-recurso':'{0}: OP {1} programada sem recurso', 'n.prod-sem-recursoM':'Com {0} · dê recurso de novo ou reprograme.',
+  'tec.opsArea':'Ordens de produção · {0}', 'lops.apagarSel':'🗑 Apagar selecionadas ({0})', 'lops.apagarTodas':'Apagar todas as OPs do projeto', 'lops.marcarTodas':'Marcar todas',
+  'lops.marcar':'Marcar a OP {0}', 'lops.travaRnc':'Tem RNC aberta: encerre a RNC antes de apagar.', 'lops.travaCq':'Já passou pelo CQ: só a Gerência ou o GP apagam.',
+  'lops.nadaApagar':'Nenhuma dessas OPs pode ser apagada.', 'lops.apagarQ':'Apagar {0} OP(s) do projeto {1}? Não dá para desfazer.', 'lops.apagarProg':'{0} delas estão programadas (saem da programação).',
+  'lops.apagarFicam':'{0} ficam (RNC aberta ou já passaram pelo CQ).', 'lops.digiteCommessa':'Para confirmar, digite a commessa: {0}', 'lops.commessaErrada':'A commessa não confere — nada foi apagado.', 'lops.apagadas':'{0} OP(s) apagada(s).',
 };

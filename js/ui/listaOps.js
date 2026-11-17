@@ -18,7 +18,10 @@ import { chave } from '../dominio/planilha.js';
 import * as Auth from '../dados/auth.js';
 import * as DadosAvanco from '../dados/avanco.js';
 import { $, registrarAcoes } from './dom.js';
-import { abrirModal } from './modal.js';
+import { abrirModal, confirmar, pedirTexto } from './modal.js';
+import { toast } from './toast.js';
+import { avisoErro } from './app.js';
+import * as Ops from '../dados/ops.js';
 import { naFila, pillSituacao, classeAtraso } from './opDetalhe.js';
 
 const SITUACOES = ['todas', 'emAberto', 'programada', 'baixaCq', 'rnc', 'encerrada'];
@@ -34,6 +37,7 @@ let ordem = { campo: 'numero', dir: 1 };   // vale entre aberturas, como no Expl
  */
 export function abrirListaOps(modo) {
   const areaIni = modo.area || Auth.areaProgramador() || '';
+  marcadas = {};
   aberta = { projetoId: modo.projetoId || null, grupo: modo.grupo || null, sit: modo.sit || 'todas', alerta: '', area: areaIni, projeto: '', busca: modo.busca || '', planilha: undefined };
   $('lops-busca').value = aberta.busca;
   $('lops-area').value = areaIni;
@@ -74,6 +78,17 @@ function programacaoDe(o) {
 }
 
 function podeAdicionar(p) { return !!p && (Auth.souGerente() || p.responsavelUid === Auth.uid()); }
+// Apagar OPs: Gerência, GP do projeto e técnico responsável (o técnico só as em aberto).
+function podeApagar(p) { return !!p && (Auth.souGerente() || p.responsavelUid === Auth.uid() || (Auth.papel() === 'gp' && p.gpUid === Auth.uid())); }
+function soAberta() { return !Auth.souGerente() && Auth.papel() !== 'gp'; }
+function rncAberta(o) { return (estado.rncs || []).some(function (r) { return r.opId === o.id && r.situacao !== 'encerrada'; }) || !!o.rncAtualId; }
+// por que a OP não pode ser apagada (ou null)
+function travaApagar(o) {
+  if (rncAberta(o)) return T('lops.travaRnc');
+  if (soAberta() && Producao.statusOp(o) !== 'aberta') return T('lops.travaCq');
+  return null;
+}
+let marcadas = {};
 
 // Colunas: chave de ordenação, título, classe e como comparar.
 function colunas(sit) {
@@ -104,11 +119,15 @@ export function render() {
   const op0 = aberta.projetoId && !p ? estado.ops.find(function (o) { return o.projetoId === aberta.projetoId; }) : null;
   $('lops-titulo').textContent = p ? T('lops.tituloProjeto', p.commessa) : (op0 ? T('lops.tituloProjeto', op0.commessa) : T('lops.titulo.' + aberta.grupo));
   $('lops-sub').textContent = p ? (p.descricao || '') : (op0 ? (op0.descricaoProjeto || '') : T('lops.sub'));
-  const adicionar = podeAdicionar(p);
-  $('lops-acoes').innerHTML = adicionar
+  const adicionar = podeAdicionar(p), apaga = podeApagar(p);
+  const nMarc = Object.keys(marcadas).filter(function (id) { return marcadas[id]; }).length;
+  $('lops-acoes').innerHTML = (adicionar
     ? '<button type="button" class="btn btn-outline" data-acao="addOpsPdf" data-arg="' + esc(p.id) + '">' + esc(T('lops.pdf')) + '</button>' +
       '<button type="button" class="btn btn-outline" data-acao="novaOpProjeto" data-arg="' + esc(p.id) + '">' + esc(T('lops.manual')) + '</button>'
-    : '';
+    : '') + (apaga
+    ? '<button type="button" class="btn btn-danger" data-acao="apagarMarcadasOps"' + (nMarc ? '' : ' disabled') + '>' + esc(T('lops.apagarSel', nMarc)) + '</button>' +
+      '<button type="button" class="btn btn-outline lops-apagar-todas" data-acao="apagarTodasOps">' + esc(T('lops.apagarTodas')) + '</button>'
+    : '');
   // base: as OPs do projeto (todas) ou as dos projetos em andamento, no grupo pedido
   let base = estado.ops.filter(function (o) {
     if (aberta.projetoId) return o.projetoId === aberta.projetoId;
@@ -165,14 +184,21 @@ export function render() {
       ' aria-sort="' + (atual ? (ordem.dir > 0 ? 'ascending' : 'descending') : 'none') + '" title="' + esc(T('lops.ordenar')) + '">' +
       esc(x.t) + '<span class="lops-seta">' + (atual ? (ordem.dir > 0 ? '▲' : '▼') : '') + '</span></th>';
   }).join('');
-  $('lops-corpo').innerHTML = '<div class="table-wrap lops-tabela"><table class="ord-tab"><thead><tr>' + cab + '</tr></thead><tbody>' +
+  const marca = apaga;
+  const apagaveis = marca ? lista.filter(function (o) { return !travaApagar(o); }) : [];
+  const todasMarc = apagaveis.length && apagaveis.every(function (o) { return marcadas[o.id]; });
+  $('lops-corpo').innerHTML = '<div class="table-wrap lops-tabela"><table class="ord-tab"><thead><tr>' +
+    (marca ? '<th class="lops-marca"><input type="checkbox" data-change="marcarTodasOps"' + (todasMarc ? ' checked' : '') + (apagaveis.length ? '' : ' disabled') + ' aria-label="' + esc(T('lops.marcarTodas')) + '" title="' + esc(T('lops.marcarTodas')) + '"></th>' : '') +
+    cab + '</tr></thead><tbody>' +
     lista.map(function (o) {
       const pc = Producao.pecasOp(o);
       const sr = semRoteiro(o), fp = foraPlanilha(o);
       const roteiro = sr ? '<span class="lops-badge lops-badge-semRoteiro">' + esc(T('lops.badge.semRoteiro')) + '</span>'
         : esc(T('fab.roteiro', o.operacoes.length, numeroBr(Math.round(horasDe(o) * 100) / 100)));
       const marcas = Object.keys(ICONES).filter(function (k) { return o.marcas && o.marcas[k]; }).map(function (k) { return '<span title="' + esc(T('av.marca.' + k)) + '">' + ICONES[k] + '</span>'; }).join(' ');
-      return '<tr class="ord-linha' + classeAtraso(o) + (sr ? ' lops-linha-semRoteiro' : '') + (fp ? ' lops-linha-fora' : '') + '" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '" tabindex="0" role="button">' +
+      const trava = marca ? travaApagar(o) : null;
+      return '<tr class="ord-linha' + classeAtraso(o) + (sr ? ' lops-linha-semRoteiro' : '') + (fp ? ' lops-linha-fora' : '') + (marcadas[o.id] ? ' lops-marcada' : '') + '" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '" tabindex="0" role="button">' +
+        (marca ? '<td class="lops-marca"><input type="checkbox" data-change="marcarOpLista" data-arg="' + esc(o.id) + '"' + (marcadas[o.id] && !trava ? ' checked' : '') + (trava ? ' disabled title="' + esc(trava) + '"' : '') + ' aria-label="' + esc(T('lops.marcar', o.numero)) + '"></td>' : '') +
         (aberta.projetoId ? '' : '<td class="mono">' + esc(o.commessa) + '</td>') +
         '<td class="mono">' + esc(o.numero) + (fp ? '<div><span class="lops-badge lops-badge-foraPlanilha">' + esc(T('lops.badge.foraPlanilha')) + '</span></div>' : '') + '</td>' +
         '<td><span class="pill-area area-' + esc(o.area) + '">' + esc(T('area.' + o.area)) + '</span></td>' +
@@ -193,7 +219,39 @@ document.addEventListener('rostag:planilhaGravada', function (e) {
   DadosAvanco.ler(e.detail).then(function (doc) { if (aberta && aberta.projetoId === e.detail) { aberta.planilha = numerosDaPlanilha(doc); render(); } }).catch(function () {});
 });
 
+// Apagar as OPs marcadas (ou todas): avisa as programadas e pede confirmação.
+function apagarOps(lista, todas) {
+  const p = aberta && buscarProjeto(aberta.projetoId);
+  if (!p || !podeApagar(p) || !lista.length) return;
+  const ok = lista.filter(function (o) { return !travaApagar(o); }), ficam = lista.length - ok.length;
+  if (!ok.length) { toast(T('lops.nadaApagar'), { tipo: 'erro' }); return; }
+  const fila = naFila();
+  const prog = ok.filter(function (o) { return o.programacao || fila.has(o.id); }).length;
+  const msg = T('lops.apagarQ', ok.length, p.commessa) + (prog ? ' ' + T('lops.apagarProg', prog) : '') + (ficam ? ' ' + T('lops.apagarFicam', ficam) : '');
+  const confirmou = todas
+    ? pedirTexto(msg + ' ' + T('lops.digiteCommessa', p.commessa), { titulo: T('lops.apagarTodas'), textoOk: T('btn.excluir'), perigo: true })
+        .then(function (t) { if (t == null) return false; if (String(t).trim() !== p.commessa) { toast(T('lops.commessaErrada'), { tipo: 'erro' }); return false; } return true; })
+    : confirmar(msg, { titulo: T('lops.apagarSel', ok.length), textoOk: T('btn.excluir'), perigo: true });
+  confirmou.then(function (sim) {
+    if (!sim) return;
+    Ops.apagarVarias(ok.map(function (o) { return o.id; })).then(function () {
+      marcadas = {};
+      toast(T('lops.apagadas', ok.length));
+      render();
+    }).catch(function (e) { avisoErro(e); });
+  });
+}
+
 registrarAcoes({
+  marcarOpLista: function (_v, _b, el) { marcadas[el.dataset.arg] = !!el.checked; render(); },
+  marcarTodasOps: function (_v, _b, el) {
+    const p = aberta && buscarProjeto(aberta.projetoId);
+    if (!p) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#lops-corpo input[data-change="marcarOpLista"]:not([disabled])'), function (x) { marcadas[x.dataset.arg] = !!el.checked; });
+    render();
+  },
+  apagarMarcadasOps: function () { apagarOps(estado.ops.filter(function (o) { return marcadas[o.id] && aberta && o.projetoId === aberta.projetoId; }), false); },
+  apagarTodasOps: function () { if (aberta) apagarOps(estado.ops.filter(function (o) { return o.projetoId === aberta.projetoId; }), true); },
   filtroListaOps: function (k) { if (aberta && SITUACOES.indexOf(k) >= 0) { aberta.sit = k; aberta.alerta = ''; render(); } },
   alertaListaOps: function (k) { if (aberta && ALERTAS.indexOf(k) >= 0) { aberta.alerta = aberta.alerta === k ? '' : k; render(); } },
   ordenarListaOps: function (c) {
