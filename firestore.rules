@@ -253,8 +253,9 @@ service cloud.firestore {
               && request.resource.data.pedido.motivo is string
               && request.resource.data.pedido.motivo.size() > 0 && request.resource.data.pedido.motivo.size() <= 200);
         }
-        allow read: if vejoProjeto(equipeId, resource.data)
-          || souPapel(equipeId, 'prog_usinagem') || souPapel(equipeId, 'prog_caldeiraria');
+        // leitura: toda a equipe (a Linha do Tempo mostra a situação geral da
+        // fábrica para todos os cargos); editar continua só com quem é do projeto
+        allow read: if membroDe(equipeId);
         allow create: if souGerenteDe(equipeId)
           || (souPapel(equipeId, 'gp') && request.resource.data.gpUid == request.auth.uid
             && request.resource.data.get('status', 'ativo') in ['ativo', 'concluido']
@@ -371,8 +372,11 @@ service cloud.firestore {
             || (cald && k.hasOnly(['programacao', 'desprogramadaEm'])
               && (d.get('programacao', null) == null
                 || (d.programacao is map
-                  && d.programacao.keys().hasOnly(['terceirizadaId', 'terceirizada', 'inicio', 'previsaoFim', 'historico', 'em', 'porUid'])
+                  && d.programacao.keys().hasOnly(['terceirizadaId', 'terceirizada', 'inicio', 'previsaoFim', 'historico', 'em', 'porUid', 'etapas', 'grupo', 'semRecurso'])
                   && d.programacao.get('historico', []) is list && d.programacao.get('historico', []).size() <= 30
+                  && d.programacao.get('etapas', []) is list && d.programacao.get('etapas', []).size() <= 12
+                  && (d.programacao.get('grupo', null) == null || (d.programacao.grupo is string && d.programacao.grupo.size() <= 40))
+                  && d.programacao.get('semRecurso', false) is bool
                   && d.programacao.terceirizadaId is string && d.programacao.previsaoFim is string
                   && d.programacao.porUid == request.auth.uid)))
             || (usi && k.hasOnly(['horasReais', 'desprogramadaEm'])
@@ -485,8 +489,15 @@ service cloud.firestore {
       // de usinagem e o gerente cadastram, editam e apagam.
       match /maquinas/{maquinaId} {
         allow read: if membroDe(equipeId);
-        allow create, update: if (souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId))
-          && request.resource.data.keys().hasOnly(['nome', 'horasDia', 'ativa', 'tipo', 'criadoEm', 'atualizadoEm', 'fila'])
+        function areaMaqOk(area) {
+          return souGerenteDe(equipeId)
+            || (area == 'usinagem' && souPapel(equipeId, 'prog_usinagem'))
+            || (area == 'caldeiraria' && souPapel(equipeId, 'prog_caldeiraria'));
+        }
+        allow create, update: if areaMaqOk(request.resource.data.get('area', 'usinagem'))
+          && (resource == null || areaMaqOk(resource.data.get('area', 'usinagem')))
+          && request.resource.data.get('area', 'usinagem') in ['usinagem', 'caldeiraria']
+          && request.resource.data.keys().hasOnly(['nome', 'horasDia', 'ativa', 'tipo', 'area', 'criadoEm', 'atualizadoEm', 'fila'])
           && request.resource.data.get('tipo', '') is string && request.resource.data.get('tipo', '').size() <= 40
           && request.resource.data.get('fila', []) is list && request.resource.data.get('fila', []).size() <= 300
           && request.resource.data.nome is string
@@ -494,7 +505,7 @@ service cloud.firestore {
           && request.resource.data.horasDia is number
           && request.resource.data.horasDia > 0 && request.resource.data.horasDia <= 24
           && request.resource.data.ativa is bool;
-        allow delete: if souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId);
+        allow delete: if areaMaqOk(resource.data.get('area', 'usinagem'));
       }
 
       // Terceirizadas da caldeiraria (onde a OP "está em fábrica"): toda a
@@ -617,9 +628,19 @@ service cloud.firestore {
           && request.resource.data.itens.size() > 0 && request.resource.data.itens.size() <= 60
           && request.resource.data.porUid == request.auth.uid
           && request.resource.data.atualizadoEm is string;
+        // recursos da caldeiraria (Carga Fábrica): empresas, pessoas por recurso,
+        // dias de trabalho e datas avulsas — programadora de caldeiraria e gerente
+        allow create, update: if doc == 'recursosCald'
+          && (souPapel(equipeId, 'prog_caldeiraria') || souGerenteDe(equipeId))
+          && request.resource.data.keys().hasOnly(['tipos', 'empresas', 'dias', 'extras', 'atualizadoEm', 'atualizadoPorUid'])
+          && request.resource.data.tipos is list && request.resource.data.tipos.size() <= 12
+          && request.resource.data.empresas is list && request.resource.data.empresas.size() <= 20
+          && request.resource.data.dias is list && request.resource.data.dias.size() == 7
+          && request.resource.data.extras is map && request.resource.data.extras.size() <= 120
+          && request.resource.data.atualizadoPorUid == request.auth.uid;
         // setor do PDF da OP → máquina (carga máquina): programador de usinagem e gerente
         allow create, update: if doc == 'setores'
-          && (souPapel(equipeId, 'prog_usinagem') || souGerenteDe(equipeId))
+          && (souPapel(equipeId, 'prog_usinagem') || souPapel(equipeId, 'prog_caldeiraria') || souGerenteDe(equipeId))
           && request.resource.data.keys().hasOnly(['mapa', 'atualizadoEm', 'atualizadoPorUid'])
           && request.resource.data.mapa is map && request.resource.data.mapa.size() <= 200
           && request.resource.data.atualizadoPorUid == request.auth.uid;

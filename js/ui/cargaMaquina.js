@@ -31,8 +31,13 @@ const DIAS_MAPA = 28;
 const SVG = function (d) { return '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; };
 const LIXEIRA = SVG('<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>');
 
-function podeEditar() { return Auth.souGerente() || Auth.areaProgramador() === 'usinagem'; }
-function ativas() { return (estado.maquinas || []).filter(function (m) { return m.ativa !== false; }); }
+// área das máquinas mostradas: 'usinagem' ou 'caldeiraria' (Carga Máquina de cortes)
+let AREA = 'usinagem';
+export function areaMaquina(m) { return m && m.area === 'caldeiraria' ? 'caldeiraria' : 'usinagem'; }
+function podeEditar() { return Auth.souGerente() || Auth.areaProgramador() === AREA; }
+function ativas() { return (estado.maquinas || []).filter(function (m) { return m.ativa !== false && areaMaquina(m) === AREA; }); }
+// a baixa do CQ da caldeiraria fica na Carga Fábrica
+function abas() { return AREA === 'caldeiraria' ? ABAS.filter(function (a) { return a !== 'baixa'; }) : ABAS; }
 function tipoDe(m) { return String(m.tipo || '').trim() || T('cm.semTipo'); }
 function corOp(id) { let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0; return PALETA[h % PALETA.length]; }
 function grupos() {
@@ -185,7 +190,9 @@ function nomeOperacao(it) {
   return (x.n + 1) + '/' + tot + ' ' + (x.texto || x.setor || '');
 }
 
-export function renderCargaMaquina(alvoId) {
+export function renderCargaMaquina(alvoId, area) {
+  if (area) AREA = area === 'caldeiraria' ? 'caldeiraria' : 'usinagem';
+  if (abas().indexOf(ui.aba) < 0) ui.aba = 'plan';
   const alvo = $(alvoId);
   if (!alvo) return;
   const h = hoje();
@@ -195,11 +202,11 @@ export function renderCargaMaquina(alvoId) {
   // números do topo
   let aguard = 0;
   const vistos = {};
-  maqs.forEach(function (m) { Prog.aguardandoNaMaquina(m, estado.ops.filter(opVisivel), estado.maquinas, estado.setores).forEach(function (x) { if (!vistos[x.chave]) { vistos[x.chave] = 1; aguard++; } }); });
+  maqs.forEach(function (m) { Prog.aguardandoNaMaquina(m, estado.ops.filter(opVisivel), estado.maquinas, estado.setores, AREA).forEach(function (x) { if (!vistos[x.chave]) { vistos[x.chave] = 1; aguard++; } }); });
   let prog = 0, atraso = 0;
   Object.keys(ag).forEach(function (k) { ag[k].forEach(function (it) { if (it.op && !it.concluida && !it.ausente) { prog++; if (it.atraso) atraso++; } }); });
   const baixa = estado.ops.filter(function (o) { return o.area === 'usinagem' && opVisivel(o) && Prog.situacao(o, true) === 'baixaCq'; });
-  const nAba = { plan: prog, mapa: maqs.length, baixa: baixa.length, config: (estado.maquinas || []).length };
+  const nAba = { plan: prog, mapa: maqs.length, baixa: baixa.length, config: (estado.maquinas || []).filter(function (m) { return areaMaquina(m) === AREA; }).length };
   const kpis = '<span class="cm-kpi"><b>' + aguard + '</b> ' + esc(T('cm.kAguardando')) + '</span><span class="cm-kpi"><b>' + prog + '</b> ' + esc(T('cm.kProgramadas')) + '</span>' +
     '<span class="cm-kpi"><b style="color:var(' + (atraso ? '--rust' : '--green') + ')">' + atraso + '</b> ' + esc(T('cm.kAtraso')) + '</span>';
   const botao = '<button type="button" class="cm-recolher" data-acao="recolherCargaMaq" aria-expanded="' + !ui.recolhido + '" title="' + esc(T(ui.recolhido ? 'cm.mostrar' : 'cm.recolher')) + '">' + (ui.recolhido ? '▾' : '▴') + '</button>';
@@ -213,7 +220,7 @@ export function renderCargaMaquina(alvoId) {
     return;
   }
   alvo.innerHTML =
-    '<div class="cm-topo">' + botao + '<div class="fab-visoes cm-abas" role="tablist">' + ABAS.map(function (a) {
+    '<div class="cm-topo">' + botao + '<div class="fab-visoes cm-abas" role="tablist">' + abas().map(function (a) {
       return '<button type="button" role="tab" aria-selected="' + (ui.aba === a) + '" class="' + (ui.aba === a ? 'ativa' : '') + '" data-acao="abaCargaMaq" data-arg="' + a + '" title="' + esc(T('cm.dicaAtalho')) + '">' + esc(T('cm.aba.' + a)) + '<b>' + nAba[a] + '</b></button>';
     }).join('') + '</div>' +
     '<div class="cm-kpis">' + kpis + '</div></div>' +
@@ -271,7 +278,7 @@ function planilha(ag, h) {
       '<td><span class="pill-cm cm-p-' + sit + '">' + esc(sitTxt) + '</span></td>' +
       (editar ? '<td class="c cm-acoes"><button type="button" class="cm-ic cm-ic-tirar" data-acao="tirarCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.tirar')) + '" aria-label="' + esc(T('cm.tirar')) + '">' + LIXEIRA + '</button></td>' : '') + '</tr>';
   }).join('');
-  const esp = editar ? Prog.aguardandoNaMaquina(m, estado.ops.filter(opVisivel), estado.maquinas, estado.setores).sort(function (a, b) {
+  const esp = editar ? Prog.aguardandoNaMaquina(m, estado.ops.filter(opVisivel), estado.maquinas, estado.setores, AREA).sort(function (a, b) {
     const pa = buscarProjeto(a.op.projetoId), pb = buscarProjeto(b.op.projetoId);
     return String((pa && pa.prodFim) || '9').localeCompare(String((pb && pb.prodFim) || '9')) || compararNatural(a.op.numero, b.op.numero);
   }) : [];
@@ -598,7 +605,7 @@ function agoraLocal() {
 }
 
 registrarAcoes({
-  abaCargaMaq: function (a) { if (ABAS.indexOf(a) >= 0) { ui.aba = a; redesenhar(); } },
+  abaCargaMaq: function (a) { if (abas().indexOf(a) >= 0) { ui.aba = a; redesenhar(); } },
   maqCargaMaq: function (id) { ui.maq = id; redesenhar(); },
   mapaOpCargaMaq: function (mid, chave) { popupOp(mid, chave); },
   zoomCargaMaq: function (z) {

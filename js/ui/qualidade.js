@@ -296,7 +296,9 @@ export function rncsEsperandoMim() {
 
 export function renderRnc() {
   const f = filtroRnc || filtroPadrao();
-  const todas = (estado.rncs || []).slice().sort(function (a, b) { return String(b.criadoEm || '').localeCompare(String(a.criadoEm || '')); });
+  const areaP = Auth.areaProgramador();
+  const todas = (estado.rncs || []).filter(function (r) { return !areaP || r.area === areaP; })
+    .sort(function (a, b) { return String(b.criadoEm || '').localeCompare(String(a.criadoEm || '')); });
   const conta = { todas: todas.length, disposicao: 0, cq: 0, encerrada: 0 };
   todas.forEach(function (r) { conta[Rnc.etapa(r)]++; });
   $('rnc-filtros').innerHTML = FILTROS_RNC.map(function (k) {

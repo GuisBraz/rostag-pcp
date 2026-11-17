@@ -21,13 +21,13 @@ import { toast } from './toast.js';
 import { avisoErro } from './app.js';
 import { desenhar, cor, falhaGrafico } from './graficos.js';
 
-let abaCarga = null;          // 'usinagem' | 'caldeiraria'
+let abaCarga = null;          // 'usinagem' | 'cortes' (máquinas da caldeiraria) | 'caldeiraria' (kg)
 
 function areasPermitidas() {
   const p = Auth.papel();
   if (p === 'prog_usinagem') return ['usinagem'];
-  if (p === 'prog_caldeiraria') return ['caldeiraria'];
-  if (p === 'gerente_pcp') return ['usinagem', 'caldeiraria'];
+  if (p === 'prog_caldeiraria') return ['cortes'];
+  if (p === 'gerente_pcp') return ['usinagem', 'cortes', 'caldeiraria'];
   return [];
 }
 function podeEditar(area) { return areasPermitidas().indexOf(area) >= 0; }
@@ -44,9 +44,9 @@ export function renderCarga() {
     return '<button type="button" class="carga-aba' + (a === abaCarga ? ' ativa' : '') + '" role="tab" aria-selected="' + (a === abaCarga) + '"' +
       ' data-acao="abaCarga" data-arg="' + a + '">' + esc(T('cg.aba.' + a)) + '</button>';
   }).join('') : '';
-  $('carga-usinagem').hidden = abaCarga !== 'usinagem';
+  $('carga-usinagem').hidden = abaCarga === 'caldeiraria';
   $('carga-caldeiraria').hidden = abaCarga !== 'caldeiraria';
-  if (abaCarga === 'usinagem') renderUsinagem(); else renderCaldeiraria();
+  if (abaCarga === 'caldeiraria') renderCaldeiraria(); else renderUsinagem();
 }
 
 /* ------------------------------------------------------- carga máquina */
@@ -89,8 +89,14 @@ function renderSetores(editar) {
   }).join('');
 }
 
+function areaMaq() { return abaCarga === 'cortes' ? 'caldeiraria' : 'usinagem'; }
+function daArea(m) { return (m.area === 'caldeiraria' ? 'caldeiraria' : 'usinagem') === areaMaq(); }
 function renderUsinagem() {
   const h = hoje(), x = resumoMaquinas(h), r = x.r;
+  // a carga em horas por semana (resumo e grade) é da usinagem
+  $('cu-resumo').style.display = abaCarga === 'cortes' ? 'none' : '';
+  const bloco = document.querySelector('#cu-config .carga-bloco');
+  if (bloco) bloco.style.display = abaCarga === 'cortes' ? 'none' : '';
   const pctSemana = Carga.ocupacao(x.semana[0], x.capTotal);
   const semProg = r.resumo.semMaquina + r.resumo.semHoras;
   $('cu-resumo').innerHTML =
@@ -121,15 +127,16 @@ function renderUsinagem() {
   }
 
   // programação: aguardando, fila de cada máquina, baixa do CQ e RNC
-  const editar = podeEditar('usinagem');
-  renderCargaMaquina('cu-programacao');
+  const editar = podeEditar(abaCarga);
+  renderCargaMaquina('cu-programacao', areaMaq());
 
   // máquinas (o tipo agrupa: operação de uma mandrilhadora pode ir em qualquer mandrilhadora)
   $('cu-maq-form').style.display = editar ? '' : 'none';
-  const tipos = Array.from(new Set((estado.maquinas || []).map(function (m) { return String(m.tipo || '').trim(); }).filter(Boolean))).sort();
+  const maqsArea = (estado.maquinas || []).filter(daArea);
+  const tipos = Array.from(new Set(maqsArea.map(function (m) { return String(m.tipo || '').trim(); }).filter(Boolean))).sort();
   $('cu-tipos').innerHTML = tipos.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
   renderSetores(editar);
-  $('cu-maquinas').innerHTML = (estado.maquinas || []).length ? (estado.maquinas || []).map(function (m) {
+  $('cu-maquinas').innerHTML = maqsArea.length ? maqsArea.map(function (m) {
     if (!editar) return '<div class="carga-maq-linha"><b>' + esc(m.nome) + '</b><span class="hint-txt">' + esc((m.tipo ? m.tipo + ' · ' : '') + T('cg.capDia', fmtNum(m.horasDia, 1))) + (m.ativa === false ? ' · ' + esc(T('cg.inativa')) : '') + '</span></div>';
     return '<div class="carga-maq-linha' + (m.ativa === false ? ' inativa' : '') + '">' +
       '<input value="' + esc(m.nome) + '" maxlength="60" data-change="editarMaquinaNome" data-arg="' + esc(m.id) + '" aria-label="' + esc(T('cg.nomeMaquina')) + '">' +
@@ -214,7 +221,7 @@ registrarAcoes({
   adicionarMaquina: function () {
     const nome = $('cu-maq-nome').value.trim(), horas = Number($('cu-maq-horas').value), tipo = $('cu-maq-tipo').value.trim();
     if (!nome || !(horas > 0 && horas <= 24)) { toast(T('cg.maquinaInvalida'), { tipo: 'erro' }); return; }
-    DadosCarga.salvarMaquina({ nome: nome, horasDia: horas, ativa: true, tipo: tipo }).then(function () {
+    DadosCarga.salvarMaquina({ nome: nome, horasDia: horas, ativa: true, tipo: tipo, area: areaMaq() }).then(function () {
       $('cu-maq-nome').value = ''; toast(T('cg.maquinaSalva', nome));
     }).catch(function (e) { avisoErro(e); });
   },

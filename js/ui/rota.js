@@ -32,13 +32,15 @@ export function abaPermitida(aba) {
   const papel = Auth.papel();
   const area = Papeis.areaDoProgramador(papel);
   const gerOuGp = Papeis.ehGerente(papel) || papel === 'gp';   // as OPs deles ficam em Ordens de Produção
-  if (aba === 'finalizadas') return !gerOuGp;
+  if (aba === 'finalizadas') return !gerOuGp && !area;
+  if (aba === 'linha') return true;   // a situação geral da fábrica: todos os cargos
+  if (aba === 'projetos' && area) return true;   // programadores: só leitura
   if (aba === 'config' || aba === 'notificacoes') return true;
   if (aba === 'fabrica') return area !== 'usinagem' && papel !== 'tecnico' && !gerOuGp;   // o técnico vê as OPs dentro do projeto
   if (aba === 'ordens') return !!area || gerOuGp || papel === 'tecnico';
   if (aba === 'rnc') return Papeis.veRnc(papel) || Papeis.ehCQ(papel) || !!area;
   if (aba === 'painel' && Papeis.ehCQ(papel)) return true;
-  if (aba === 'carga') return Papeis.veCarga(papel) && area !== 'caldeiraria' && !gerOuGp;
+  if (aba === 'carga') return Papeis.veCarga(papel) && !gerOuGp;
   if (aba === 'painel' || aba === 'linha') return Papeis.leProjetos(papel);
   return Papeis.veProjetos(papel);
 }
@@ -71,7 +73,8 @@ export function aplicarRota() {
   $('tab-' + aba).classList.add('active');
   // no Painel Geral o título diz o módulo de quem está logado
   const modulo = aba === 'painel' ? Papeis.moduloDe(Auth.papel()) : null;
-  const nomeAba = aba === 'carga' && Auth.areaProgramador() === 'usinagem' ? 'cargaMaquina' : (aba === 'fabrica' && Auth.areaProgramador() === 'caldeiraria' ? 'cargaFabrica' : aba);
+  const areaP = Auth.areaProgramador();
+  const nomeAba = aba === 'carga' && areaP === 'usinagem' ? 'cargaMaquina' : (aba === 'carga' && areaP === 'caldeiraria' ? 'cargaCortes' : (aba === 'fabrica' && areaP === 'caldeiraria' ? 'cargaFabrica' : aba));
   $('page-title').innerHTML = esc(T('nav.' + nomeAba)) + (modulo ? '<span class="titulo-modulo"><span class="titulo-traco"> — </span>' + esc(T('modulo.' + modulo)) + '</span>' : '');
   // o Painel Geral não tem subtítulo (a saudação ocupa o topo)
   // o Painel Geral e a Carga não têm subtítulo (a Carga usa o espaço para a programação)

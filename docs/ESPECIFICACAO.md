@@ -166,6 +166,40 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   `op.destino` (Gerência, GP e técnico do projeto); sem destino gravado, peça
   com pintura marcada vai para Pintura.
 
+## 4.1.1 Menus, Linha do Tempo para todos e Carga Fábrica por recursos
+
+- **Menu do programador de usinagem:** Painel Geral, Carga Máquina, Projetos,
+  Linha do Tempo, Ordens de Produção, RNC (só da usinagem), Minhas tarefas,
+  Notificações. **Caldeiraria:** Painel Geral, Carga Fábrica, Carga Máquina
+  (cortes), Projetos, Linha do Tempo, Ordens de Produção, RNC (só da
+  caldeiraria), Minhas tarefas, Notificações. "Todas as OPs" sai dos dois.
+- **Projetos para programadores:** só leitura (sem Novo projeto, Finalizar e
+  chat), só os projetos com OPs da área dele.
+- **Linha do Tempo para todos os cargos:** visão 🏭 Fábrica (todos os projetos
+  da equipe, com o GP de cada um; o de outra pessoa só mostra, não abre) e
+  👤 Meus projetos (GP, técnico e programadores). A regra deixa qualquer membro
+  ler os projetos; editar e o chat continuam só de quem é do projeto. As outras
+  telas seguem só com os projetos de cada um.
+- **Ordens de Produção em cartões para todos:** um cartão por projeto (só os
+  seus); programador vê só as OPs da área. Busca e situação filtram os
+  cartões; "Ver as OPs" abre a lista já na área, situação e busca.
+- **Carga Máquina (cortes):** a máquina tem área (`maquinas.area`: usinagem
+  ou caldeiraria). A programadora de caldeiraria programa só as máquinas de
+  cortes e só OPs de caldeiraria (mesma tela da usinagem, sem Baixa do CQ).
+- **Carga Fábrica por recursos:** abas Aguardando, Lista, Mapa de recursos,
+  Baixa do CQ e Recursos. Cadastro (`config/recursosCald`): empresas (começa
+  com a YANI), pessoas de cada recurso por empresa (Montagem = caldeireiros,
+  Solda = soldadores, Acabamento = ajudantes, e outros que ela criar; o
+  controle de qualidade não entra), dias de trabalho (seg–sex por padrão) e
+  datas avulsas. Programar: empresa e, por etapa, pessoas, início e fim
+  (datas); não passa do que a empresa tem em nenhum dia (mostra os dias que
+  faltam). OPs programadas juntas dividem a equipe. A pessoa fica livre no fim
+  da etapa ou na baixa da etapa; reprogramar segura o recurso até a nova data;
+  0 pessoas com datas (recurso deslocado) ou falta de gente = "Programada sem
+  recurso", com alerta no sino. Carga em peças e kg por semana e por empresa.
+  SOFIR e terceirizadas saem; programação antiga fica marcada até reprogramar.
+  `op.programacao` ganha `etapas [{t, q, i, f, b}]`, `grupo` e `semRecurso`.
+
 ## 4.2 Página do projeto do técnico e Todas as OPs
 
 - **Cartões no projeto (só técnico):** **Checklist** (abre e fecha o cronograma

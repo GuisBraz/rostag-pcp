@@ -1435,3 +1435,59 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .cm-tl-dfundo.folga { background: repeating-linear-gradient(135deg, var(--bg-panel) 0 4px, var(--bg-panel-alt) 4px 8px); }
 .cm-tl-dia.hoje { background: var(--rust); }
 .cm-tl-dia.folga { background: #44587F; }
+
+/* programador consultando um projeto: sem chat e sem ações de edição */
+.visao-programador #detail-chat, .visao-programador .detail-chat { display: none !important; }
+
+.tl-visao { margin: 0; }
+
+/* Carga Fábrica nova: empresas, recursos por etapa, carga por semana, mapa */
+.cf-carga { padding: 0; margin-bottom: 12px; }
+.cf-carga-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cf-carga-tab th { text-align: right; padding: 8px 10px; font-size: 10.5px; font-weight: 800; color: var(--ink-dim); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.cf-carga-tab th:first-child, .cf-carga-tab td:first-child { text-align: left; }
+.cf-carga-tab td { padding: 7px 10px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+.cf-carga-tab td.num b { display: block; font-family: var(--mono); font-size: 12.5px; }
+.cf-carga-tab td.num span { font-size: 11px; color: var(--ink-dim); font-family: var(--mono); }
+.cf-emp-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 800; color: #fff; background: var(--cor); white-space: nowrap; }
+.cf-etapas { display: flex; flex-direction: column; gap: 3px; }
+.cf-et { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 11.5px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-panel); white-space: nowrap; }
+.cf-et b { font-weight: 800; }
+.cf-et-andando { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 10%, var(--bg-panel)); }
+.cf-et-feita { opacity: .6; text-decoration: line-through; }
+.cf-et-sem { border-color: var(--rust); background: var(--rust-bg); color: var(--rust); }
+.cf-et-baixa { margin-left: 4px; font-size: 11px; }
+.ord-tab tr.cf-semrec td { background: var(--rust-bg); }
+.cf-semrec-pill { background: var(--rust); color: #fff; }
+.cf-antiga { background: var(--bg-panel-alt); color: var(--ink-dim); border: 1px dashed var(--line); }
+.cf-et-form { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.cf-et-cab, .cf-et-linha { display: grid; grid-template-columns: minmax(120px, 1.3fr) 70px 1fr 1fr minmax(90px, .9fr); gap: 8px; align-items: center; }
+.cf-et-cab { font-size: 10.5px; font-weight: 800; color: var(--ink-dim); text-transform: uppercase; letter-spacing: .04em; }
+.cf-et-linha small { display: block; color: var(--ink-faint); font-size: 11px; }
+.cf-et-linha input { width: 100%; min-width: 0; }
+.cf-livres { font-size: 11.5px; color: var(--green); font-weight: 700; }
+.cf-livres.falta { color: var(--rust); }
+@media (max-width: 640px) { .cf-et-cab { display: none; } .cf-et-linha { grid-template-columns: 1fr 1fr; } }
+.cf-recursos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-items: start; }
+.cf-rec-tab .cf-qtd { width: 70px; text-align: right; }
+.cf-dias { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.cf-dia { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; font-weight: 700; text-transform: capitalize; cursor: pointer; }
+.cf-dia.on { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 12%, var(--bg-panel)); }
+.cf-mapa-topo { padding: 12px 16px; }
+.cf-mapa-wrap { padding: 0 16px 14px; }
+.cf-mapa { border-collapse: collapse; font-size: 11.5px; }
+.cf-mapa th, .cf-mapa td { border: 1px solid var(--line); }
+.cf-mapa th { background: #1F3864; color: #fff; font-weight: 800; padding: 5px 0; min-width: 34px; text-align: center; font-size: 11px; }
+.cf-mapa th small { display: block; font-weight: 600; opacity: .8; font-size: 9.5px; }
+.cf-mapa th.cf-folga-h { background: #44587F; }
+.cf-mapa th.cf-hoje-h { background: var(--rust); }
+.cf-mapa .cf-mapa-rot { position: sticky; left: 0; z-index: 1; min-width: 150px; text-align: left; padding: 6px 10px; background: var(--bg-panel); }
+.cf-mapa th.cf-mapa-rot { background: #1F3864; }
+.cf-mapa .cf-mapa-rot small { display: block; color: var(--ink-faint); font-size: 10.5px; }
+.cf-mapa tr.cf-mapa-emp td { background: var(--bg-panel-alt); font-weight: 800; padding: 5px 10px; font-size: 12px; }
+.cf-cel { text-align: center; font-family: var(--mono); font-weight: 700; height: 30px; }
+.cf-cel.cf-folga { background: repeating-linear-gradient(135deg, var(--bg-panel) 0 4px, var(--bg-panel-alt) 4px 8px); }
+.cf-cel-parcial { background: color-mix(in srgb, var(--green) 18%, var(--bg-panel)); }
+.cf-cel-cheio { background: color-mix(in srgb, var(--amber) 35%, var(--bg-panel)); }
+.cf-cel-estouro { background: var(--rust); color: #fff; }
+.cf-cel-livre { color: var(--ink-faint); font-weight: 500; }
