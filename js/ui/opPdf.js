@@ -10,7 +10,7 @@ import { estado, buscarProjeto } from '../estado.js';
 import { esc, numeroBr } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as OpPdf from '../dominio/opPdf.js';
-import { chave, mesmaCommessa } from '../dominio/planilha.js';
+import { chaveOp, mesmaCommessa } from '../dominio/planilha.js';
 import * as Producao from '../dominio/producao.js';
 import * as Projeto from '../dominio/projeto.js';
 import * as Auth from '../dados/auth.js';
@@ -53,8 +53,8 @@ export function abrirImportarPdf(projetoId) {
 
 // Só procura a OP dentro do projeto escolhido: outra commessa nunca se mistura.
 function acharOp(numero) {
-  const k = chave(numero), pid = projetoAtualId();
-  return estado.ops.find(function (o) { return o.projetoId === pid && chave(o.numero) === k && Producao.statusOp(o) !== 'morta'; }) || null;
+  const k = chaveOp(numero), pid = projetoAtualId();
+  return estado.ops.find(function (o) { return o.projetoId === pid && chaveOp(o.numero) === k && Producao.statusOp(o) !== 'morta'; }) || null;
 }
 function commessaDiferente(pdf) {
   const p = buscarProjeto(projetoAtualId());
@@ -85,7 +85,7 @@ function lerArquivos(ev) {
           if (!pdf.ok) { meus.push({ arquivo: arq.name, situacao: r.porOcr && pdf.motivo === 'naoEhOp' ? 'ocrFalhou' : pdf.motivo }); return; }
           const outra = commessaDiferente(pdf);
           const op = outra ? null : acharOp(pdf.numero);
-          const repetido = meus.some(function (l) { return l.pdf && l.pdf.numero === pdf.numero; });
+          const repetido = meus.some(function (l) { return l.pdf && chaveOp(l.pdf.numero) === chaveOp(pdf.numero); });
           meus.push({
             arquivo: arq.name, pdf: pdf, op: op, porOcr: r.porOcr > 0,
             situacao: outra ? 'outraCommessa' : (repetido ? 'repetido' : (op ? 'ok' : 'nova')),

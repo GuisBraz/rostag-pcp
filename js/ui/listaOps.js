@@ -14,7 +14,7 @@ import { T } from '../i18n/index.js';
 import * as Prog from '../dominio/programacao.js';
 import * as Producao from '../dominio/producao.js';
 import * as Avanco from '../dominio/avanco.js';
-import { chave } from '../dominio/planilha.js';
+import { chaveOp } from '../dominio/planilha.js';
 import * as Auth from '../dados/auth.js';
 import * as DadosAvanco from '../dados/avanco.js';
 import { $, registrarAcoes } from './dom.js';
@@ -60,15 +60,15 @@ function numerosDaPlanilha(doc) {
   if (!lidos) return null;
   const s = new Set();
   lidos.itens.forEach(function (it) {
-    if (it.opCald) s.add('caldeiraria|' + chave(it.opCald));
-    if (it.opUsin) s.add('usinagem|' + chave(it.opUsin));
+    if (it.opCald) s.add('caldeiraria|' + chaveOp(it.opCald));
+    if (it.opUsin) s.add('usinagem|' + chaveOp(it.opUsin));
   });
   return s;
 }
 
 function semRoteiro(o) { return !(Array.isArray(o.operacoes) && o.operacoes.length); }
 // OP de retrabalho (nasceu de uma peça morta) não está na planilha, e está tudo bem.
-function foraPlanilha(o) { return !!(aberta && aberta.planilha) && !o.origemOpId && !aberta.planilha.has(o.area + '|' + chave(o.numero)); }
+function foraPlanilha(o) { return !!(aberta && aberta.planilha) && !o.origemOpId && !aberta.planilha.has(o.area + '|' + chaveOp(o.numero)); }
 function horasDe(o) { return (o.operacoes || []).reduce(function (t, x) { return t + (Number(x.horas) || 0); }, 0); }
 function filasDe(o) { return (estado.maquinas || []).filter(function (m) { return (m.fila || []).some(function (f) { return f.opId === o.id; }); }).map(function (m) { return m.nome; }); }
 function programacaoDe(o) {
