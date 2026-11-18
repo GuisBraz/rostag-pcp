@@ -1502,3 +1502,21 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 /* lista de OPs do projeto: marcar para apagar */
 .lops-marca { width: 34px; text-align: center; }
 .ord-tab tr.lops-marcada td { background: var(--rust-bg); }
+
+/* PGMs do projeto (programas de corte) */
+.pgm-arquivo { cursor: pointer; }
+.pgm-conf { padding: 12px 14px; margin-bottom: 14px; border: 1px dashed var(--line); }
+.pgm-conf-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.ord-tab tr.pgm-bloq td { background: var(--rust-bg); }
+.ord-tab tr.pgm-aviso td { background: var(--amber-bg); }
+.pgm-s-aguardando { background: var(--amber-bg); color: var(--amber-ink); border: 1px solid var(--amber); }
+.pgm-s-fila { background: var(--bg-panel-alt); color: var(--ink-dim); border: 1px solid var(--line); }
+.pgm-s-cortando, .cm-p-cortando { background: var(--teal); color: #fff; }
+.pgm-s-cortado { background: var(--green); color: #fff; }
+
+/* Carga Máquina de cortes: botões do PGM e marca da extensão no mapa */
+.cm-ic.cm-ic-ini { color: var(--teal); }
+.cm-ic.cm-ic-ok { color: #fff; background: var(--green); border-color: var(--green); }
+.cm-tab tr.cm-cortando td:first-child { box-shadow: inset 3px 0 0 var(--teal); }
+.cm-tl-ext { font-style: normal; font-size: 10px; font-weight: 700; color: #FFE7A3; margin-left: 4px; }
+.cm-turno-tit { margin-top: 14px; }

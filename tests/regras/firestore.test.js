@@ -862,6 +862,40 @@ describe('carga máquina de cortes e recursos da caldeiraria', () => {
   });
 });
 
+describe('PGMs (programas de corte)', () => {
+  const pgm = (uid, extra) => ({ numero: '0X0989', projetoId: 'doT', commessa: '2025-016', maquinaTexto: 'White Martins ATC3 PLASMA', maquina: 'plasma',
+    tempoMin: 22.02, quantidade: 1, horas: 0.367, chapa: 'CH 1/2', dimensoes: '4000 x 1500 x 12.7', material: 'A-36', peso: 601.98,
+    trabalho: 'OM 5056', data: '26/10/2026', arquivo: 'PGM.pdf', situacao: null, criadoEm: 'x', criadoPorUid: uid, atualizadoEm: 'x', ...extra });
+  test('técnico do projeto inclui e apaga; outros cargos não', async () => {
+    await assertSucceeds(como(T).doc('equipes/E1/pgms/a').set(pgm(T)));
+    await assertFails(como(P).doc('equipes/E1/pgms/b').set(pgm(P)));        // técnico de outro projeto
+    for (const uid of [K, U, Q, G]) await assertFails(como(uid).doc('equipes/E1/pgms/c').set(pgm(uid)));
+    await assertFails(como(T).doc('equipes/E1/pgms/d').set(pgm(T, { situacao: 'cortado' })));
+    await assertFails(como(T).doc('equipes/E1/pgms/e').set(pgm(T, { maquina: 'laser' })));
+    await assertFails(como(T).doc('equipes/E1/pgms/f').set(pgm(T, { outro: 1 })));
+    await assertSucceeds(como(M).doc('equipes/E1/pgms/g').set(pgm(M)));
+    await assertSucceeds(como(Q).doc('equipes/E1/pgms/a').get());
+    await assertSucceeds(como(T).doc('equipes/E1/pgms/a').delete());
+  });
+  test('programadora de caldeiraria muda só a situação; cortando não é apagado', async () => {
+    await assertSucceeds(como(T).doc('equipes/E1/pgms/a').set(pgm(T)));
+    await assertSucceeds(como(K).doc('equipes/E1/pgms/a').update({ situacao: 'cortando', iniciadoEm: 'x', porUid: K, atualizadoEm: 'y' }));
+    await assertFails(como(K).doc('equipes/E1/pgms/a').update({ horas: 5, porUid: K }));
+    await assertFails(como(K).doc('equipes/E1/pgms/a').update({ situacao: 'perdido', porUid: K }));
+    await assertFails(como(U).doc('equipes/E1/pgms/a').update({ situacao: 'cortado', porUid: U }));
+    await assertFails(como(T).doc('equipes/E1/pgms/a').delete());
+    await assertFails(como(T).doc('equipes/E1/pgms/a').update({ horas: 9 }));
+    await assertSucceeds(como(K).doc('equipes/E1/pgms/a').update({ situacao: 'cortado', cortadoEm: 'x', porUid: K, atualizadoEm: 'z' }));
+  });
+  test('máquina de corte guarda a extensão e as datas avulsas', async () => {
+    const m = { nome: 'Plasma', horasDia: 10, ativa: true, tipo: 'Plasma', area: 'caldeiraria', extensao: false, extras: { '2026-11-25': 'extensao' }, criadoEm: 'x', atualizadoEm: 'x', fila: [] };
+    await assertSucceeds(como(K).doc('equipes/E1/maquinas/plasma').set(m));
+    await assertSucceeds(como(K).doc('equipes/E1/maquinas/plasma').update({ extensao: true }));
+    await assertFails(como(K).doc('equipes/E1/maquinas/plasma').update({ extensao: 'sim' }));
+    await assertFails(como(K).doc('equipes/E1/maquinas/plasma').update({ extras: 'x' }));
+  });
+});
+
 describe('programação, finalizar e destino', () => {
   async function aprovada(id, extra) { await semear('equipes/E1/ops/' + id, op({ status: 'aprovada', finalizadoPorUid: Q, ...extra })); }
 

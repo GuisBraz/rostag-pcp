@@ -39,6 +39,14 @@ export function pararEscuta() {
 export function salvarMaquina(m) {
   const dados = { nome: String(m.nome || '').trim().slice(0, 60), horasDia: Number(m.horasDia), ativa: m.ativa !== false, tipo: String(m.tipo || '').trim().slice(0, 40),
     area: m.area === 'caldeiraria' ? 'caldeiraria' : 'usinagem', atualizadoEm: agoraIso() };
+  // máquinas de corte: extensão até 22:00 (exceção) e datas avulsas ('extensao' | 'folga')
+  if (dados.area === 'caldeiraria') {
+    dados.extensao = !!m.extensao;
+    const ex = {};
+    Object.keys(m.extras || {}).filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d) && (m.extras[d] === 'extensao' || m.extras[d] === 'folga'); })
+      .sort().slice(-120).forEach(function (d) { ex[d] = m.extras[d]; });
+    dados.extras = ex;
+  }
   const col = equipe().collection('maquinas');
   if (m.id) return col.doc(m.id).update(dados);
   return col.add(Object.assign({ criadoEm: agoraIso() }, dados));

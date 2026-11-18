@@ -191,9 +191,18 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - **Ordens de Produção em cartões para todos:** um cartão por projeto (só os
   seus); programador vê só as OPs da área. Busca e situação filtram os
   cartões; "Ver as OPs" abre a lista já na área, situação e busca.
-- **Carga Máquina (cortes):** a máquina tem área (`maquinas.area`: usinagem
-  ou caldeiraria). A programadora de caldeiraria programa só as máquinas de
-  cortes e só OPs de caldeiraria (mesma tela da usinagem, sem Baixa do CQ).
+- **Carga Máquina (cortes) com PGMs:** a máquina tem área (`maquinas.area`:
+  usinagem ou caldeiraria). Máquinas de corte: Plasma e Oxicorte. O técnico
+  do projeto sobe os PDFs dos PGMs (programas de corte) no cartão "Programas
+  de corte" da página do projeto; o site lê nº (CNC), máquina (pelo nome:
+  PLASMA / OXICORTE), tempo total × quantidade de chapas, chapa, peso,
+  commessa e trabalho (coleção `pgms`, um por nº dentro do projeto). Controle
+  só pelo nº do PGM. A programadora de caldeiraria programa por máquina:
+  aguardando programação → na fila (início por pedaços, fim previsto) →
+  ▶ cortando → ✓ cortado (sai da carga e da fila). Mapa de fabricação igual
+  ao da usinagem. Turno do corte: seg–sex 07:00–17:00; extensão até 22:00
+  como exceção, ligada na máquina (`extensao`) ou em data avulsa
+  (`extras[data] = 'extensao' | 'folga'`). A usinagem segue com o horário dela.
 - **Carga Fábrica por recursos:** abas Aguardando, Lista, Mapa de recursos,
   Baixa do CQ e Recursos. Cadastro (`config/recursosCald`): empresas (começa
   com a YANI), pessoas de cada recurso por empresa (Montagem = caldeireiros,
