@@ -3,7 +3,7 @@
    mesmo id da planilha (projeto + área + desenho + posição), então a mesma
    peça vinda depois pela planilha ou pelo PDF só atualiza, não duplica.
 --------------------------------------------------------------------------- */
-import { idOp, numero } from './planilha.js';
+import { idOp, numero, chaveOp } from './planilha.js';
 
 export const AREAS = ['caldeiraria', 'usinagem'];
 const LIMITE = { numero: 40, desenho: 60, posicao: 20, rev: 10, descricao: 160 };
@@ -37,7 +37,7 @@ export function validar(d, ops, editandoId) {
   if (id && !editandoId && (ops || []).some(function (o) { return o.id === id; })) erros.desenho = 'opm.ePecaExiste';
   // na edição a peça (desenho/posição/área) não muda: muda o id
   if (editandoId && id && id !== editandoId) erros.desenho = 'opm.eMudouPeca';
-  const mesmoNumero = (ops || []).some(function (o) { return o.numero === op.numero && o.id !== (editandoId || id); });
+  const mesmoNumero = (ops || []).some(function (o) { return chaveOp(o.numero) === chaveOp(op.numero) && o.id !== (editandoId || id); });
   if (op.numero && mesmoNumero) avisos.push('opm.aNumeroRepetido');
   return { ok: !Object.keys(erros).length, erros: erros, avisos: avisos, op: Object.assign({ id: editandoId || id }, op) };
 }

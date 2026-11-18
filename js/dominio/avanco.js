@@ -8,7 +8,7 @@
      - a planilha de volta, no mesmo layout, com o avanço preenchido pelo
        que o CQ já deu baixa (por peças)
 --------------------------------------------------------------------------- */
-import { acharCabecalho, chave, texto, numero, marcado, marcasDa } from './planilha.js';
+import { acharCabecalho, chave, chaveOp, texto, numero, marcado, marcasDa } from './planilha.js';
 import { pecasOp, statusOp } from './producao.js';
 
 export const MAX_LINHAS = 1500;
@@ -151,7 +151,7 @@ export function indexarOps(ops) {
   const porNumero = {}, filhas = {};
   (ops || []).forEach(function (o) {
     if (o.origemOpId) (filhas[o.origemOpId] = filhas[o.origemOpId] || []).push(o);
-    else porNumero[o.area + '|' + chave(o.numero)] = o;
+    else porNumero[o.area + '|' + chaveOp(o.numero)] = o;
   });
   return { porNumero: porNumero, filhas: filhas };
 }
@@ -177,7 +177,7 @@ export function pecasDaCadeia(op, idx) {
 export function situacaoArea(item, area, idx) {
   const numeroOp = area === 'caldeiraria' ? item.opCald : item.opUsin;
   if (!numeroOp) return { op: null, numero: '', situacao: 'semOp', pecas: null };
-  const op = idx.porNumero[area + '|' + chave(numeroOp)];
+  const op = idx.porNumero[area + '|' + chaveOp(numeroOp)];
   if (!op) return { op: null, numero: numeroOp, situacao: 'naoEncontrada', pecas: null };
   const pecas = pecasDaCadeia(op, idx);
   const ultima = pecas.ops[pecas.ops.length - 1];

@@ -18,6 +18,13 @@ function chave(txt) {
   return String(txt == null ? '' : txt).normalize('NFD').replace(/[̀-ͯ]/g, '')
     .toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
+// Número da OP para comparar: o sufixo fixo "01001" (o SAP usa o número
+// completo, a fábrica só os 6 primeiros) não conta — 021209 = 02120901001.
+// Outro final (ex.: 02120901002) fica inteiro, para não juntar OPs diferentes.
+function chaveOp(num) {
+  const k = chave(num);
+  return /^\d{6}01001$/.test(k) ? k.slice(0, 6) : k;
+}
 function texto(v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
 
 // Número escrito em português ("1.234,5") ou inglês ("1234.5"). Vazio = null.
@@ -61,7 +68,7 @@ const COLUNAS = {
   fornecedor: function (k) { return k.indexOf('FORNECEDOR') === 0; }
 };
 
-export { chave, texto };
+export { chave, chaveOp, texto };
 
 // Commessa base: o código sem o que vem depois para complementos e revisões
 // ("2025-061P - REV.1" → "2025061P"). As OPs e os pedidos do sistema saem
@@ -142,7 +149,7 @@ export function lerOps(linhas) {
       const area = par[0], num = par[1].slice(0, 40);
       if (!num) return;
       // mesmo nº de OP na mesma área: a linha entra na OP que já existe
-      const kn = area + '|' + chave(num);
+      const kn = area + '|' + chaveOp(num);
       if (porNumero[kn]) {
         const o = porNumero[kn];
         agrupar(o, comum);
@@ -191,7 +198,7 @@ export function comparar(lidas, existentesPorId, projetoId) {
     if (o.linhas && o.linhas.length > 1) {
       Object.keys(existentesPorId).forEach(function (eid) {
         const e = existentesPorId[eid];
-        if (idsLidos[eid] || e.area !== o.area || chave(e.numero) !== chave(o.numero) || e.origemOpId) return;
+        if (idsLidos[eid] || e.area !== o.area || chaveOp(e.numero) !== chaveOp(o.numero) || e.origemOpId) return;
         if ((!e.status || e.status === 'aberta') && !e.rncAtualId) juntar.push(eid);
         else naoJuntou.push({ id: eid, numero: e.numero, status: e.status });
       });
