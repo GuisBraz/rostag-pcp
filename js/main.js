@@ -17,6 +17,7 @@ import * as DadosCarga from './dados/carga.js';
 import * as Ops from './dados/ops.js';
 import * as DadosRncs from './dados/rncs.js';
 import * as DadosChecklist from './dados/checklist.js';
+import * as DadosPgms from './dados/pgms.js';
 import * as DadosProg from './dados/programacao.js';
 import * as DadosComerciais from './dados/comerciais.js';
 import * as DadosTarefas from './dados/tarefas.js';
@@ -141,6 +142,10 @@ function escutarEquipe() {
   // terceirizadas da caldeiraria: quem programa a caldeiraria (e a Gerência)
   if (papelCarregado === 'prog_caldeiraria' || Papeis.ehGerente(papelCarregado)) DadosProg.escutarTerceirizadas(function (l) { estado.terceirizadas = l; redesenhar(); });
   else DadosProg.pararEscuta();
+  // PGMs (programas de corte): o técnico inclui, a programadora de caldeiraria programa
+  estado.pgms = [];
+  if (papelCarregado === 'tecnico' || papelCarregado === 'planejador' || papelCarregado === 'prog_caldeiraria' || Papeis.ehGerente(papelCarregado)) DadosPgms.escutar(function (l) { estado.pgms = l; redesenhar(); });
+  else DadosPgms.pararEscuta();
   // recursos da caldeiraria (empresas, pessoas, dias de trabalho): Carga Fábrica
   estado.recursosCald = {};
   if (papelCarregado === 'prog_caldeiraria' || Papeis.ehGerente(papelCarregado)) DadosProg.escutarRecursos(function (c) { estado.recursosCald = c; redesenhar(); });
@@ -228,6 +233,7 @@ function sairDoApp() {
   Store.pararEscuta();
   Store.pararTodos();
   estado.projetosFabrica = null;
+  DadosPgms.pararEscuta();
   DadosProg.pararRecursos();
   Ops.pararEscuta();
   DadosRncs.pararEscuta();

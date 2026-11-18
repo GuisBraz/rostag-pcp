@@ -251,11 +251,28 @@ export function dataHoraDe(min) {
   const d = new Date(min * 60000), p = function (n) { return String(n).padStart(2, '0'); };
   return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()) + 'T' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
 }
-function janela(dia) { return CALENDARIO[new Date(dia * 1440 * 60000).getUTCDay()] || null; }
+// Máquinas de corte da caldeiraria: seg a sex 07:00–17:00; extensão até 22:00
+// (exceção) ligada na máquina ou numa data avulsa (m.extras[data] = 'extensao'
+// | 'folga').
+export const CAL_CORTES = { 1: [420, 1020], 2: [420, 1020], 3: [420, 1020], 4: [420, 1020], 5: [420, 1020] };
+export const FIM_EXTENSAO = 1320;
+function dataDoDia(dia) { return dataHoraDe(dia * 1440).slice(0, 10); }
+// Janela de trabalho [início, fim] em minutos do dia (ou null = sem turno).
+export function janelaMaquina(m, data) {
+  const dow = new Date(data + 'T12:00:00Z').getUTCDay();
+  if (!m || m.area !== 'caldeiraria') return CALENDARIO[dow] || null;
+  const ex = (m.extras || {})[data];
+  if (ex === 'folga') return null;
+  const base = CAL_CORTES[dow];
+  if (ex === 'extensao') return [base ? base[0] : 420, FIM_EXTENSAO];
+  if (!base) return null;
+  return m.extensao ? [base[0], FIM_EXTENSAO] : base;
+}
+function janela(dia, m) { return janelaMaquina(m, dataDoDia(dia)); }
 // O primeiro minuto de trabalho a partir de t.
-function proximoMinuto(t) {
-  for (let k = 0; k < 14; k++) {
-    const dia = Math.floor(t / 1440), m = t - dia * 1440, w = janela(dia);
+function proximoMinuto(t, maq) {
+  for (let k = 0; k < 21; k++) {
+    const dia = Math.floor(t / 1440), m = t - dia * 1440, w = janela(dia, maq);
     if (w && m < w[0]) return dia * 1440 + w[0];
     if (w && m < w[1]) return t;
     t = (dia + 1) * 1440;
@@ -263,20 +280,20 @@ function proximoMinuto(t) {
   return t;
 }
 // Soma minutos de trabalho a t; devolve o fim e os minutos usados em cada dia.
-function somarMinutos(t, minutos) {
+function somarMinutos(t, minutos, maq) {
   const porDia = {};
-  t = proximoMinuto(t);
+  t = proximoMinuto(t, maq);
   let resta = minutos;
   while (resta > 0) {
-    const dia = Math.floor(t / 1440), w = janela(dia), ate = dia * 1440 + w[1], usa = Math.min(resta, ate - t);
+    const dia = Math.floor(t / 1440), w = janela(dia, maq), ate = dia * 1440 + w[1], usa = Math.min(resta, ate - t);
     const d = dataHoraDe(dia * 1440).slice(0, 10);
     porDia[d] = (porDia[d] || 0) + usa / 60;
     resta -= usa; t += usa;
-    if (resta > 0) t = proximoMinuto(t);
+    if (resta > 0) t = proximoMinuto(t, maq);
   }
   return { fim: t, porDia: porDia };
 }
-export function fimPrevisto(inicioDt, horas) { const r = somarMinutos(minutosDe(inicioDt), Math.round((Number(horas) || 0) * 60)); return dataHoraDe(r.fim); }
+export function fimPrevisto(inicioDt, horas, maq) { const r = somarMinutos(minutosDe(inicioDt), Math.round((Number(horas) || 0) * 60), maq); return dataHoraDe(r.fim); }
 
 /**
  * Agenda de todas as máquinas ativas. A fila de cada máquina vale na ordem
@@ -290,13 +307,13 @@ export function fimPrevisto(inicioDt, horas) { const r = somarMinutos(minutosDe(
 export function agendarTudo(maquinas, opsPorId, projetosPorId, mapa, agora) {
   agora = agora || hoje();
   const ativas = (maquinas || []).filter(function (m) { return m.ativa !== false; });
-  const t0 = proximoMinuto(minutosDe(agora));
+  const t00 = minutosDe(agora);
   let fins = {}, r = {};
   for (let passo = 0; passo < 10; passo++) {
     const novos = {};
     r = {};
     ativas.forEach(function (m) {
-      let livre = t0;
+      let livre = proximoMinuto(t00, m);
       r[m.id] = (m.fila || []).map(function (item) {
         const o = opsPorId[item.opId];
         const n = item.n == null ? null : Number(item.n);
@@ -313,8 +330,8 @@ export function agendarTudo(maquinas, opsPorId, projetosPorId, mapa, agora) {
         if (s === 'baixaCq' || s === 'encerrada' || s === 'morta') return Object.assign(comum, { concluida: true });
         let depois = null;
         if (n != null) for (let k = n - 1; k >= 0; k--) { const f = fins[chaveItem(o.id, k)]; if (f != null) { depois = f; break; } }
-        const ini = proximoMinuto(Math.max(livre, inicioFixo ? minutosDe(inicioFixo) : livre, depois == null ? livre : depois));
-        const conta = somarMinutos(ini, Math.round(horas * 60));
+        const ini = proximoMinuto(Math.max(livre, inicioFixo ? minutosDe(inicioFixo) : livre, depois == null ? livre : depois), m);
+        const conta = somarMinutos(ini, Math.round(horas * 60), m);
         livre = conta.fim;
         novos[chaveItem(o.id, n)] = conta.fim;
         const inicioDt = dataHoraDe(ini), fimDt = dataHoraDe(conta.fim);
@@ -336,10 +353,10 @@ export function agendarTudo(maquinas, opsPorId, projetosPorId, mapa, agora) {
  * operações que estavam nesse horário e serão empurradas para frente.
  * fila: a fila atual (sem o item) · agenda: os itens agendados dessa fila
  */
-export function encaixar(fila, agenda, item) {
+export function encaixar(fila, agenda, item, maq) {
   const lista = (fila || []).slice();
   if (!item.inicio) return { fila: lista.concat([item]), conflitos: [] };
-  const ini = minutosDe(item.inicio), fim = minutosDe(fimPrevisto(item.inicio, item.horasCalc || 0));
+  const ini = minutosDe(item.inicio), fim = minutosDe(fimPrevisto(item.inicio, item.horasCalc || 0, maq));
   const vivos = (agenda || []).filter(function (a) { return a && a.inicioDt && !a.concluida && !a.ausente; });
   const conflitos = vivos.filter(function (a) { return minutosDe(a.inicioDt) < fim && minutosDe(a.fimDt) > ini; });
   // entra antes da primeira que termina depois do início dela

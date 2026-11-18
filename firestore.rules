@@ -497,7 +497,9 @@ service cloud.firestore {
         allow create, update: if areaMaqOk(request.resource.data.get('area', 'usinagem'))
           && (resource == null || areaMaqOk(resource.data.get('area', 'usinagem')))
           && request.resource.data.get('area', 'usinagem') in ['usinagem', 'caldeiraria']
-          && request.resource.data.keys().hasOnly(['nome', 'horasDia', 'ativa', 'tipo', 'area', 'criadoEm', 'atualizadoEm', 'fila'])
+          && request.resource.data.keys().hasOnly(['nome', 'horasDia', 'ativa', 'tipo', 'area', 'extensao', 'extras', 'criadoEm', 'atualizadoEm', 'fila'])
+          && request.resource.data.get('extensao', false) is bool
+          && request.resource.data.get('extras', {}) is map && request.resource.data.get('extras', {}).size() <= 120
           && request.resource.data.get('tipo', '') is string && request.resource.data.get('tipo', '').size() <= 40
           && request.resource.data.get('fila', []) is list && request.resource.data.get('fila', []).size() <= 300
           && request.resource.data.nome is string
@@ -543,6 +545,40 @@ service cloud.firestore {
 
       // Tarefas avulsas do projeto: toda a equipe lê; GP do projeto e Gerência
       // criam, editam, reabrem e apagam; quem recebeu conclui.
+      // PGMs (programas de corte da caldeiraria): toda a equipe lê; o técnico do
+      // projeto e a Gerência incluem e apagam (enquanto não começou o corte); a
+      // programadora de caldeiraria (e a Gerência) muda só a situação.
+      match /pgms/{pgmId} {
+        function campos() {
+          return ['numero', 'projetoId', 'commessa', 'maquinaTexto', 'maquina', 'tempoMin', 'quantidade', 'horas', 'chapa', 'dimensoes',
+                  'material', 'peso', 'trabalho', 'data', 'arquivo', 'situacao', 'criadoEm', 'criadoPorUid', 'atualizadoEm', 'iniciadoEm', 'cortadoEm', 'porUid'];
+        }
+        function dadosOk(d) {
+          return d.keys().hasOnly(campos())
+            && d.numero is string && d.numero.size() > 0 && d.numero.size() <= 30
+            && d.projetoId is string && d.maquina in ['plasma', 'oxicorte', '']
+            && d.horas is number && d.horas >= 0 && d.horas <= 1000
+            && d.quantidade is number && d.quantidade >= 1 && d.quantidade <= 999
+            && d.get('chapa', '') is string && d.get('chapa', '').size() <= 120
+            && d.get('maquinaTexto', '') is string && d.get('maquinaTexto', '').size() <= 120;
+        }
+        function doTecnico(projetoId) {
+          return souGerenteDe(equipeId)
+            || (souTecnicoDe(equipeId) && projeto(equipeId, projetoId).get('responsavelUid', null) == request.auth.uid);
+        }
+        allow read: if membroDe(equipeId);
+        allow create: if doTecnico(request.resource.data.projetoId) && dadosOk(request.resource.data)
+          && request.resource.data.situacao == null && request.resource.data.criadoPorUid == request.auth.uid;
+        allow update: if (doTecnico(resource.data.projetoId) && resource.data.get('situacao', null) == null
+              && dadosOk(request.resource.data) && request.resource.data.situacao == null
+              && request.resource.data.projetoId == resource.data.projetoId)
+          || ((souPapel(equipeId, 'prog_caldeiraria') || souGerenteDe(equipeId))
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['situacao', 'iniciadoEm', 'cortadoEm', 'porUid', 'atualizadoEm'])
+              && request.resource.data.get('situacao', null) in [null, 'cortando', 'cortado']
+              && request.resource.data.porUid == request.auth.uid);
+        allow delete: if doTecnico(resource.data.projetoId) && resource.data.get('situacao', null) == null;
+      }
+
       match /tarefas/{tarefaId} {
         function camposTarefa() {
           return ['projetoId', 'commessa', 'titulo', 'descricao', 'paraUid', 'paraNome', 'prazo', 'status',

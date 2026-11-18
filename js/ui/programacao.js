@@ -9,6 +9,7 @@
    máquina com início e fim calculados (como no MS Project), horas reais,
    baixa do CQ (finalizar) e RNC.
 --------------------------------------------------------------------------- */
+import * as Pgm from '../dominio/pgm.js';
 import { estado, buscarProjeto, opVisivel } from '../estado.js';
 import { esc, br, hoje, numeroBr, difDias, compararNatural } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
@@ -35,6 +36,7 @@ function diasEspera(o) { const d = String(o.desprogramadaEm || o.criadoEm || '')
 export function agendasAtuais(h) {
   const opsId = {};
   estado.ops.forEach(function (o) { opsId[o.id] = o; });
+  (estado.pgms || []).forEach(function (p) { const o = Pgm.comoOp(p); opsId[o.id] = o; });
   const proj = projetosPorId(), maqs = ativas(), r = {};
   // por operação do roteiro, com a ordem entre as operações da mesma OP
   // agora (data e hora): a fila começa no próximo minuto de trabalho

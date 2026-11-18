@@ -143,8 +143,30 @@ function renderUsinagem() {
       '<input class="cm-tipo-in" value="' + esc(m.tipo || '') + '" maxlength="40" list="cu-tipos" placeholder="' + esc(T('cm.tipoPh')) + '" data-change="editarMaquinaTipo" data-arg="' + esc(m.id) + '" aria-label="' + esc(T('cm.tipo')) + '">' +
       '<input type="number" min="0.5" max="24" step="0.5" value="' + esc(m.horasDia) + '" data-change="editarMaquinaHoras" data-arg="' + esc(m.id) + '" aria-label="' + esc(T('cg.horasDia')) + '">' +
       '<label class="carga-ativa"><input type="checkbox" ' + (m.ativa === false ? '' : 'checked') + ' data-change="editarMaquinaAtiva" data-arg="' + esc(m.id) + '"> ' + esc(T('cg.ativa')) + '</label>' +
+      (abaCarga === 'cortes' ? '<label class="carga-ativa" title="' + esc(T('cg.extDica')) + '"><input type="checkbox" ' + (m.extensao ? 'checked' : '') + ' data-change="editarMaquinaExtensao" data-arg="' + esc(m.id) + '"> ' + esc(T('cg.extensao')) + '</label>' : '') +
       '<button type="button" class="rm" data-acao="excluirMaquina" data-arg="' + esc(m.id) + '" title="' + esc(T('btn.excluir')) + '" aria-label="' + esc(T('btn.excluir') + ' — ' + m.nome) + '">✕</button></div>';
   }).join('') : '<div class="hint-txt">' + esc(T('cg.nenhumaMaquina')) + '</div>';
+  // corte: turno seg–sex 07–17; extensão até 22:00 e folgas em datas avulsas
+  if (abaCarga === 'cortes') $('cu-maquinas').innerHTML += turnoCorteHtml(maqsArea, editar);
+  ['.carga-setores-tit', '#cu-setores'].forEach(function (q) {
+    const el = document.querySelector('#cu-config ' + q); if (!el) return;
+    el.style.display = abaCarga === 'cortes' ? 'none' : '';
+    const nota = el.classList.contains('carga-setores-tit') ? el.nextElementSibling : null;
+    if (nota) nota.style.display = abaCarga === 'cortes' ? 'none' : '';
+  });
+}
+
+function turnoCorteHtml(maqs, editar) {
+  const linhas = [];
+  maqs.forEach(function (m) { Object.keys(m.extras || {}).sort().forEach(function (d) { linhas.push({ m: m, d: d, t: m.extras[d] }); }); });
+  return '<div class="panel-title cm-turno-tit">' + esc(T('cg.turnoTit')) + '</div><div class="panel-note">' + esc(T('cg.turnoNota')) + '</div>' +
+    (linhas.length ? linhas.map(function (x) {
+      return '<div class="carga-maq-linha"><b>' + esc(x.m.nome) + '</b><span class="mono">' + esc(br(x.d)) + '</span><span class="pill-cf ' + (x.t === 'extensao' ? 'cf-prazo' : 'cf-atraso') + '">' + esc(T('cg.extra.' + x.t)) + '</span>' +
+        (editar ? '<button type="button" class="rm" data-acao="tirarExtraMaq" data-arg="' + esc(x.m.id) + '" data-arg2="' + esc(x.d) + '" aria-label="' + esc(T('btn.excluir')) + '">✕</button>' : '') + '</div>';
+    }).join('') : '<div class="hint-txt">' + esc(T('cg.semExtras')) + '</div>') +
+    (editar && maqs.length ? '<div class="carga-maq-form"><select id="cu-ext-maq" aria-label="' + esc(T('cg.maquina')) + '">' + maqs.map(function (m) { return '<option value="' + esc(m.id) + '">' + esc(m.nome) + '</option>'; }).join('') + '</select>' +
+      '<input type="date" id="cu-ext-dia" aria-label="' + esc(T('cg.extDia')) + '"><select id="cu-ext-tipo" aria-label="' + esc(T('cg.extTipo')) + '"><option value="extensao">' + esc(T('cg.extra.extensao')) + '</option><option value="folga">' + esc(T('cg.extra.folga')) + '</option></select>' +
+      '<button type="button" class="btn btn-outline" data-acao="addExtraMaq">' + esc(T('cg.adicionar')) + '</button></div>' : '');
 }
 
 /* ------------------------------------------------------- carga fábrica */
@@ -229,6 +251,14 @@ registrarAcoes({
   editarMaquinaHoras: function (v, _b, el) { const m = maquinaPorId(el.dataset.arg); if (m) salvarMaq(m, { horasDia: Number(v) }); },
   editarMaquinaTipo: function (v, _b, el) { const m = maquinaPorId(el.dataset.arg); if (m) salvarMaq(m, { tipo: v }); },
   editarMaquinaAtiva: function (_v, _b, el) { const m = maquinaPorId(el.dataset.arg); if (m) salvarMaq(m, { ativa: el.checked }); },
+  editarMaquinaExtensao: function (_v, _b, el) { const m = maquinaPorId(el.dataset.arg); if (m) salvarMaq(m, { extensao: el.checked }); },
+  addExtraMaq: function () {
+    const m = maquinaPorId($('cu-ext-maq').value), d = $('cu-ext-dia').value, t = $('cu-ext-tipo').value;
+    if (!m || !/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast(T('com.erroData'), { tipo: 'erro' }); return; }
+    const ex = Object.assign({}, m.extras || {}); ex[d] = t === 'folga' ? 'folga' : 'extensao';
+    salvarMaq(m, { extras: ex });
+  },
+  tirarExtraMaq: function (id, d) { const m = maquinaPorId(id); if (!m) return; const ex = Object.assign({}, m.extras || {}); delete ex[d]; salvarMaq(m, { extras: ex }); },
   excluirMaquina: function (id) {
     const m = maquinaPorId(id); if (!m) return;
     const usadas = (m.fila || []).length;
