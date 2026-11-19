@@ -191,6 +191,26 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - **Ordens de Produção em cartões para todos:** um cartão por projeto (só os
   seus); programador vê só as OPs da área. Busca e situação filtram os
   cartões; "Ver as OPs" abre a lista já na área, situação e busca.
+- **Carga Máquina (usinagem): programar a OP inteira e situações especiais.**
+  Na lista "para programar" aparece só a 1ª operação ainda fora de fila;
+  incluí-la programa todas as operações de máquina do roteiro, cada uma na
+  máquina do setor, começando quando a anterior termina (máquina ocupada →
+  fim da fila, com aviso). Nenhuma operação começa antes da anterior da mesma
+  OP terminar. O atraso é acusado só pela última operação (a parte que
+  termina por último), e "passam do prazo" conta cada OP uma vez.
+  ❄ Congelar (hora de retorno e motivo): a OP não conta horas, a fila de trás
+  é reprogramada; na hora do retorno, aviso em tela cheia + notificação do
+  Windows (navegador aberto): retomar ou reprogramar a parada; as paradas
+  ficam no histórico (`pausas`). 🚨 Urgência: interrompe a OP em máquina, que
+  volta com só as horas que faltam (`feitas` guarda o já feito), logo depois
+  da urgente ou no fim. ⚙ Programação especial (no detalhe da OP): dividir uma
+  operação em várias máquinas por peças (horas proporcionais), cada máquina
+  furando a fila (logo depois da OP em máquina) ou no fim; desfazer volta
+  tudo para uma. Tirar, congelar ou interromper uma operação manda as
+  seguintes da OP para o fim da fila "⟳ aguardando reprogramação", com aviso
+  na tela e no sino. Mapa de fabricação "Por máquina" ou "Geral" (máquinas ×
+  dias, setas ligando as operações de cada OP; clicar destaca o caminho e
+  mostra o roteiro).
 - **Carga Máquina (cortes) com PGMs:** a máquina tem área (`maquinas.area`:
   usinagem ou caldeiraria). Máquinas de corte: Plasma e Oxicorte. O técnico
   do projeto sobe os PDFs dos PGMs (programas de corte) no cartão "Programas

@@ -125,6 +125,9 @@ export function render() {
   $('opd-finalizar').hidden = !podeFinalizar(o);
   // CQ: aprovar ou abrir RNC (em retrabalho: ver a RNC atual)
   const st = Producao.statusOp(o);
+  // usinagem: dividir operações entre máquinas (programador de usinagem e Gerência)
+  $('opd-especial').innerHTML = o.area === 'usinagem' && !o.encerradaEm && (Auth.areaProgramador() === 'usinagem' || Auth.souGerente()) && (o.operacoes || []).length
+    ? '<button type="button" class="btn btn-outline" data-acao="abrirProgEspecial" data-arg="' + esc(o.id) + '">' + esc(T('pe.botao')) + '</button>' : '';
   $('opd-cq').innerHTML = !Auth.souCQ() ? '' : (st === 'aberta'
     ? '<button type="button" class="btn btn-success" data-acao="cqAprovarOp" data-arg="' + esc(o.id) + '">' + esc(T('cq.aprovar')) + '</button>' +
       '<button type="button" class="btn btn-danger" data-acao="cqNovaRncOp" data-arg="' + esc(o.id) + '">' + esc(T('baixa.abrirRnc')) + '</button>'

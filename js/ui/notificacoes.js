@@ -81,7 +81,7 @@ function alertasCalculados() {
   if (!Auth.podeEntrar()) return [];
   const semana = Semana.inicioSemana(hoje()), equipeId = Auth.equipeAtualId();
   const novos = [];
-  const lista = Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops }).concat(avisosProgramador()).concat(avisosServicos()).concat(avisosTarefas()).concat(avisosCaldAtraso()).concat(avisosSemRecurso()).map(function (n) {
+  const lista = Alertas.gerar(estado.projetos, { papel: Auth.papel(), uid: Auth.uid(), ops: estado.ops }).concat(avisosProgramador()).concat(avisosServicos()).concat(avisosTarefas()).concat(avisosCaldAtraso()).concat(avisosSemRecurso()).concat(avisosCargaMaquina()).map(function (n) {
     const chave = Semana.chaveAlerta(semana, equipeId, n.id);
     const st = estadoAlertas && estadoAlertas[chave];
     if (estadoAlertas && !st && !registrando.has(chave)) {
@@ -133,6 +133,29 @@ function avisosCaldAtraso() {
     return { id: a.id, tipo: a.tipo, nivel: a.nivel, projetoId: a.projetoId, origem: 'sistema', quando: a.data,
       titulo: T('n.prod-cald-atraso', a.commessa, a.numero), meta: T('n.prod-cald-atrasoM', a.empresa || '—', br(a.data), a.dias) };
   });
+}
+
+// Carga Máquina (usinagem): ⟳ operações aguardando reprogramação e ❄ congeladas vencidas
+function avisosCargaMaquina() {
+  if (Auth.areaProgramador() !== 'usinagem') return [];
+  const ops = {}, d = new Date(), p2 = function (x) { return String(x).padStart(2, '0'); };
+  const agora = d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + 'T' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+  estado.ops.forEach(function (o) { ops[o.id] = o; });
+  const rep = {}, l = [];
+  (estado.maquinas || []).forEach(function (m) {
+    (m.fila || []).forEach(function (f) {
+      const o = ops[f.opId]; if (!o) return;
+      if (f.reprogramar) (rep[f.opId] = rep[f.opId] || []).push(m.nome);
+      if (f.congelada && f.congelada.ate <= agora) l.push({ id: 'cm-gelo:' + m.id + ':' + f.opId + ':' + f.n, tipo: 'cm-gelo', nivel: 'alerta', projetoId: o.projetoId, origem: 'sistema', quando: f.congelada.ate.slice(0, 10),
+        titulo: T('n.cm-gelo', o.commessa, o.numero), meta: T('n.cm-geloM', m.nome, f.congelada.ate.slice(11, 16)) });
+    });
+  });
+  Object.keys(rep).forEach(function (id) {
+    const o = ops[id];
+    l.push({ id: 'cm-reprog:' + id, tipo: 'cm-reprog', nivel: 'alerta', projetoId: o.projetoId, origem: 'sistema', quando: hoje(),
+      titulo: T('n.cm-reprog', o.commessa, o.numero, rep[id].length), meta: T('n.cm-reprogM', rep[id].join(', ')) });
+  });
+  return l;
 }
 
 // Carga Fábrica: OP programada sem recurso (recurso deslocado ou acabou) — avisa quem programa.
