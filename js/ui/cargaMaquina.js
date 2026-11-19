@@ -7,6 +7,7 @@
      🗓 Mapa de fabricação — máquinas × dias, cada OP com a sua cor.
      ✔ Baixa do CQ — finalizar · ⚙ Máquinas e setores.
 --------------------------------------------------------------------------- */
+import { avisoReprogramar, avisarOcupadas } from './cargaEspecial.js';
 import * as Pgm from '../dominio/pgm.js';
 import * as DadosPgms from '../dados/pgms.js';
 import { estado, buscarProjeto, opVisivel } from '../estado.js';
@@ -22,9 +23,10 @@ import { avisoErro } from './app.js';
 import { agendasAtuais } from './programacao.js';
 
 const ABAS = ['plan', 'mapa', 'baixa', 'config'];
-const ui = { aba: 'plan', maq: null, recolhido: lerRecolhido(), listaRecolhida: lerLista(), busca: '', zoom: lerZoom(), tlChave: null, tlScroll: null, tlScrollY: 0, tlDias: [], tlHoje: 0 };
+const ui = { mapaVisao: lerVisaoMapa(), geralSel: null, aba: 'plan', maq: null, recolhido: lerRecolhido(), listaRecolhida: lerLista(), busca: '', zoom: lerZoom(), tlChave: null, tlScroll: null, tlScrollY: 0, tlDias: [], tlHoje: 0 };
 // cabeçalho (abas e números) recolhido ou não: lembrado neste navegador
 function lerRecolhido() { try { return localStorage.getItem('rostag.cm.recolhido') === '1'; } catch (e) { return false; } }
+function lerVisaoMapa() { try { return localStorage.getItem('rostag.cm.mapaVisao') === 'geral' ? 'geral' : 'maq'; } catch (e) { return 'maq'; } }
 function lerLista() { try { return localStorage.getItem('rostag.cm.listaRecolhida') === '1'; } catch (e) { return false; } }
 function gravarRecolhido(v) { try { localStorage.setItem('rostag.cm.recolhido', v ? '1' : '0'); } catch (e) { /* sem armazenamento */ } }
 const PALETA = ['#A7E3E6', '#9FC5F8', '#B5A6F2', '#F2A0C1', '#F6A99A', '#F9C9A5', '#EEE79A', '#B9E3BE', '#D7C3F0', '#FFD38A', '#A9D8F5', '#C8E6A0', '#F5B8D2'];
@@ -212,9 +214,11 @@ function nomeOperacao(it) {
     return T('cm.pgmDet', p.peso ? numeroBr(Math.round(p.peso * 10) / 10) : '—', p.quantidade || 1);
   }
   const x = it.operacao;
-  if (!x || x.n == null) return T('cm.opInteira');
+  const extra = (it.parte ? ' · ' + T('cm.parteDe', it.parte.pecas, it.parte.total) + (it.com ? ' ' + T('cm.divCom', it.com) : '') : '') +
+    (it.feitas ? ' · ' + T('cm.feitas', horasHM(it.horas), horasHM(it.feitas)) : '');
+  if (!x || x.n == null) return T('cm.opInteira') + extra;
   const tot = (it.op.operacoes || []).length;
-  return (x.n + 1) + '/' + tot + ' ' + (x.texto || x.setor || '');
+  return (x.n + 1) + '/' + tot + ' ' + (x.texto || x.setor || '') + extra;
 }
 
 export function renderCargaMaquina(alvoId, area) {
@@ -231,12 +235,18 @@ export function renderCargaMaquina(alvoId, area) {
   const vistos = {};
   if (corte()) aguard = pgmsAguardando(null).length;
   else maqs.forEach(function (m) { Prog.aguardandoNaMaquina(m, estado.ops.filter(opVisivel), estado.maquinas, estado.setores, AREA).forEach(function (x) { if (!vistos[x.chave]) { vistos[x.chave] = 1; aguard++; } }); });
-  let prog = 0, atraso = 0;
-  Object.keys(ag).forEach(function (k) { ag[k].forEach(function (it) { if (it.op && !it.concluida && !it.ausente) { prog++; if (it.atraso) atraso++; } }); });
+  let prog = 0, reprog = 0;
+  const atrasadas = {};
+  Object.keys(ag).forEach(function (k) {
+    if (!maqs.some(function (x) { return x.id === k; })) return;
+    ag[k].forEach(function (it) { if (it.op && !it.concluida && !it.ausente) { prog++; if (it.atraso) atrasadas[it.opId] = 1; if (it.reprogramar) reprog++; } });
+  });
+  const atraso = Object.keys(atrasadas).length;
   const baixa = estado.ops.filter(function (o) { return o.area === 'usinagem' && opVisivel(o) && Prog.situacao(o, true) === 'baixaCq'; });
   const nAba = { plan: prog, mapa: maqs.length, baixa: baixa.length, config: (estado.maquinas || []).filter(function (m) { return areaMaquina(m) === AREA; }).length };
   const kpis = '<span class="cm-kpi"><b>' + aguard + '</b> ' + esc(T(corte() ? 'cm.kAguardandoPgm' : 'cm.kAguardando')) + '</span><span class="cm-kpi"><b>' + prog + '</b> ' + esc(T('cm.kProgramadas')) + '</span>' +
-    '<span class="cm-kpi"><b style="color:var(' + (atraso ? '--rust' : '--green') + ')">' + atraso + '</b> ' + esc(T('cm.kAtraso')) + '</span>';
+    '<span class="cm-kpi"><b style="color:var(' + (atraso ? '--rust' : '--green') + ')">' + atraso + '</b> ' + esc(T('cm.kAtraso')) + '</span>' +
+    (reprog ? '<span class="cm-kpi cm-kpi-reprog"><b>⟳ ' + reprog + '</b> ' + esc(T('cm.kReprog')) + '</span>' : '');
   const botao = '<button type="button" class="cm-recolher" data-acao="recolherCargaMaq" aria-expanded="' + !ui.recolhido + '" title="' + esc(T(ui.recolhido ? 'cm.mostrar' : 'cm.recolher')) + '">' + (ui.recolhido ? '▾' : '▴') + '</button>';
   if (ui.recolhido) {
     // recolhido: uma linha só com a aba atual e os números
@@ -281,13 +291,21 @@ function planilha(ag, h) {
   const livre = pendentes.map(function (it) { return it.fimDt; }).filter(Boolean).sort().pop();
   // a primeira da fila (que não foi para o CQ) é a que está em máquina; as outras aguardam
   const primeira = pendentes[0] ? Prog.chaveItem(pendentes[0].opId, pendentes[0].n) : null;
+  vivos.forEach(function (it) {
+    if (!it.parte) return;
+    const outras = [];
+    (estado.maquinas || []).forEach(function (x) { if (x.id !== m.id && (x.fila || []).some(function (f) { return f.opId === it.opId && Number(f.n) === it.n; })) outras.push(x.nome); });
+    it.com = outras.join(', ');
+  });
   const linhas = vivos.map(function (it, i) {
     const o = it.op;
     const semHoras = !it.concluida && !(it.horas > 0);
     const naMaquina = !it.concluida && Prog.chaveItem(it.opId, it.n) === primeira;
     const ehPgm = !!(o && o.ehPgm), cortando = ehPgm && o.pgm.situacao === 'cortando';
-    const sit = it.concluida ? 'feita' : (cortando ? 'cortando' : (semHoras ? 'semhoras' : (ehPgm ? 'aguardando' : (naMaquina ? 'maquina' : 'aguardando'))));
-    const sitTxt = it.concluida ? T('prog.sit.baixaCq') : (cortando ? T('pgm.s.cortando') : (semHoras ? T('cm.semHorasCurto') : (ehPgm ? T('pgm.s.fila') : T(naMaquina ? 'cm.emMaquina' : 'cm.aguardandoSit'))));
+    const gelo = !it.concluida && it.congelada, rep = !it.concluida && !gelo && it.reprogramar;
+    const sit = it.concluida ? 'feita' : (gelo ? 'congelada' : (rep ? 'reprog' : (cortando ? 'cortando' : (semHoras ? 'semhoras' : (ehPgm ? 'aguardando' : (naMaquina ? 'maquina' : 'aguardando'))))));
+    const sitTxt = it.concluida ? T('prog.sit.baixaCq') : (gelo ? T('cm.congeladaAte', brDt(it.congelada.ate)) : (rep ? T('cm.reprogSit') : (cortando ? T('pgm.s.cortando') : (semHoras ? T('cm.semHorasCurto') : (ehPgm ? T('pgm.s.fila') : T(naMaquina ? 'cm.emMaquina' : 'cm.aguardandoSit'))))));
+    const sitDica = gelo ? (it.congelada.motivo || '') : (rep ? T('cm.reprogDica.' + it.reprogramar) : '');
     const atrasada = !it.concluida && it.atraso;
     // as informações de apoio ficam na dica (passar o mouse), sem texto embaixo dos campos
     const dicaIni = [it.inicioFixo ? '' : T('cm.inicioAuto'), it.empurrada ? T('cm.empurrada', brDt(it.inicioFixo)) : '', it.depoisDe ? T('cm.depoisDe', br(it.depoisDe)) : ''].filter(Boolean).join(' · ');
@@ -305,11 +323,15 @@ function planilha(ag, h) {
       '<td class="mono cf-com">' + esc(o.commessa) + '</td><td class="cm-txt">' + esc(o.descricao || o.desenho) + '</td><td class="cm-txt"' + (semHoras ? ' title="' + esc(T('cm.semHoras')) + '"' : '') + '>' + esc(nomeOperacao(it)) + '</td>' +
       '<td class="num">' + (vivo ? '<input type="text" inputmode="numeric" class="cm-horas' + (semHoras ? ' cm-horas-falta' : '') + '" value="' + esc(it.horas > 0 ? horasHM(it.horas) : '') + '" placeholder="hh:mm" data-change="horasCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('cm.horas')) + '"' + (semHoras ? ' title="' + esc(T('cm.semHoras')) + '"' : '') + '>' : horasHM(it.horas)) + '</td>' +
       '<td>' + inicioCel + '</td><td>' + fimCel + '</td><td class="num">' + (it.prazo ? br(it.prazo) : '—') + '</td>' +
-      '<td><span class="pill-cm cm-p-' + sit + '">' + esc(sitTxt) + '</span></td>' +
+      '<td><span class="pill-cm cm-p-' + sit + '"' + (sitDica ? ' title="' + esc(sitDica) + '"' : '') + '>' + esc(sitTxt) + '</span></td>' +
       (editar ? '<td class="c cm-acoes">' + (ehPgm && !it.concluida ? (cortando
           ? '<button type="button" class="cm-ic cm-ic-ok" data-acao="cortadoCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.cortado')) + '" aria-label="' + esc(T('cm.cortado')) + '">✓</button>' +
             '<button type="button" class="cm-ic" data-acao="voltarFilaCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.voltarFila')) + '" aria-label="' + esc(T('cm.voltarFila')) + '">↩</button>'
           : '<button type="button" class="cm-ic cm-ic-ini" data-acao="iniciarCorteCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.iniciarCorte')) + '" aria-label="' + esc(T('cm.iniciarCorte')) + '">▶</button>') : '') +
+        (!ehPgm && !it.concluida ? (gelo
+          ? '<button type="button" class="cm-ic cm-ic-ini" data-acao="retomarCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.retomar')) + '" aria-label="' + esc(T('cm.retomar')) + '">▶</button>'
+          : '<button type="button" class="cm-ic cm-ic-gelo" data-acao="congelarCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.congelar')) + '" aria-label="' + esc(T('cm.congelar')) + '">❄</button>') +
+          (naMaquina ? '' : '<button type="button" class="cm-ic cm-ic-urg" data-acao="urgenciaCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.urgente')) + '" aria-label="' + esc(T('cm.urgente')) + '">🚨</button>') : '') +
         '<button type="button" class="cm-ic cm-ic-tirar" data-acao="tirarCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.tirar')) + '" aria-label="' + esc(T('cm.tirar')) + '">' + LIXEIRA + '</button></td>' : '') + '</tr>';
   }).join('');
   const esp = editar ? Prog.aguardandoNaMaquina(m, estado.ops.filter(opVisivel), estado.maquinas, estado.setores, AREA).sort(function (a, b) {
@@ -368,7 +390,8 @@ function listaProgramar(m, esp) {
       '<td class="num">' + (x.operacao.horas > 0 ? horasHM(x.operacao.horas) : '<span class="cm-prog-sem">' + esc(T('cm.semHorasCurto')) + '</span>') + '</td>' +
       '<td class="num' + (vencido ? ' cm-prog-vencido' : '') + '"' + (vencido ? ' title="' + esc(T('cm.prazoVencido')) + '"' : '') + '>' + (prazo ? br(prazo) : '—') + '</td>' +
       '<td><input type="text" class="cm-dt cm-dtm" inputmode="numeric" autocomplete="off" placeholder="' + MOLDE_TXT + '" aria-label="' + esc(T('cm.inicioOpc')) + '" title="' + esc(T('cm.inicioDica')) + '"></td>' +
-      '<td class="c"><button type="button" class="btn btn-primary btn-mini" data-acao="incluirCargaMaq" data-arg="' + arg + '">' + esc(T('cm.incluirBtn')) + '</button></td></tr>';
+      '<td class="c"><button type="button" class="btn btn-primary btn-mini" data-acao="incluirCargaMaq" data-arg="' + arg + '">' + esc(T('cm.incluirBtn')) + '</button>' +
+        ' <button type="button" class="cm-ic cm-ic-urg" data-acao="urgenciaCargaMaq" data-arg="' + arg + '" title="' + esc(T('cm.urgente')) + '" aria-label="' + esc(T('cm.urgente')) + '">🚨</button></td></tr>';
   }).join('');
   return '<div class="cm-prog">' + topo + '<div class="table-wrap"><table class="cm-tab cm-prog-tab"><thead><tr><th>OP</th><th>' + esc(T('fab.cCommessa')) + '</th><th>' +
     esc(T('fab.cDescricao')) + '</th><th>' + esc(T('cm.operacao')) + '</th><th class="num">' + esc(T('cm.horas')) + '</th><th class="num">' + esc(T('cm.prazo')) +
@@ -423,9 +446,16 @@ export function segmentos(itens, m) {
   return segs;
 }
 
+function visaoMapa() {
+  if (corte()) return '';
+  return '<div class="fab-visoes cm-tl-visao">' + ['maq', 'geral'].map(function (v) {
+    return '<button type="button" class="' + (ui.mapaVisao === v ? 'ativa' : '') + '" data-acao="visaoMapaCargaMaq" data-arg="' + v + '">' + esc(T('cm.visao.' + v)) + '</button>';
+  }).join('') + '</div>';
+}
 function mapa(ag, h) {
   const maqs = ativas();
   if (!maqs.length) return semMaquinas();
+  if (ui.mapaVisao === 'geral' && !corte()) return mapaGeral(ag, h);
   const m = maqs.find(function (x) { return x.id === ui.maq; });
   const itens = (ag[m.id] || []).filter(function (it) { return it.op && !it.ausente && !it.concluida && it.inicioDt; })
     .sort(function (a, b) { return String(a.inicioDt).localeCompare(String(b.inicioDt)); });
@@ -434,7 +464,7 @@ function mapa(ag, h) {
     return '<button type="button" class="' + (ui.zoom === z ? 'ativa' : '') + '" data-acao="zoomCargaMaq" data-arg="' + z + '">' + esc(T('cm.z.' + z)) + '</button>';
   }).join('');
   const barra = '<div class="cm-tl-barra"><div class="cm-tl-tit"><b>' + esc(T('cm.mapaTit')) + ' — ' + esc(m.nome) + '</b><span class="hint-txt">' + esc(T('cm.mapaNota')) + '</span></div>' +
-    '<div class="cm-tl-ctrl"><div class="fab-visoes cm-tl-zoom">' + zoomBt + '</div>' +
+    '<div class="cm-tl-ctrl">' + visaoMapa() + '<div class="fab-visoes cm-tl-zoom">' + zoomBt + '</div>' +
     '<div class="cm-tl-nav"><button type="button" class="cm-ic" data-acao="navMapaCargaMaq" data-arg="-1" title="' + esc(T('cm.ant')) + '" aria-label="' + esc(T('cm.ant')) + '">◀</button>' +
     '<button type="button" class="btn btn-outline btn-mini" data-acao="navMapaCargaMaq" data-arg="0">' + esc(T('cm.hoje')) + '</button>' +
     '<button type="button" class="cm-ic" data-acao="navMapaCargaMaq" data-arg="1" title="' + esc(T('cm.prox')) + '" aria-label="' + esc(T('cm.prox')) + '">▶</button></div></div></div>';
@@ -493,10 +523,10 @@ function mapa(ag, h) {
     (pos[sg.r] = pos[sg.r] || []).push({ x: cx, y: cy });
     const fim = it.fimAjustado || it.fimDt;
     const dica = o.numero + ' · ' + (o.descricao || o.desenho) + '\n' + nomeOperacao(it) + '\n' + brDt(it.inicioDt) + ' → ' + brDt(fim) + ' · ' + (it.horas > 0 ? horasHM(it.horas) : T('cm.semHorasCurto'));
-    const cls = (chave === primeira ? ' maq' : '') + (it.atraso ? ' atraso' : '') + (!(it.horas > 0) ? ' semh' : '') + (sg.cont ? ' cont' : '');
+    const cls = (chave === primeira ? ' maq' : '') + (it.atraso ? ' atraso' : '') + (!(it.horas > 0) ? ' semh' : '') + (sg.cont ? ' cont' : '') + (it.congelada ? ' gelo' : '') + (it.reprogramar ? ' reprog' : '');
     cards += '<button type="button" class="cm-tl-card-op' + cls + '" style="left:' + cx + 'px;top:' + cy + 'px;width:' + Z.card + 'px;height:' + Z.ch + 'px;--cor:' + corOp(o.id) + '"' +
       ' data-acao="mapaOpCargaMaq" data-arg="' + esc(m.id) + '" data-arg2="' + esc(chave) + '" title="' + esc(dica) + '">' +
-      '<b>' + (sg.cont ? '↪ ' : '') + esc(opCurta(o.numero)) + '</b><small>' + esc(o.commessa) + '</small></button>';
+      '<b>' + (it.congelada ? '❄ ' : '') + (sg.cont ? '↪ ' : '') + esc(opCurta(o.numero)) + '</b><small>' + esc(o.commessa) + (it.parte ? ' · ' + esc(T('pe.pc', it.parte.pecas)) : '') + '</small></button>';
   });
   // setas: do fim de uma OP ao começo da próxima
   let setas = '';
@@ -526,6 +556,135 @@ function mapa(ag, h) {
     '<div class="cm-tl-corpo" style="height:' + altura + 'px">' + fundo + agoraEl +
     '<svg class="cm-tl-setas" width="' + total + '" height="' + altura + '" aria-hidden="true"><defs><marker id="cm-seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>' + setas + '</svg>' +
     cards + '</div></div></div></div>';
+}
+
+/* Mapa geral: as máquinas no eixo Y, os dias (régua de horários) no X; cada
+   operação é um cartão na linha da máquina dela, e as operações da mesma OP
+   ficam ligadas por setas. Clicar destaca o caminho da OP e mostra o roteiro. */
+function mapaGeral(ag, h) {
+  const Z = ZOOM[ui.zoom], SEM = T('cm.semana').split(','), linhasM = [];
+  grupos().forEach(function (g) { g.maquinas.forEach(function (m) { linhasM.push(m); }); });
+  const zoomBt = Object.keys(ZOOM).map(function (z) {
+    return '<button type="button" class="' + (ui.zoom === z ? 'ativa' : '') + '" data-acao="zoomCargaMaq" data-arg="' + z + '">' + esc(T('cm.z.' + z)) + '</button>';
+  }).join('');
+  const barra = '<div class="cm-tl-barra"><div class="cm-tl-tit"><b>' + esc(T('cm.mapaGeralTit')) + '</b><span class="hint-txt">' + esc(T('cm.mapaGeralNota')) + '</span></div>' +
+    '<div class="cm-tl-ctrl">' + visaoMapa() + '<div class="fab-visoes cm-tl-zoom">' + zoomBt + '</div>' +
+    '<div class="cm-tl-nav"><button type="button" class="cm-ic" data-acao="navMapaCargaMaq" data-arg="-1" aria-label="' + esc(T('cm.ant')) + '">◀</button>' +
+    '<button type="button" class="btn btn-outline btn-mini" data-acao="navMapaCargaMaq" data-arg="0">' + esc(T('cm.hoje')) + '</button>' +
+    '<button type="button" class="cm-ic" data-acao="navMapaCargaMaq" data-arg="1" aria-label="' + esc(T('cm.prox')) + '">▶</button></div></div></div>';
+  const segs = [];
+  linhasM.forEach(function (m, r) {
+    const itens = (ag[m.id] || []).filter(function (it) { return it.op && !it.ausente && !it.concluida && it.inicioDt; });
+    segmentos(itens, m).forEach(function (sg) { sg.r = r; sg.m = m; segs.push(sg); });
+  });
+  if (!segs.length) return '<div class="card cm-tl-card">' + barra + '<div class="empty-state panel-pad">' + esc(T('cm.mapaGeralVazio')) + '</div></div>';
+  let d0 = addDias(h, -7), d1 = addDias(h, 14);
+  segs.forEach(function (sg) { if (sg.dia > d1) d1 = sg.dia; if (sg.dia < d0 && sg.dia >= addDias(h, -30)) d0 = sg.dia; });
+  d1 = addDias(d1, 1);
+  const PAD = 14, CAB = 52, ROT = 0, LH = Math.max(Z.h, Z.ch + 16);
+  const dias = [];
+  let x = ROT;
+  for (let d = d0, k = 0; d <= d1 && k < 420; d = addDias(d, 1), k++) {
+    const cal = linhasM.map(function (m) { return turno(d, m); }).filter(Boolean)[0] || null;
+    const marcas = [];
+    segs.forEach(function (sg) { if (sg.dia === d) { if (marcas.indexOf(sg.a) < 0) marcas.push(sg.a); if (marcas.indexOf(sg.b) < 0) marcas.push(sg.b); } });
+    marcas.sort(function (a, b) { return a - b; });
+    const larg = !cal ? 40 : (marcas.length ? PAD * 2 + (marcas.length - 1) * Z.w + Z.card : Math.round(Z.w * 0.9));
+    dias.push({ dia: d, x: x, larg: larg, cal: cal, marcas: marcas });
+    x += larg;
+  }
+  const total = x, porDia = {};
+  dias.forEach(function (dd) { porDia[dd.dia] = dd; });
+  const colX = function (dd, min) { return dd.x + PAD + dd.marcas.indexOf(min) * Z.w; };
+  const rowY = function (r) { return 8 + r * LH + (LH - Z.ch) / 2; };
+  const altura = 16 + linhasM.length * LH;
+  let cab = '', fundo = '', rotulos = '<div class="cm-tl-rot-cab" style="height:' + CAB + 'px">' + esc(T('cm.maqDiaGeral')) + '</div>';
+  linhasM.forEach(function (m, r) {
+    fundo += '<div class="cm-tl-linha' + (r % 2 ? ' alt' : '') + '" style="top:' + (8 + r * LH) + 'px;height:' + LH + 'px"></div>';
+    rotulos += '<div class="cm-tl-maq" style="top:' + (CAB + 8 + r * LH) + 'px;height:' + LH + 'px"><b>' + esc(m.nome) + '</b><small>' + esc(tipoDe(m)) + '</small></div>';
+  });
+  dias.forEach(function (dd, k) {
+    const sem = SEM[new Date(dd.dia + 'T12:00:00').getDay()];
+    const cls = (dd.dia === h ? ' hoje' : '') + (!dd.cal ? ' folga' : '') + (k % 2 ? ' alt' : '');
+    fundo += '<div class="cm-tl-dfundo' + cls + '" style="left:' + dd.x + 'px;width:' + dd.larg + 'px"></div>';
+    if (!dd.cal) { cab += '<div class="cm-tl-dia folga" style="left:' + dd.x + 'px;width:' + dd.larg + 'px"><b>' + esc(sem) + '</b></div>'; return; }
+    let reg = '';
+    dd.marcas.forEach(function (mn, j) { reg += '<span class="cm-tl-hora" style="left:' + (PAD + j * Z.w) + 'px">' + hm(mn) + '</span>'; });
+    cab += '<div class="cm-tl-dia' + cls + '" style="left:' + dd.x + 'px;width:' + dd.larg + 'px"><b>' + esc(sem + ' ' + br(dd.dia).slice(0, 5)) + '</b><div class="cm-tl-regua">' + reg + '</div></div>';
+  });
+  const sel = ui.geralSel, primeiroDe = {}, ultimoDe = {};
+  let cards = '';
+  segs.forEach(function (sg) {
+    const dd = porDia[sg.dia]; if (!dd) return;
+    const it = sg.it, o = it.op, cx = colX(dd, sg.a), cy = rowY(sg.r), k = it.opId + '|' + it.n + '|' + sg.m.id;
+    if (!primeiroDe[k]) primeiroDe[k] = { x: cx, y: cy, n: it.n, opId: it.opId, fim: it.fimDt };
+    ultimoDe[k] = { x: cx, y: cy, n: it.n, opId: it.opId, fim: it.fimDt };
+    const apagado = sel && sel !== it.opId;
+    const cls = (apagado ? ' apagado' : '') + (sel === it.opId ? ' sel' : '') + (it.atraso ? ' atraso' : '') + (it.congelada ? ' gelo' : '') + (it.reprogramar ? ' reprog' : '');
+    const dica = o.numero + ' · ' + nomeOperacao(it) + '\n' + sg.m.nome + ' · ' + brDt(it.inicioDt) + ' → ' + brDt(it.fimAjustado || it.fimDt);
+    cards += '<button type="button" class="cm-tl-card-op' + cls + '" style="left:' + cx + 'px;top:' + cy + 'px;width:' + Z.card + 'px;height:' + Z.ch + 'px;--cor:' + corOp(o.id) + '"' +
+      ' data-acao="geralSelCargaMaq" data-arg="' + esc(it.opId) + '" title="' + esc(dica) + '"><b>' + (it.congelada ? '❄ ' : '') + esc(opCurta(o.numero)) + '</b><small>' +
+      esc(it.n == null ? (o.commessa || '') : T('cm.opN', it.n + 1)) + '</small></button>';
+  });
+  // setas entre as operações da mesma OP (fim de uma → começo da seguinte)
+  const porOp = {};
+  Object.keys(primeiroDe).forEach(function (k) { const a = primeiroDe[k]; (porOp[a.opId] = porOp[a.opId] || []).push(k); });
+  let setas = '';
+  Object.keys(porOp).forEach(function (opId) {
+    // agrupa por operação (as partes de uma operação dividida ficam juntas)
+    const grupos = {};
+    porOp[opId].forEach(function (k) { const n = primeiroDe[k].n == null ? -1 : primeiroDe[k].n; (grupos[n] = grupos[n] || []).push(k); });
+    const ns = Object.keys(grupos).map(Number).sort(function (a, b) { return a - b; });
+    for (let i = 0; i + 1 < ns.length; i++) {
+      // de cada parte da operação anterior para cada parte da seguinte
+      grupos[ns[i]].forEach(function (ka) {
+        grupos[ns[i + 1]].forEach(function (kb) {
+          const a = ultimoDe[ka], b = primeiroDe[kb];
+          const ax = a.x + Z.card, ay = a.y + Z.ch / 2, bx = b.x, by = b.y + Z.ch / 2, mx = Math.max(ax + 6, (ax + bx) / 2);
+          setas += '<path class="' + (sel === opId ? 'sel' : (sel ? 'apagada' : '')) + '" d="M' + ax + ' ' + ay + ' H' + mx + ' V' + by + ' H' + (bx - 3) + '"/>';
+        });
+      });
+    }
+  });
+  let agoraX = null;
+  const dh = porDia[h];
+  if (dh && dh.cal) {
+    const nm = minDe(agoraLocal()), mk = dh.marcas;
+    if (!mk.length) agoraX = dh.x + dh.larg / 2;
+    else if (nm <= mk[0]) agoraX = dh.x + PAD - 6;
+    else if (nm >= mk[mk.length - 1]) agoraX = colX(dh, mk[mk.length - 1]) + 10;
+    else for (let k = 0; k + 1 < mk.length; k++) if (nm >= mk[k] && nm < mk[k + 1]) agoraX = colX(dh, mk[k]) + (nm - mk[k]) / (mk[k + 1] - mk[k]) * Z.w;
+  }
+  ui.tlDias = dias.map(function (dd) { return { dia: dd.dia, x: dd.x - ROT }; });
+  ui.tlHoje = dh ? dh.x - ROT : 0;
+  return '<div class="card cm-tl-card">' + barra + painelCaminho(ag) +
+    '<div class="cm-tl-geral-wrap"><div class="cm-tl-rotulos" style="height:' + (CAB + altura) + 'px">' + rotulos + '</div>' +
+    '<div class="cm-tl cm-tl-geral" id="cm-tl" data-chave="geral|' + esc(ui.zoom) + '"><div class="cm-tl-in" style="width:' + total + 'px">' +
+    '<div class="cm-tl-cab" style="height:' + CAB + 'px">' + cab + '</div>' +
+    '<div class="cm-tl-corpo" style="height:' + altura + 'px">' + fundo + (agoraX == null ? '' : '<div class="cm-tl-agora" style="left:' + Math.round(agoraX) + 'px"></div>') +
+    '<svg class="cm-tl-setas cm-tl-setas-geral" width="' + total + '" height="' + altura + '" aria-hidden="true"><defs><marker id="cm-seta-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>' + setas + '</svg>' +
+    cards + '</div></div></div></div></div>';
+}
+// Roteiro da OP escolhida no mapa geral
+function painelCaminho(ag) {
+  const sel = ui.geralSel;
+  if (!sel) return '';
+  const itens = [];
+  Object.keys(ag).forEach(function (mid) { (ag[mid] || []).forEach(function (it) { if (it.opId === sel && !it.ausente) itens.push(Object.assign({ maq: maquina(mid) }, it)); }); });
+  if (!itens.length) { ui.geralSel = null; return ''; }
+  itens.sort(function (a, b) { return (a.n || 0) - (b.n || 0) || String(a.inicioDt).localeCompare(String(b.inicioDt)); });
+  const o = itens[0].op, p = buscarProjeto(o.projetoId);
+  return '<div class="cm-caminho"><div class="cm-caminho-topo"><b class="mono">OP ' + esc(o.numero) + '</b><span class="mono cf-com">' + esc(o.commessa) + '</span>' +
+    (p && p.prodFim ? '<span class="hint-txt">' + esc(T('prog.prazo', br(p.prodFim))) + '</span>' : '') +
+    '<button type="button" class="link-btn" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '">' + esc(T('cm.abrirOp')) + '</button>' +
+    '<button type="button" class="cm-ic cm-ic-mini" data-acao="geralSelCargaMaq" data-arg="" aria-label="' + esc(T('btn.fechar')) + '">✕</button></div><ol class="cm-caminho-lista">' +
+    itens.map(function (it) {
+      const s = it.concluida ? T('prog.sit.baixaCq') : (it.congelada ? T('cm.congeladaAte', brDt(it.congelada.ate)) : (it.reprogramar ? T('cm.reprogSit') : ''));
+      return '<li class="' + (it.atraso ? 'atraso' : '') + '"><b>' + esc(it.n == null ? T('cm.opInteira') : T('cm.opN', it.n + 1)) + '</b> ' + esc(it.maq ? it.maq.nome : '') +
+        (it.parte ? ' <small>(' + esc(T('pe.pc', it.parte.pecas)) + ')</small>' : '') + ' <span class="mono">' + esc(brDt(it.inicioDt)) + ' → ' + esc(brDt(it.fimAjustado || it.fimDt)) + '</span>' +
+        (s ? ' <span class="pill-cm cm-p-' + (it.congelada ? 'congelada' : 'reprog') + '">' + esc(s) + '</span>' : '') + (it.ultima ? ' <small class="hint-txt">' + esc(T('cm.ultimaOp')) + '</small>' : '') +
+        ' <button type="button" class="link-btn" data-acao="verProgCargaMaq" data-arg="' + esc(it.maq ? it.maq.id : '') + '">' + esc(T('cm.verProg')) + '</button></li>';
+    }).join('') + '</ol></div>';
 }
 
 // depois de desenhar: altura até o fim da tela e rolagem no lugar (ou no hoje)
@@ -645,6 +804,11 @@ function baixaHtml(baixa) {
 
 /* --------------------------------------------------------------- ações */
 function maquina(id) { return (estado.maquinas || []).find(function (m) { return m.id === id; }); }
+function projPorId() { const p = {}; estado.projetos.forEach(function (x) { p[x.id] = x; }); return p; }
+export function ctxCarga() { return { opsId: opsPorId(), proj: projPorId(), agora: agoraLocal() }; }
+export function maquinaPorId(id) { return maquina(id); }
+export function redesenharCarga() { redesenhar(); }
+export function brDtCarga(dt) { return brDt(dt); }
 function semChave(fila, chave) { return fila.filter(function (f) { return Prog.chaveItem(f.opId, f.n == null ? null : Number(f.n)) !== chave; }); }
 function salvar(m, fila, msg) { return DadosProg.salvarFila(m.id, fila).then(function () { if (msg) toast(msg); }).catch(function (e) { avisoErro(e); }); }
 function idx(fila, chave) { return fila.findIndex(function (f) { return Prog.chaveItem(f.opId, f.n == null ? null : Number(f.n)) === chave; }); }
@@ -652,7 +816,7 @@ function redesenhar() { renderCargaMaquina('cu-programacao'); }
 
 // Põe o item na fila: com início, na posição pelo horário (se cair em cima de
 // outra, pergunta; as outras são empurradas para frente); sem início, no fim.
-function colocar(m, item, msg, chaveAntiga) {
+function colocar(m, item, msg, chaveAntiga, encadear) {
   const resto = chaveAntiga ? semChave(m.fila || [], chaveAntiga) : (m.fila || []).slice();
   const opsId = opsPorId(), proj = {};
   estado.projetos.forEach(function (p) { proj[p.id] = p; });
@@ -670,7 +834,16 @@ function colocar(m, item, msg, chaveAntiga) {
     const nova = r.fila.map(function (f) { return Object.assign({}, f); });
     const ag2 = Prog.agendarTudo((estado.maquinas || []).map(function (x) { return x.id === m.id ? Object.assign({}, m, { fila: nova }) : x; }), opsId, proj, estado.setores, agoraLocal())[m.id] || [];
     nova.forEach(function (f, i) { const a = ag2[i]; if (f.inicio && a && a.inicioDt && a.inicioDt !== f.inicio) f.inicio = a.inicioDt; });
-    salvar(m, nova, r.conflitos.length ? T('cm.empurradasOk', r.conflitos.length) : msg);
+    const texto = r.conflitos.length ? T('cm.empurradasOk', r.conflitos.length) : msg;
+    // usinagem com roteiro: as operações seguintes da OP entram nas máquinas delas, em ordem
+    if (!encadear || item.n == null || corte()) { salvar(m, nova, texto); return; }
+    let ms = (estado.maquinas || []).map(function (x) { return x.id === m.id ? Object.assign({}, m, { fila: nova }) : x; });
+    const lib = Prog.liberarReprogramar(ms, item.opId);
+    const enc = Prog.encadear(lib.maquinas, opsId, proj, estado.setores, agoraLocal(), item.opId, item.n);
+    ms = enc.maquinas;
+    const ids = [m.id].concat(lib.mudadas, enc.mudadas).filter(function (x, i, a) { return a.indexOf(x) === i; });
+    DadosProg.salvarFilas(ms.filter(function (x) { return ids.indexOf(x.id) >= 0; }).map(function (x) { return { id: x.id, fila: x.fila }; }))
+      .then(function () { if (texto) toast(texto); avisarOcupadas(o ? o.numero : '', enc.avisos); }).catch(function (e) { avisoErro(e); });
   });
 }
 function agoraLocal() {
@@ -682,6 +855,12 @@ registrarAcoes({
   abaCargaMaq: function (a) { if (abas().indexOf(a) >= 0) { ui.aba = a; redesenhar(); } },
   maqCargaMaq: function (id) { ui.maq = id; redesenhar(); },
   mapaOpCargaMaq: function (mid, chave) { popupOp(mid, chave); },
+  visaoMapaCargaMaq: function (v) {
+    ui.mapaVisao = v === 'geral' ? 'geral' : 'maq'; ui.geralSel = null; ui.tlChave = null;
+    try { localStorage.setItem('rostag.cm.mapaVisao', ui.mapaVisao); } catch (e) { /* sem armazenamento */ }
+    redesenhar();
+  },
+  geralSelCargaMaq: function (opId) { ui.geralSel = opId && ui.geralSel !== opId ? opId : null; redesenhar(); },
   zoomCargaMaq: function (z) {
     if (!ZOOM[z]) return;
     ui.zoom = z; ui.tlChave = null;
@@ -714,7 +893,7 @@ registrarAcoes({
     const campo = el && el.closest('tr') ? el.closest('tr').querySelector('.cm-dtm') : null;
     const txt = campo ? campo.value.trim() : '', ini = txt ? daMascara(txt) : null;
     if (txt && !ini) { campo.classList.add('invalid'); toast(T('cm.dtInvalida'), { tipo: 'erro' }); return; }
-    colocar(m, { opId: p[0], n: n, horas: null, inicio: ini, fimAjustado: null }, T('cm.incluida', m.nome));
+    colocar(m, { opId: p[0], n: n, horas: null, inicio: ini, fimAjustado: null }, T('cm.incluida', m.nome), null, true);
   },
   iniciarCorteCargaMaq: function (mid, chave) {
     const id = String(chave).split('#')[0].slice(Pgm.PREFIXO.length);
@@ -740,7 +919,28 @@ registrarAcoes({
     confirmar(T('cm.tirarQ', o ? o.numero : '', m.nome), { titulo: T('cm.tirar'), textoOk: T('cm.tirarOk'), perigo: true }).then(function (ok) {
       if (!ok) return;
       if (Pgm.ehPgm(String(chave).split('#')[0]) && o && o.pgm && o.pgm.situacao === 'cortando') DadosPgms.mudarSituacao(o.pgmId, null).catch(function () {});
-      salvar(m, semChave(m.fila || [], chave), T('cm.tirada'));
+      const item = (m.fila || []).find(function (f) { return Prog.chaveItem(f.opId, f.n == null ? null : Number(f.n)) === chave; });
+      const n = item && item.n != null ? Number(item.n) : null;
+      let ms = (estado.maquinas || []).map(function (x) { return x.id === m.id ? Object.assign({}, x, { fila: semChave(x.fila || [], chave) }) : x; });
+      let ids = [m.id], itens = [];
+      const outras = n == null ? [] : ms.filter(function (x) { return x.id !== m.id && (x.fila || []).some(function (f) { return f.opId === item.opId && Number(f.n) === n; }); });
+      if (item && item.parte && outras.length) {
+        // operação dividida: as peças e horas desta parte voltam para outra parte
+        const alvo = outras[0];
+        alvo.fila = alvo.fila.map(function (f) {
+          if (f.opId !== item.opId || Number(f.n) !== n) return f;
+          const g = Object.assign({}, f, { parte: { pecas: (f.parte ? f.parte.pecas : 0) + item.parte.pecas, total: item.parte.total } });
+          if (Number(f.horas) > 0 && Number(item.horas) > 0) g.horas = Math.round((Number(f.horas) + Number(item.horas)) * 100) / 100;
+          if (outras.length === 1 && g.parte.pecas >= g.parte.total) delete g.parte;
+          return g;
+        });
+        ids.push(alvo.id);
+      } else if (n != null && !corte()) {
+        const rep = Prog.mandarReprogramar(ms, item.opId, n, 'tirada');
+        ms = rep.maquinas; ids = ids.concat(rep.mudadas); itens = rep.itens;
+      }
+      DadosProg.salvarFilas(ms.filter(function (x) { return ids.indexOf(x.id) >= 0; }).map(function (x) { return { id: x.id, fila: x.fila }; }))
+        .then(function () { toast(T('cm.tirada')); avisoReprogramar(o ? o.numero : '', itens); }).catch(function (e) { avisoErro(e); });
     });
   },
   horasCargaMaq: function (v, chave, el) {
@@ -750,6 +950,7 @@ registrarAcoes({
     const hNum = lerHoras(v);
     if (v && hNum == null) { toast(T('cm.horasInvalidas'), { tipo: 'erro' }); redesenhar(); return; }
     fila[i].horas = hNum > 0 ? Math.min(10000, hNum) : null;
+    fila[i].reprogramar = null;
     salvar(m, fila);
   },
   // mudar o início: a operação vai para a posição pelo início (pergunta se cair em cima de outra)
@@ -759,7 +960,14 @@ registrarAcoes({
     if (!atual) return;
     const ini = v ? daMascara(v) : null;
     if (v && !ini) { el.classList.add('invalid'); toast(T('cm.dtInvalida'), { tipo: 'erro' }); return; }
-    colocar(m, Object.assign({}, atual, { inicio: ini }), null, chave);
+    const n = atual.n == null ? null : Number(atual.n);
+    if (ini && n != null) {
+      let antes = null, nAntes = null;
+      const ag = agendasAtuais();
+      Object.keys(ag).forEach(function (mid) { ag[mid].forEach(function (it) { if (it.opId === atual.opId && it.n != null && it.n < n && it.fimDt && (!antes || it.fimDt > antes)) { antes = it.fimDt; nAntes = it.n; } }); });
+      if (antes && ini < antes) { toast(T('cm.ordemErro', n + 1, nAntes + 1, brDt(antes)), { tipo: 'erro' }); redesenhar(); return; }
+    }
+    colocar(m, Object.assign({}, atual, { inicio: ini, reprogramar: null }), null, chave);
   },
   // fim à mão: só registro (estimado × feito); igual ao calculado = volta ao cálculo
   fimCargaMaq: function (v, chave, el) {

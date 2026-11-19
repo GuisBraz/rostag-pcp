@@ -105,7 +105,25 @@ function itemFila(f) {
   // início dado pelo programador (data e hora) e fim ajustado à mão (só registro)
   r.inicio = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(f.inicio || '') ? f.inicio : null;
   r.fimAjustado = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(f.fimAjustado || '') ? f.fimAjustado : null;
+  const dt = function (v) { return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v || '') ? v : null; };
+  // parte de uma operação dividida (peças desta máquina / total da OP)
+  if (f.parte && Number(f.parte.pecas) > 0) r.parte = { pecas: Math.floor(Number(f.parte.pecas)), total: Math.max(1, Math.floor(Number(f.parte.total) || 1)) };
+  // ❄ congelada até "ate"; paradas já retomadas (histórico)
+  if (f.congelada && dt(f.congelada.desde) && dt(f.congelada.ate)) r.congelada = { desde: f.congelada.desde, ate: f.congelada.ate, motivo: String(f.congelada.motivo || '').slice(0, 120) };
+  const pz = (f.pausas || []).filter(function (x) { return x && dt(x.desde) && dt(x.ate); }).slice(-20)
+    .map(function (x) { return { desde: x.desde, ate: x.ate, motivo: String(x.motivo || '').slice(0, 120) }; });
+  if (pz.length) r.pausas = pz;
+  // horas já feitas (OP retirada da máquina por uma urgência)
+  if (Number(f.feitas) > 0) r.feitas = Math.min(10000, Math.round(Number(f.feitas) * 100) / 100);
+  // ⟳ aguardando reprogramação (a operação anterior saiu, foi congelada ou interrompida)
+  if (f.reprogramar) r.reprogramar = String(f.reprogramar).slice(0, 30);
   return r;
+}
+// Várias filas de uma vez (programar a OP inteira, urgência, dividir...).
+export function salvarFilas(lista) {
+  const lote = db().batch(), agora = agoraIso();
+  (lista || []).forEach(function (x) { lote.update(refMaquina(x.id), { fila: (x.fila || []).map(itemFila), atualizadoEm: agora }); });
+  return lote.commit();
 }
 export function salvarFila(maquinaId, fila) {
   return refMaquina(maquinaId).update({ fila: (fila || []).map(itemFila), atualizadoEm: agoraIso() });

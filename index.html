@@ -835,6 +835,61 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-congelar" role="dialog" aria-modal="true" aria-labelledby="cg-titulo">
+  <div class="modal-box">
+    <div class="modal-header"><h2 id="cg-titulo">❄ Congelar OP</h2>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-congelar" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label for="cg-ate" data-i18n="cg2.ate">PARADA ATÉ</label>
+        <input type="text" id="cg-ate" class="cm-dt cm-dtm" inputmode="numeric" autocomplete="off" placeholder="hh:mm dd/mm/aa"></div>
+      <div class="cg-atalhos"><button type="button" class="btn btn-outline btn-mini" data-acao="atalhoCongelar" data-arg="1">+1 h</button>
+        <button type="button" class="btn btn-outline btn-mini" data-acao="atalhoCongelar" data-arg="2">+2 h</button>
+        <button type="button" class="btn btn-outline btn-mini" data-acao="atalhoCongelar" data-arg="amanha" data-i18n="cg2.amanha">amanhã 07:00</button></div>
+      <div class="field"><label for="cg-motivo" data-i18n="cg2.motivo">MOTIVO (OPCIONAL)</label><input id="cg-motivo" maxlength="120" data-i18n-ph="cg2.motivoPh" placeholder="ex.: operador deslocado para a Forest"></div>
+      <div class="hint-txt" data-i18n="cg2.nota">A OP não conta horas até o retorno; as OPs de trás nesta máquina são reprogramadas e as operações seguintes da OP vão para o fim da fila, aguardando reprogramação.</div>
+      <div class="form-error" id="cg-erro"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-congelar" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-acao="salvarCongelar" data-i18n="cg2.congelar">❄ Congelar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay tela-cheia modal-degelo" id="modal-degelo" role="alertdialog" aria-modal="true" aria-labelledby="dg-titulo">
+  <div class="modal-box">
+    <div class="modal-body dg-corpo"><div class="dg-gelo" aria-hidden="true">❄</div><h2 id="dg-titulo">—</h2><p id="dg-texto"></p>
+      <div class="dg-acoes"><button type="button" class="btn btn-primary" data-acao="retomarDegelo" data-i18n="cg2.retomar">▶ Retomar agora</button>
+        <button type="button" class="btn btn-outline" data-acao="reprogramarDegelo" data-i18n="cg2.reprogramar">❄ Reprogramar a parada</button></div></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-urgencia" role="dialog" aria-modal="true" aria-labelledby="ur-titulo">
+  <div class="modal-box">
+    <div class="modal-header"><h2 id="ur-titulo">🚨 Urgente</h2>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-urgencia" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button></div>
+    <div class="modal-body">
+      <div class="ur-em" id="ur-em"></div>
+      <div id="ur-bloco">
+        <div class="row2"><div class="field"><label for="ur-feito" data-i18n="ur.feito">JÁ FEITO (hh:mm)</label><input id="ur-feito" class="cm-horas" inputmode="numeric"></div>
+          <div class="field"><label data-i18n="ur.falta">FALTA</label><div class="ur-falta mono" id="ur-falta">—</div></div></div>
+        <div class="field"><label data-i18n="ur.volta">A OP INTERROMPIDA VOLTA PARA A FILA</label>
+          <label class="ur-op"><input type="radio" name="ur-onde" id="ur-depois" checked> <span data-i18n="ur.depois">logo depois da urgente</span></label>
+          <label class="ur-op"><input type="radio" name="ur-onde" id="ur-fim"> <span data-i18n="ur.fimFila">no fim da fila</span></label></div>
+      </div>
+      <div class="form-error" id="ur-erro"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-urgencia" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-danger" data-acao="salvarUrgencia" data-i18n="ur.passar">🚨 Passar na frente</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-prog-esp" role="dialog" aria-modal="true" aria-labelledby="pe-titulo">
+  <div class="modal-box modal-largo">
+    <div class="modal-header"><div><h2 id="pe-titulo">⚙ Programação especial</h2><div class="hint-txt" id="pe-sub"></div></div>
+      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-prog-esp" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button></div>
+    <div class="modal-body" id="pe-corpo"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-oppdf" role="dialog" aria-modal="true" aria-labelledby="oppdf-titulo">
   <div class="modal-box modal-largo">
     <div class="modal-header">
@@ -1126,6 +1181,7 @@
     <div class="modal-footer">
       <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-op-detalhe" data-i18n="btn.fechar">Fechar</button>
       <span id="opd-cq" class="opd-cq"></span>
+      <span id="opd-especial"></span>
       <button type="button" class="btn btn-success" id="opd-finalizar" data-acao="finalizarOpDetalhe" hidden data-i18n="prog.finalizar">✔ Finalizar OP</button>
     </div>
   </div>

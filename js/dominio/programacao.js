@@ -280,18 +280,53 @@ function proximoMinuto(t, maq) {
   return t;
 }
 // Soma minutos de trabalho a t; devolve o fim e os minutos usados em cada dia.
-function somarMinutos(t, minutos, maq) {
-  const porDia = {};
-  t = proximoMinuto(t, maq);
+// Paradas da operação ([início, fim] em minutos): o tempo dentro delas não conta.
+function dentroDe(t, bl) { for (let i = 0; i < bl.length; i++) if (t >= bl[i][0] && t < bl[i][1]) return bl[i]; return null; }
+function proximoLivre(t, maq, bl) {
+  for (let k = 0; k < 60; k++) { t = proximoMinuto(t, maq); const b = dentroDe(t, bl); if (!b) return t; t = b[1]; }
+  return t;
+}
+function somarMinutos(t, minutos, maq, bloqueios) {
+  const bl = bloqueios || [], porDia = {};
+  t = proximoLivre(t, maq, bl);
   let resta = minutos;
-  while (resta > 0) {
-    const dia = Math.floor(t / 1440), w = janela(dia, maq), ate = dia * 1440 + w[1], usa = Math.min(resta, ate - t);
-    const d = dataHoraDe(dia * 1440).slice(0, 10);
-    porDia[d] = (porDia[d] || 0) + usa / 60;
-    resta -= usa; t += usa;
-    if (resta > 0) t = proximoMinuto(t, maq);
+  for (let guarda = 0; resta > 0 && guarda < 5000; guarda++) {
+    const dia = Math.floor(t / 1440), w = janela(dia, maq);
+    let ate = dia * 1440 + w[1];
+    bl.forEach(function (b) { if (b[0] > t && b[0] < ate) ate = b[0]; });
+    const usa = Math.min(resta, ate - t);
+    if (usa > 0) {
+      const d = dataHoraDe(dia * 1440).slice(0, 10);
+      porDia[d] = (porDia[d] || 0) + usa / 60;
+      resta -= usa; t += usa;
+    }
+    if (resta > 0) t = proximoLivre(t + (usa > 0 ? 0 : 1), maq, bl);
   }
   return { fim: t, porDia: porDia };
+}
+// Paradas do item da fila: as já retomadas (pausas) e a ❄ congelada agora.
+export function paradasDoItem(item) {
+  const l = [];
+  (item && item.pausas || []).forEach(function (pz) { const a = minutosDe(pz.desde), b = minutosDe(pz.ate); if (a != null && b != null && b > a) l.push([a, b]); });
+  const c = item && item.congelada;
+  if (c) { const a = minutosDe(c.desde), b = minutosDe(c.ate); if (a != null && b != null && b > a) l.push([a, b]); }
+  return l;
+}
+// Horas de trabalho da máquina entre dois instantes (sem as paradas): o "já feito".
+export function horasTrabalhadas(maq, deDt, ateDt, bloqueios) {
+  let t = minutosDe(deDt), fim = minutosDe(ateDt), soma = 0;
+  if (t == null || fim == null || fim <= t) return 0;
+  const bl = bloqueios || [];
+  for (let k = 0; k < 400 && t < fim; k++) {
+    t = proximoLivre(t, maq, bl);
+    if (t >= fim) break;
+    const dia = Math.floor(t / 1440), w = janela(dia, maq);
+    let ate = Math.min(dia * 1440 + w[1], fim);
+    bl.forEach(function (b) { if (b[0] > t && b[0] < ate) ate = b[0]; });
+    soma += Math.max(0, ate - t);
+    t = ate;
+  }
+  return Math.round(soma / 60 * 100) / 100;
 }
 export function fimPrevisto(inicioDt, horas, maq) { const r = somarMinutos(minutosDe(inicioDt), Math.round((Number(horas) || 0) * 60), maq); return dataHoraDe(r.fim); }
 
@@ -325,26 +360,117 @@ export function agendarTudo(maquinas, opsPorId, projetosPorId, mapa, agora) {
         const base = n == null ? horasNaMaquina(o, m.id, ativas, mapa) : (operacao ? operacao.horas : 0);
         const horas = Number(item.horas) > 0 ? Number(item.horas) : base;
         const inicioFixo = item.inicio || (item.naoAntes ? item.naoAntes + 'T06:00' : null);
-        const comum = { opId: item.opId, n: n, op: o, operacao: operacao || null, horas: horas, prazo: prazo, inicioFixo: inicioFixo, fimAjustado: item.fimAjustado || null };
+        const comum = { opId: item.opId, n: n, op: o, operacao: operacao || null, horas: horas, prazo: prazo, inicioFixo: inicioFixo, fimAjustado: item.fimAjustado || null,
+          parte: item.parte || null, congelada: item.congelada || null, pausas: item.pausas || [], feitas: Number(item.feitas) || 0, reprogramar: item.reprogramar || null, maquinaId: m.id };
         const s = situacao(o, true);
         if (s === 'baixaCq' || s === 'encerrada' || s === 'morta') return Object.assign(comum, { concluida: true });
         let depois = null;
         if (n != null) for (let k = n - 1; k >= 0; k--) { const f = fins[chaveItem(o.id, k)]; if (f != null) { depois = f; break; } }
         const ini = proximoMinuto(Math.max(livre, inicioFixo ? minutosDe(inicioFixo) : livre, depois == null ? livre : depois), m);
-        const conta = somarMinutos(ini, Math.round(horas * 60), m);
+        const conta = somarMinutos(ini, Math.round(horas * 60), m, paradasDoItem(item));
         livre = conta.fim;
-        novos[chaveItem(o.id, n)] = conta.fim;
+        // operação dividida em várias máquinas: a seguinte espera a parte que termina por último
+        const kf = chaveItem(o.id, n);
+        novos[kf] = Math.max(novos[kf] || 0, conta.fim);
         const inicioDt = dataHoraDe(ini), fimDt = dataHoraDe(conta.fim);
         return Object.assign(comum, { inicio: inicioDt.slice(0, 10), fim: fimDt.slice(0, 10), inicioDt: inicioDt, fimDt: fimDt, porDia: conta.porDia,
           empurrada: !!(inicioFixo && dataHoraDe(minutosDe(inicioFixo)) !== inicioDt), depoisDe: depois == null ? null : dataHoraDe(depois).slice(0, 10),
-          atraso: !!(prazo && fimDt.slice(0, 10) > prazo) });
+          atraso: false, atrasoItem: !!(prazo && fimDt.slice(0, 10) > prazo) });
       });
     });
     const mudou = Object.keys(novos).some(function (k) { return novos[k] !== fins[k]; }) || Object.keys(fins).length !== Object.keys(novos).length;
     fins = novos;
     if (!mudou) break;
   }
+  // o atraso é acusado só pela última operação da OP (a parte que termina por último)
+  const ultimaDe = {}, fimOp = {};
+  Object.keys(r).forEach(function (mid) {
+    r[mid].forEach(function (it) {
+      if (!it.op || it.ausente || it.concluida) return;
+      if (!(it.opId in ultimaDe)) ultimaDe[it.opId] = ultimaOperacao(it.op, ativas, mapa);
+      if (it.n === ultimaDe[it.opId] && (!fimOp[it.opId] || it.fimDt > fimOp[it.opId])) fimOp[it.opId] = it.fimDt;
+    });
+  });
+  Object.keys(r).forEach(function (mid) {
+    r[mid].forEach(function (it) {
+      if (!it.op || it.ausente || it.concluida) return;
+      it.ultima = it.n === ultimaDe[it.opId];
+      it.atraso = it.ultima && it.fimDt === fimOp[it.opId] && it.atrasoItem;
+    });
+  });
   return r;
+}
+
+// Operações do roteiro que vão para máquina: [{ n, operacao, maquinaId }] (a máquina do setor).
+export function opsDeMaquina(o, maquinas, mapa) {
+  const ativas = (maquinas || []).filter(function (m) { return m.ativa !== false; });
+  return operacoesDaOp(o).filter(function (x) { return x.n != null; }).map(function (x) {
+    return { n: x.n, operacao: x, maquinaId: maquinaDoSetor(x.setor, ativas, mapa) };
+  }).filter(function (x) { return !!x.maquinaId; });
+}
+// Última operação da OP que vai para máquina (null = OP sem roteiro).
+export function ultimaOperacao(o, maquinas, mapa) {
+  const l = opsDeMaquina(o, maquinas, mapa);
+  return l.length ? l[l.length - 1].n : null;
+}
+function clonar(maquinas) { return (maquinas || []).map(function (m) { return Object.assign({}, m, { fila: (m.fila || []).map(function (f) { return Object.assign({}, f); }) }); }); }
+function naFilaEm(maquinas, opId, n) {
+  return (maquinas || []).some(function (m) { return (m.fila || []).some(function (f) { return f.opId === opId && (f.n == null ? null : Number(f.n)) === n; }); });
+}
+/**
+ * Programar a OP inteira: depois da operação "deN", cada operação seguinte que
+ * ainda não está em fila entra na máquina dela, começando quando a anterior
+ * termina. Se nesse horário a máquina já tem outras OPs, não empurra ninguém:
+ * vai para o fim da fila (e avisa).
+ * → { maquinas (cópias com as filas novas), mudadas: [ids], avisos: [{ n, maquinaId, ocupadas: [números] }] }
+ */
+export function encadear(maquinas, opsPorId, projetosPorId, mapa, agora, opId, deN) {
+  let ms = clonar(maquinas);
+  const o = opsPorId[opId], mudadas = {}, avisos = [];
+  if (!o) return { maquinas: ms, mudadas: [], avisos: [] };
+  opsDeMaquina(o, ms, mapa).forEach(function (x) {
+    if (deN != null && x.n <= deN) return;
+    if (naFilaEm(ms, opId, x.n)) return;
+    const m = ms.find(function (y) { return y.id === x.maquinaId; });
+    if (!m || (m.fila || []).length >= MAX_FILA) return;
+    const ag = agendarTudo(ms, opsPorId, projetosPorId, mapa, agora);
+    let prevFim = null;
+    Object.keys(ag).forEach(function (mid) { ag[mid].forEach(function (it) { if (it.opId === opId && it.n != null && it.n < x.n && it.fimDt && (!prevFim || it.fimDt > prevFim)) prevFim = it.fimDt; }); });
+    const horas = x.operacao.horas || 0;
+    const item = { opId: opId, n: x.n, horas: null, inicio: prevFim, fimAjustado: null };
+    const enc = prevFim ? encaixar(m.fila, ag[m.id], Object.assign({}, item, { horasCalc: horas }), m) : { fila: m.fila.concat([item]), conflitos: [] };
+    if (enc.conflitos.length) {
+      m.fila = m.fila.concat([Object.assign({}, item, { inicio: null })]);
+      avisos.push({ n: x.n, maquinaId: m.id, ocupadas: enc.conflitos.map(function (c) { return c.op ? c.op.numero : ''; }) });
+    } else {
+      m.fila = enc.fila;
+    }
+    mudadas[m.id] = true;
+  });
+  return { maquinas: ms, mudadas: Object.keys(mudadas), avisos: avisos };
+}
+/**
+ * As operações seguintes da OP (depois de "deN") vão para o fim da fila de cada
+ * máquina, sem início, marcadas "aguardando reprogramação" (motivo).
+ */
+export function mandarReprogramar(maquinas, opId, deN, motivo) {
+  const ms = clonar(maquinas), mudadas = {}, itens = [];
+  ms.forEach(function (m) {
+    const fica = [], vai = [];
+    (m.fila || []).forEach(function (f) {
+      const n = f.n == null ? null : Number(f.n);
+      if (f.opId === opId && n != null && deN != null && n > deN) vai.push(Object.assign({}, f, { inicio: null, reprogramar: motivo || 'reprogramar' }));
+      else fica.push(f);
+    });
+    if (vai.length) { m.fila = fica.concat(vai); mudadas[m.id] = true; vai.forEach(function (f) { itens.push({ n: f.n, maquina: m.nome }); }); }
+  });
+  return { maquinas: ms, mudadas: Object.keys(mudadas), itens: itens };
+}
+// A operação anterior voltou ao normal: tira a marca das seguintes da OP.
+export function liberarReprogramar(maquinas, opId) {
+  const ms = clonar(maquinas), mudadas = {};
+  ms.forEach(function (m) { (m.fila || []).forEach(function (f) { if (f.opId === opId && f.reprogramar) { f.reprogramar = null; mudadas[m.id] = true; } }); });
+  return { maquinas: ms, mudadas: Object.keys(mudadas) };
 }
 
 /**
@@ -377,8 +503,11 @@ export function aguardandoNaMaquina(maquina, ops, maquinas, mapa, area) {
     if (o.area !== ar || !emProducao(o) || situacao(o, true) !== 'programada' && situacao(o, true) !== 'emAberto') return;
     // OP inteira já na fila: nada a programar
     if (naFila[chaveItem(o.id, null)]) return;
+    const deMaq = opsDeMaquina(o, maquinas, mapa);
+    const primeira = deMaq.find(function (y) { return !naFila[chaveItem(o.id, y.n)]; });
     operacoesDaOp(o).forEach(function (x) {
       if (naFila[chaveItem(o.id, x.n)]) return;
+      if (x.n != null && deMaq.length && (!primeira || primeira.n !== x.n)) return;
       if (maquinasDaOperacao(x, maquinas, mapa).indexOf(maquina.id) < 0) return;
       if (x.n == null && Array.isArray(o.operacoes) && o.operacoes.length) return;
       r.push({ op: o, operacao: x, chave: chaveItem(o.id, x.n) });

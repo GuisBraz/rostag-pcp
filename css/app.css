@@ -1520,3 +1520,53 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .cm-tab tr.cm-cortando td:first-child { box-shadow: inset 3px 0 0 var(--teal); }
 .cm-tl-ext { font-style: normal; font-size: 10px; font-weight: 700; color: #FFE7A3; margin-left: 4px; }
 .cm-turno-tit { margin-top: 14px; }
+
+/* Carga Máquina: ❄ congelada, ⟳ reprogramar, 🚨 urgência, programação especial e mapa geral */
+.cm-p-congelada { background: #DCEFFB; color: #155E8C; border: 1px solid #7FC4EC; }
+.cm-p-reprog { background: var(--amber-bg); color: var(--amber-ink); border: 1px dashed var(--amber); }
+.cm-tab tr.cm-congelada td { background: #EEF7FD; }
+.cm-tab tr.cm-reprog td { background: color-mix(in srgb, var(--amber-bg) 60%, var(--bg-panel)); }
+.cm-ic.cm-ic-gelo { color: #1F7FBF; }
+.cm-ic.cm-ic-urg { font-size: 13px; }
+.cm-kpi-reprog b { color: var(--amber-ink); }
+.cm-tl-card-op.gelo { background: repeating-linear-gradient(135deg, var(--cor) 0 6px, #DCEFFB 6px 10px); }
+.cm-tl-card-op.reprog { border-style: dashed; border-color: var(--amber); }
+.cm-tl-card-op.apagado { opacity: .22; }
+.cm-tl-card-op.sel { box-shadow: 0 0 0 3px var(--ink); z-index: 6; }
+.cm-tl-visao { margin: 0; }
+.cm-tl-geral .cm-tl-linha { position: absolute; left: 0; right: 0; border-bottom: 1px solid var(--line-soft); }
+.cm-tl-geral .cm-tl-maq { position: sticky; left: 0; position: absolute; z-index: 4; display: flex; flex-direction: column; justify-content: center; padding: 0 10px; background: var(--bg-panel); border-right: 2px solid var(--line); }
+.cm-tl-geral .cm-tl-maq b { font-size: 12.5px; }
+.cm-tl-geral .cm-tl-maq small { font-size: 10.5px; color: var(--ink-faint); }
+.cm-tl-rot { background: #1F3864; }
+.cm-tl-setas-geral path { stroke-dasharray: 3 4; opacity: .55; marker-end: url(#cm-seta-g); }
+.cm-tl-setas-geral path.sel { stroke: var(--ink); stroke-width: 2.4; stroke-dasharray: none; opacity: 1; }
+.cm-tl-setas-geral path.apagada { opacity: .1; }
+.cm-tl-setas-geral marker path { fill: var(--ink-dim); stroke: none; opacity: 1; stroke-dasharray: none; }
+.cm-caminho { margin: 0 16px 12px; padding: 10px 14px; border: 1px solid var(--line); border-left: 5px solid var(--ink); border-radius: 10px; background: var(--bg-panel-alt); }
+.cm-caminho-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cm-caminho-topo .cm-ic { margin-left: auto; }
+.cm-caminho-lista { margin: 8px 0 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.cm-caminho-lista li.atraso { color: var(--rust); }
+.cg-atalhos { display: flex; gap: 6px; margin: -4px 0 10px; }
+.modal-degelo .modal-box { max-width: 560px; margin: auto; }
+.dg-corpo { text-align: center; padding: 32px 24px; }
+.dg-gelo { font-size: 64px; line-height: 1; color: #1F7FBF; margin-bottom: 10px; }
+.dg-acoes { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+.ur-em { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 12px; background: var(--bg-panel-alt); }
+.ur-falta { font-size: 18px; font-weight: 800; padding-top: 6px; }
+.ur-op { display: flex; align-items: center; gap: 8px; font-weight: 500; text-transform: none; letter-spacing: 0; margin: 4px 0; }
+.pe-tab tr.pe-ativa td { background: var(--bg-panel-alt); }
+.pe-dividir { margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--line); }
+.pe-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+.pe-linha input[type=number] { width: 80px; }
+.pe-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+/* mapa geral: coluna das máquinas fixa à esquerda */
+.cm-tl-geral-wrap { display: flex; align-items: flex-start; }
+.cm-tl-geral-wrap .cm-tl { flex: 1; min-width: 0; }
+.cm-tl-rotulos { position: relative; flex: 0 0 140px; border-right: 2px solid var(--line); background: var(--bg-panel); }
+.cm-tl-rot-cab { background: #1F3864; color: #fff; font-size: 11px; font-weight: 800; padding: 8px 10px; letter-spacing: .04em; }
+.cm-tl-rotulos .cm-tl-maq { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 10px; border-bottom: 1px solid var(--line-soft); }
+.cm-tl-rotulos .cm-tl-maq b { font-size: 12.5px; }
+.cm-tl-rotulos .cm-tl-maq small { font-size: 10.5px; color: var(--ink-faint); }
