@@ -954,4 +954,5 @@ export default {
   'and.risco.atencao':'fábrica atrás do tempo', 'and.risco.atraso':'fábrica em risco de atraso',
   'fase.pcp':'PCP', 'fase.aguardandoOps':'Aguardando OPs', 'fase.fabricacao':'Fabricação', 'fase.acabamento':'Acabamento', 'fase.pronto':'Pronto para entrega',
   'fase.paralisado':'Paralisado', 'fase.entregue':'Entregue', 'fase.cancelado':'Cancelado',
+  'n.projExcluido':'projeto excluído', 'n.projExcluidos':'Projetos excluídos ({0})',
 };

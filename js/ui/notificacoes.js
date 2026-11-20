@@ -18,6 +18,7 @@ import * as Tarefas from '../dominio/tarefas.js';
 import { agendasAtuais, agendaPorOp } from './programacao.js';
 import * as Semana from '../dominio/semana.js';
 import * as Auth from '../dados/auth.js';
+import * as Store from '../dados/store.js';
 import { $, registrarAcoes } from './dom.js';
 import { toast } from './toast.js';
 import { alternarPopup, fecharPopups } from './app.js';
@@ -229,6 +230,23 @@ function rotuloDia(dia) {
   return br(dia);
 }
 
+// Commessa do projeto da notificação: os seus projetos, ou todos os da equipe
+// (carregados uma vez, só para dar o nome). null = projeto excluído;
+// undefined = ainda carregando a lista de todos.
+const EXCLUIDOS = '__excluidos';
+let pedindoTodos = false;
+function commessaDe(id) {
+  const p = buscarProjeto(id) || (estado.projetosFabrica || []).find(function (x) { return x.id === id; });
+  if (p) return p.commessa;
+  if (Auth.souGerente() || estado.projetosFabrica) return null;
+  if (!pedindoTodos) {
+    pedindoTodos = true;
+    Store.escutarTodos(function (l) { estado.projetosFabrica = l; renderTelaNotificacoes(); },
+      function () { estado.projetosFabrica = []; renderTelaNotificacoes(); });
+  }
+  return undefined;
+}
+
 export function renderTelaNotificacoes(listaPronta) {
   const lista = listaPronta || listaAtual();
   const naoLidas = lista.filter(function (n) { return !n.lida; }).length;
@@ -240,14 +258,15 @@ export function renderTelaNotificacoes(listaPronta) {
   });
   $('ntab-naoLidas-n').textContent = naoLidas ? ' (' + naoLidas + ')' : '';
 
-  // projetos citados nas notificações (para o filtro)
+  // projetos citados nas notificações (para o filtro); os excluídos ficam juntos
   const sel = $('nf-projeto');
   const ids = Array.from(new Set(lista.map(function (n) { return n.projetoId; }).filter(Boolean)));
-  sel.innerHTML = '<option value="">' + esc(T('btn.todos')) + '</option>' + ids.map(function (id) {
-    const p = buscarProjeto(id);
-    return '<option value="' + esc(id) + '">' + esc(p ? p.commessa : id) + '</option>';
-  }).join('');
-  if (ids.indexOf(filtro.projeto) < 0) filtro.projeto = '';
+  const vivos = ids.filter(function (id) { return commessaDe(id); }).sort(function (a, b) { return String(commessaDe(a)).localeCompare(String(commessaDe(b)), 'pt-BR', { numeric: true }); });
+  const nExcl = lista.filter(function (n) { return n.projetoId && commessaDe(n.projetoId) === null; }).length;
+  sel.innerHTML = '<option value="">' + esc(T('btn.todos')) + '</option>' + vivos.map(function (id) {
+    return '<option value="' + esc(id) + '">' + esc(commessaDe(id)) + '</option>';
+  }).join('') + (nExcl ? '<option value="' + EXCLUIDOS + '">' + esc(T('n.projExcluidos', nExcl)) + '</option>' : '');
+  if (vivos.indexOf(filtro.projeto) < 0 && !(filtro.projeto === EXCLUIDOS && nExcl)) filtro.projeto = '';
   sel.value = filtro.projeto;
   $('nf-categoria').value = filtro.categoria;
   $('nf-origem').value = filtro.origem;
@@ -258,6 +277,7 @@ export function renderTelaNotificacoes(listaPronta) {
     if (filtro.categoria && categoriaDe(n) !== filtro.categoria) return false;
     if (filtro.origem === 'sistema' && n.real) return false;
     if (filtro.origem === 'pessoas' && !n.real) return false;
+    if (filtro.projeto === EXCLUIDOS) return !!n.projetoId && commessaDe(n.projetoId) === null;
     if (filtro.projeto && n.projetoId !== filtro.projeto) return false;
     return true;
   });
@@ -276,7 +296,7 @@ export function renderTelaNotificacoes(listaPronta) {
       html += '<div class="notif-dia">' + esc(rotuloDia(dia)) + '</div><div class="card notif-grupo">';
       diaAtual = dia;
     }
-    const p = n.projetoId ? buscarProjeto(n.projetoId) : null;
+    const com = n.projetoId ? commessaDe(n.projetoId) : undefined;
     html += '<div class="notif-linha' + (n.lida ? '' : ' nao-lida') + '">' +
       '<span class="dot ' + (n.nivel === 'alerta' ? 'dot-atrasada' : 'dot-chegando') + '"></span>' +
       '<div class="notif-corpo">' +
@@ -286,11 +306,11 @@ export function renderTelaNotificacoes(listaPronta) {
           '<span>' + esc(textoOrigem(n)) + '</span>' +
           '<span>' + esc(T('n.recebida', quando(n.criadoEm))) + '</span>' +
           '<span>' + (n.lida ? esc(T('n.lidaEm', quando(n.lidaEm))) : '<b class="nao-lida-txt">' + esc(T('n.naoLida')) + '</b>') + '</span>' +
-          (p ? '<span class="pill-mini mono">' + esc(p.commessa) + '</span>' : '') +
+          (com ? '<span class="pill-mini mono">' + esc(com) + '</span>' : (com === null ? '<span class="pill-mini pill-excluido">' + esc(T('n.projExcluido')) + '</span>' : '')) +
         '</div>' +
       '</div>' +
       '<div class="notif-acoes">' +
-        (n.projetoId ? '<button type="button" class="btn btn-outline btn-mini" data-acao="abrirNotificacao" data-arg="' + esc(n.id) + '">' + esc(T('n.abrir')) + '</button>' : '') +
+        (n.projetoId && com !== null ? '<button type="button" class="btn btn-outline btn-mini" data-acao="abrirNotificacao" data-arg="' + esc(n.id) + '">' + esc(T('n.abrir')) + '</button>' : '') +
         '<button type="button" class="btn btn-outline btn-mini" data-acao="alternarLida" data-arg="' + esc(n.id) + '">' + esc(T(n.lida ? 'n.marcarNaoLida' : 'n.marcarLida')) + '</button>' +
       '</div></div>';
   });
