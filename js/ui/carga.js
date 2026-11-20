@@ -13,7 +13,7 @@ import * as Producao from '../dominio/producao.js';
 import * as Auth from '../dados/auth.js';
 import * as DadosCarga from '../dados/carga.js';
 import { kpi } from './componentes.js';
-import { renderQuadroCald, agendasAtuais } from './programacao.js';
+import { agendasAtuais } from './programacao.js';
 import { renderCargaMaquina } from './cargaMaquina.js';
 import { $, registrarAcoes } from './dom.js';
 import { confirmar } from './modal.js';
@@ -21,13 +21,13 @@ import { toast } from './toast.js';
 import { avisoErro } from './app.js';
 import { desenhar, cor, falhaGrafico } from './graficos.js';
 
-let abaCarga = null;          // 'usinagem' | 'cortes' (máquinas da caldeiraria) | 'caldeiraria' (kg)
+let abaCarga = null;          // 'usinagem' | 'cortes' (máquinas da caldeiraria)
 
 function areasPermitidas() {
   const p = Auth.papel();
   if (p === 'prog_usinagem') return ['usinagem'];
   if (p === 'prog_caldeiraria') return ['cortes'];
-  if (p === 'gerente_pcp') return ['usinagem', 'cortes', 'caldeiraria'];
+  if (p === 'gerente_pcp') return ['usinagem', 'cortes'];
   return [];
 }
 function podeEditar(area) { return areasPermitidas().indexOf(area) >= 0; }
@@ -44,9 +44,7 @@ export function renderCarga() {
     return '<button type="button" class="carga-aba' + (a === abaCarga ? ' ativa' : '') + '" role="tab" aria-selected="' + (a === abaCarga) + '"' +
       ' data-acao="abaCarga" data-arg="' + a + '">' + esc(T('cg.aba.' + a)) + '</button>';
   }).join('') : '';
-  $('carga-usinagem').hidden = abaCarga === 'caldeiraria';
-  $('carga-caldeiraria').hidden = abaCarga !== 'caldeiraria';
-  if (abaCarga === 'caldeiraria') renderCaldeiraria(); else renderUsinagem();
+  renderUsinagem();
 }
 
 /* ------------------------------------------------------- carga máquina */
@@ -176,35 +174,6 @@ export function resumoFabrica(h) {
   return { sems: sems, r: Carga.cargaFabrica(estado.ops, estado.projetos, cap, sems, h) };
 }
 
-function renderCaldeiraria() {
-  const h = hoje(), x = resumoFabrica(h), r = x.r;
-  const pct = Carga.ocupacao(r.porSemana[0], r.capacidade);
-  const pico = Math.max.apply(null, r.porSemana.concat([0]));
-  const editar = podeEditar('caldeiraria');
-  $('cc-resumo').innerHTML =
-    kpi(T('cg.kgAberto'), fmtNum(r.total) + ' kg') +
-    kpi(T('cg.capKg'), r.capacidade ? fmtNum(r.capacidade) + ' kg' : '—') +
-    kpi(T('cg.estaSemanaK'), '<span class="carga-' + Carga.faixa(pct) + '-txt">' + fmtNum(r.porSemana[0]) + ' kg' + (r.capacidade ? ' · ' + pct + '%' : '') + '</span>') +
-    kpi(T('cg.pico'), fmtNum(pico) + ' kg' + (r.capacidade ? ' · ' + Carga.ocupacao(pico, r.capacidade) + '%' : ''));
-  $('cc-cap-form').style.display = editar ? '' : 'none';
-  if (document.activeElement !== $('cc-cap')) $('cc-cap').value = r.capacidade || '';
-  $('cc-nota').textContent = r.capacidade ? T('cg.fabNota') : T(editar ? 'cg.semCapEdit' : 'cg.semCap');
-
-  $('cc-projetos').innerHTML = r.projetos.length ? '<table class="carga-tab-proj"><tr><th>' + esc(T('cg.projeto')) + '</th><th>' + esc(T('cg.kgAbertoCurto')) +
-    '</th><th>' + esc(T('cg.opsAbertas')) + '</th><th>' + esc(T('cg.janela')) + '</th></tr>' + r.projetos.map(function (pp) {
-      const p = pp.projeto;
-      return '<tr><td><b class="mono">' + esc(p.commessa) + '</b><div class="hint-txt">' + esc(p.descricao) + '</div></td>' +
-        '<td class="num">' + fmtNum(pp.kg) + '</td><td class="num">' + pp.ops + '</td>' +
-        '<td>' + (Producao.inicio(p) && p.prodFim ? br(Producao.inicio(p)) + ' → ' + br(p.prodFim) : '<span class="hint-txt">' + esc(T('cg.semDatas')) + '</span>') + '</td></tr>';
-    }).join('') + '</table>' + (r.semJanela ? '<div class="hint-txt">' + esc(T('cg.semJanelaKg', fmtNum(r.semJanela))) + '</div>' : '')
-    : '<div class="empty-state">' + esc(T('cg.semOpsCald')) + '</div>';
-
-  // a Gerência também vê (e pode mexer) no quadro da caldeiraria
-  renderQuadroCald('cc-quadro');
-  if (!window.Chart) { falhaGrafico('chartCargaFabrica'); return; }
-  desenharGraficoKg('chartCargaFabrica', x.sems, r.porSemana, r.capacidade, 'kg');
-}
-
 // Barras da carga por semana + linha da capacidade (usado também no painel).
 export function desenharGraficoKg(id, sems, valores, capacidade, unidade) {
   const corBarra = valores.map(function (v) {
@@ -265,9 +234,4 @@ registrarAcoes({
     confirmar(T('cg.excluirMaquinaQ', m.nome, plural(usadas, 'cg.opU', 'cg.opsU')), { titulo: T('btn.excluir'), textoOk: T('btn.excluir'), perigo: true })
       .then(function (ok) { if (ok) DadosCarga.excluirMaquina(id).catch(function (e) { avisoErro(e); }); });
   },
-  salvarCapacidadeFabrica: function () {
-    const kg = Number($('cc-cap').value);
-    if (!(kg > 0 && kg <= 10000000)) { toast(T('cg.capInvalida'), { tipo: 'erro' }); return; }
-    DadosCarga.salvarCapacidade(kg).then(function () { toast(T('cg.capSalva', fmtNum(kg))); }).catch(function (e) { avisoErro(e); });
-  }
 });

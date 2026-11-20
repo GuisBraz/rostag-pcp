@@ -32,7 +32,13 @@ const COLUNAS = [
 ];
 
 // Andamento geral: PCP (checklist) 20% + Fábrica (peças feitas das OPs) 80%
-export function andamentoDe(p) { return Andamento.calcular(p, opsDoProjeto(p.id)); }
+const memoAnd = new Map();
+let memoRev = -1;
+export function andamentoDe(p) {
+  if (memoRev !== estado.rev) { memoAnd.clear(); memoRev = estado.rev; }
+  if (!memoAnd.has(p.id)) memoAnd.set(p.id, Andamento.calcular(p, opsDoProjeto(p.id)));
+  return memoAnd.get(p.id);
+}
 function celulaAndamento(a) {
   const barra = function (rot, v, cls) {
     return '<div class="and-linha"><span class="and-rot">' + esc(rot) + '</span><div class="trilho' + (cls || '') + '"><div style="width:' + (v || 0) + '%"></div></div>' +
@@ -79,6 +85,7 @@ function celulaFinalizar(p) {
 }
 
 export function renderProjetos() {
+  memoAnd.clear();   // um cálculo por projeto nesta tela (a ordenação reaproveita)
   const comFinalizar = podeFinalizar();
   $('projetos-thead').innerHTML = COLUNAS.map(function (c) {
     const ativo = estado.ordem.campo === c.campo;

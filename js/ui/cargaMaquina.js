@@ -10,6 +10,7 @@
 import { avisoReprogramar, avisarOcupadas } from './cargaEspecial.js';
 import * as Pgm from '../dominio/pgm.js';
 import * as DadosPgms from '../dados/pgms.js';
+import * as Cascata from '../dados/cascata.js';
 import { estado, buscarProjeto, opVisivel } from '../estado.js';
 import { esc, br, hoje, addDias, fds, difDias, numeroBr, compararNatural } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
@@ -229,6 +230,7 @@ export function renderCargaMaquina(alvoId, area) {
   const h = hoje();
   const ag = agendasAtuais(h);
   const maqs = ativas();
+  limparOrfas(ag);
   if (!ui.maq || !maqs.some(function (m) { return m.id === ui.maq; })) ui.maq = maqs.length ? grupos()[0].maquinas[0].id : null;
   // números do topo
   let aguard = 0;
@@ -804,6 +806,23 @@ function baixaHtml(baixa) {
 
 /* --------------------------------------------------------------- ações */
 function maquina(id) { return (estado.maquinas || []).find(function (m) { return m.id === id; }); }
+// OP ou PGM apagado (ex.: projeto excluído) que ficou na fila: confere no servidor e tira.
+const orfasVistas = new Set();
+function limparOrfas(ag) {
+  if (!podeEditar() || !estado.opsCarregadas) return;
+  const ids = [];
+  Object.keys(ag).forEach(function (mid) { (ag[mid] || []).forEach(function (it) { if (it.ausente && !orfasVistas.has(it.opId)) { orfasVistas.add(it.opId); ids.push(it.opId); } }); });
+  if (!ids.length) return;
+  Promise.all(ids.map(function (id) {
+    return (Pgm.ehPgm(id) ? Cascata.existe('pgms', id.slice(Pgm.PREFIXO.length)) : Cascata.existe('ops', id)).then(function (sim) { return sim ? null : id; }).catch(function () { return null; });
+  })).then(function (r) {
+    const fora = new Set(r.filter(Boolean));
+    if (!fora.size) return;
+    const lista = (estado.maquinas || []).filter(function (m) { return (m.fila || []).some(function (f) { return fora.has(f.opId); }); })
+      .map(function (m) { return { id: m.id, fila: m.fila.filter(function (f) { return !fora.has(f.opId); }) }; });
+    if (lista.length) DadosProg.salvarFilas(lista).catch(function (e) { console.warn('fila não limpa:', e && e.code); });
+  });
+}
 function projPorId() { const p = {}; estado.projetos.forEach(function (x) { p[x.id] = x; }); return p; }
 export function ctxCarga() { return { opsId: opsPorId(), proj: projPorId(), agora: agoraLocal() }; }
 export function maquinaPorId(id) { return maquina(id); }

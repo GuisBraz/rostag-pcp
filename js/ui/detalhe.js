@@ -23,6 +23,7 @@ import { souGerencia, veAreasProjeto, renderAreasProjeto } from './gerencia.js';
 import * as Pedidos from './pedidos.js';
 import { renderCartoesTecnico, renderCartoesConsulta } from './projetoTecnico.js';
 import * as Ops from '../dados/ops.js';
+import * as Cascata from '../dados/cascata.js';
 import * as DadosAvanco from '../dados/avanco.js';
 import * as DadosComerciais from '../dados/comerciais.js';
 import * as DadosTarefas from '../dados/tarefas.js';
@@ -260,18 +261,14 @@ function excluirProjeto() {
   const ops = opsDoProjeto(p.id);
   confirmar(T('q.excluirTudo', p.commessa, ops.length), { titulo: T('btn.excluir'), textoOk: T('btn.excluir'), perigo: true }).then(function (ok) {
     if (!ok) return;
-    // primeiro as OPs e a lista de avanço (as regras conferem o projeto), depois o projeto
-    // — sem desfazer: as OPs apagadas não voltam
-    Ops.apagarVarias(ops.map(function (o) { return o.id; })).then(function () {
-      return DadosAvanco.apagar(p.id).catch(function (e) { console.warn('lista de avanço não apagada:', e); });
-    }).then(function () {
-      return DadosComerciais.apagarDoProjeto(p.id).then(function () { return DadosTarefas.apagarDoProjeto((estado.tarefas || []).filter(function (t) { return t.projetoId === p.id; })); });
-    }).then(function () {
+    // tudo o que é do projeto (OPs, RNCs, PGMs, tarefas, conversa, planilha,
+    // comerciais, serviços e as filas das máquinas), por último o projeto
+    Cascata.apagarProjeto(p, ops.map(function (o) { return o.id; }), Auth.souGerente() ? estado.maquinas : []).then(function (r) {
       estado.projetos = estado.projetos.filter(function (x) { return x.id !== p.id; });
       irPara('projetos');
       redesenhar();
-      toast(T('t.excluidoTudo', p.commessa, ops.length));
-      persistir().catch(function () {});
+      const falhou = r.partes.filter(function (x) { return !x.ok; }).map(function (x) { return x.nome; });
+      toast(T('t.excluidoTudo', p.commessa, ops.length) + (falhou.length ? ' ' + T('t.excluidoResto', falhou.join(', ')) : ''));
     }).catch(function (e) { avisoErro(e); });
   });
 }

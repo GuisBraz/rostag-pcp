@@ -32,11 +32,25 @@ export function opVisivel(o) {
   return !estado.leProjetos;
 }
 
+// Índices (projeto por id, OPs por projeto): refeitos só quando a lista muda.
+let idxProj = { lista: null, n: -1, mapa: null }, idxOps = { lista: null, n: -1, mapa: null };
 export function buscarProjeto(id) {
-  return estado.projetos.find(function (p) { return p.id === id; }) || null;
+  const l = estado.projetos;
+  if (idxProj.lista !== l || idxProj.n !== l.length) {
+    const m = new Map();
+    l.forEach(function (p) { m.set(p.id, p); });
+    idxProj = { lista: l, n: l.length, mapa: m };
+  }
+  return idxProj.mapa.get(id) || null;
 }
 export function opsDoProjeto(id) {
-  return estado.ops.filter(function (o) { return o.projetoId === id; });
+  const l = estado.ops;
+  if (idxOps.lista !== l || idxOps.n !== l.length) {
+    const m = new Map();
+    l.forEach(function (o) { const k = o.projetoId; if (!m.has(k)) m.set(k, []); m.get(k).push(o); });
+    idxOps = { lista: l, n: l.length, mapa: m };
+  }
+  return (idxOps.mapa.get(id) || []).slice();
 }
 export function projetoAtual() { return estado.idDetalhe ? buscarProjeto(estado.idDetalhe) : null; }
 

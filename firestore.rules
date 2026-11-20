@@ -42,6 +42,11 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/equipes/$(equipeId)/projetos/$(projetoId)).data;
     }
     // Quem enxerga um projeto: o gerente (todos), o GP do projeto e o técnico do projeto.
+    // GP do projeto (para excluir o projeto e o que é dele)
+    function souGpDoProjeto(equipeId, projetoId) {
+      return souPapel(equipeId, 'gp') && exists(/databases/$(database)/documents/equipes/$(equipeId)/projetos/$(projetoId))
+        && get(/databases/$(database)/documents/equipes/$(equipeId)/projetos/$(projetoId)).data.get('gpUid', null) == request.auth.uid;
+    }
     function vejoProjeto(equipeId, p) {
       return souGerenteDe(equipeId)
         || (souPapel(equipeId, 'gp') && p.get('gpUid', null) == request.auth.uid)
@@ -278,7 +283,9 @@ service cloud.firestore {
             && request.resource.data.keys().hasOnly(['autorUid', 'autorNome', 'texto', 'criadoEm'])
             && request.resource.data.texto is string
             && request.resource.data.texto.size() > 0 && request.resource.data.texto.size() <= 2000;
-          allow update, delete: if false;
+          allow update: if false;
+          // só ao excluir o projeto: Gerência ou o GP dele
+          allow delete: if souGerenteDe(equipeId) || souGpDoProjeto(equipeId, projetoId);
         }
       }
 
@@ -482,7 +489,10 @@ service cloud.firestore {
           && request.resource.data.disposicao is string && request.resource.data.disposicao.size() <= 3000
           && request.resource.data.dispResponsavel is string && request.resource.data.dispResponsavel.size() <= 60
           && request.resource.data.dispData is string && request.resource.data.dispData.size() <= 10;
-        allow delete: if false;
+        // histórico: ninguém apaga RNC de OP que existe; ao excluir o projeto
+        // (a OP já foi apagada), a Gerência ou o GP do projeto apagam
+        allow delete: if (souGerenteDe(equipeId) || souGpDoProjeto(equipeId, resource.data.projetoId))
+          && !exists(/databases/$(database)/documents/equipes/$(equipeId)/ops/$(resource.data.opId));
       }
 
       // Máquinas da usinagem (carga máquina): toda a equipe lê; o programador
@@ -576,7 +586,8 @@ service cloud.firestore {
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['situacao', 'iniciadoEm', 'cortadoEm', 'porUid', 'atualizadoEm'])
               && request.resource.data.get('situacao', null) in [null, 'cortando', 'cortado']
               && request.resource.data.porUid == request.auth.uid);
-        allow delete: if doTecnico(resource.data.projetoId) && resource.data.get('situacao', null) == null;
+        allow delete: if (doTecnico(resource.data.projetoId) && resource.data.get('situacao', null) == null)
+          || souGerenteDe(equipeId) || souGpDoProjeto(equipeId, resource.data.projetoId);
       }
 
       match /tarefas/{tarefaId} {
@@ -616,7 +627,7 @@ service cloud.firestore {
           && request.resource.data.status == 'concluida'
           && request.resource.data.concluidaPorUid == request.auth.uid
           && request.resource.data.obsConclusao is string && request.resource.data.obsConclusao.size() <= 1000;
-        allow delete: if souGerenteDe(equipeId) || (resource.data.criadoPorUid == request.auth.uid && gpDoProjeto(resource.data.projetoId));
+        allow delete: if souGerenteDe(equipeId) || gpDoProjeto(resource.data.projetoId);
       }
 
       // Itens comerciais e serviços externos do projeto: toda a equipe lê;

@@ -955,4 +955,5 @@ export default {
   'fase.pcp':'PCP', 'fase.aguardandoOps':'Aguardando OPs', 'fase.fabricacao':'Fabricação', 'fase.acabamento':'Acabamento', 'fase.pronto':'Pronto para entrega',
   'fase.paralisado':'Paralisado', 'fase.entregue':'Entregue', 'fase.cancelado':'Cancelado',
   'n.projExcluido':'projeto excluído', 'n.projExcluidos':'Projetos excluídos ({0})',
+  't.excluidoResto':'(sem permissão para apagar: {0} — some quando quem pode abrir a tela)',
 };

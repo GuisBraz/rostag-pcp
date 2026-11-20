@@ -61,8 +61,7 @@ test('próximo passo: sugestão pela planilha e grupo da peça pronta', () => {
 });
 
 import * as ProgD from '../js/dominio/programacao.js';
-test('carga fábrica: SOFIR sempre na lista, prazo, reagendada e aviso de atraso', () => {
-  assert.deepEqual(ProgD.empresasCald([{ id: 't1', nome: 'Alfa' }, { id: 't2', nome: 'Velha', ativa: false }]).map((e) => e.id), ['sofir', 't1']);
+test('carga fábrica: prazo, reagendada e aviso de atraso', () => {
   const o = (fim, extra) => ({ id: 'o' + fim, area: 'caldeiraria', status: 'aberta', projetoId: 'p', numero: '1', tecnicoUid: 'tec', gpUid: 'gp',
     programacao: { terceirizadaId: 'sofir', terceirizada: 'SOFIR', previsaoFim: fim, historico: [] }, ...extra });
   const h = '2026-11-13';

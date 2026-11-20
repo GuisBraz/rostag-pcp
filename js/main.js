@@ -138,10 +138,7 @@ function escutarEquipe() {
   estado.checklistPadrao = null;
   if (Papeis.gereProjetos(papelCarregado)) DadosChecklist.escutar(function (c) { estado.checklistPadrao = c; renderChecklistInfo(); migrarChecklistPadraoDaEquipe(c); });
   else DadosChecklist.pararEscuta();
-  estado.maquinas = []; estado.cfgFabrica = {}; estado.setores = {}; estado.terceirizadas = [];
-  // terceirizadas da caldeiraria: quem programa a caldeiraria (e a Gerência)
-  if (papelCarregado === 'prog_caldeiraria' || Papeis.ehGerente(papelCarregado)) DadosProg.escutarTerceirizadas(function (l) { estado.terceirizadas = l; redesenhar(); });
-  else DadosProg.pararEscuta();
+  estado.maquinas = []; estado.cfgFabrica = {}; estado.setores = {};
   // PGMs (programas de corte): o técnico inclui, a programadora de caldeiraria programa
   estado.pgms = [];
   if (papelCarregado === 'tecnico' || papelCarregado === 'planejador' || papelCarregado === 'prog_caldeiraria' || Papeis.ehGerente(papelCarregado)) DadosPgms.escutar(function (l) { estado.pgms = l; redesenhar(); });
