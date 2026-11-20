@@ -638,4 +638,9 @@ export default {
   'pe.ondeTit':'Where in the queue?', 'pe.ondeQ':'The {0} part: jump the queue (right after the order on the machine, the rest rescheduled) or go to the end of the queue?',
   'n.cm-gelo':'{0}: order {1} frozen — past the time to resume', 'n.cm-geloM':'{0} · return was {1}. Resume or reschedule the stop.',
   'n.cm-reprog':'{0}: order {1} with {2} operation(s) needing rescheduling', 'n.cm-reprogM':'At the end of the queue on: {0}.',
+  'c.fase':'PHASE', 'c.andamento':'PROGRESS', 'f.fase':'PHASE', 'and.pcp':'PCP', 'and.fabrica':'Shop', 'and.semOps':'Shop: no orders yet (progress counts PCP only)',
+  'and.dica':'Boilermaking {0}% · Machining {1}% · {2} open order(s) · {3} in NCR', 'and.esperado':'by the time it should be at ~{0}%',
+  'and.risco.atencao':'shop behind schedule', 'and.risco.atraso':'shop at risk of delay',
+  'fase.pcp':'PCP', 'fase.aguardandoOps':'Waiting for orders', 'fase.fabricacao':'Fabrication', 'fase.acabamento':'Finishing', 'fase.pronto':'Ready to deliver',
+  'fase.paralisado':'On hold', 'fase.entregue':'Delivered', 'fase.cancelado':'Cancelled',
 };

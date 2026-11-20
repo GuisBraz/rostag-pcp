@@ -2,7 +2,8 @@
    Filtros do Painel e da lista de Projetos.
 --------------------------------------------------------------------------- */
 import * as Auth from '../dados/auth.js';
-import { estado } from '../estado.js';
+import { estado, opsDoProjeto } from '../estado.js';
+import * as Andamento from '../dominio/andamento.js';
 import { T, meses } from '../i18n/index.js';
 import { esc } from '../nucleo/fmt.js';
 import * as Projeto from '../dominio/projeto.js';
@@ -52,6 +53,7 @@ export function filtrarProj() {
     if (f.status && Projeto.status(p) !== f.status) return false;
     if (!casaPcp(p, f.pcp)) return false;
     if (f.gp && p.gp !== f.gp) return false;
+    if (f.fase && Andamento.calcular(p, opsDoProjeto(p.id)).fase !== f.fase) return false;
     if (busca) {
       const alvo = (p.commessa + ' ' + p.cliente + ' ' + p.descricao + ' ' + p.om).toLowerCase();
       if (alvo.indexOf(busca) < 0) return false;
