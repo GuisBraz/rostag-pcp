@@ -643,4 +643,5 @@ export default {
   'and.risco.atencao':'shop behind schedule', 'and.risco.atraso':'shop at risk of delay',
   'fase.pcp':'PCP', 'fase.aguardandoOps':'Waiting for orders', 'fase.fabricacao':'Fabrication', 'fase.acabamento':'Finishing', 'fase.pronto':'Ready to deliver',
   'fase.paralisado':'On hold', 'fase.entregue':'Delivered', 'fase.cancelado':'Cancelled',
+  'n.projExcluido':'deleted project', 'n.projExcluidos':'Deleted projects ({0})',
 };

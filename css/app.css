@@ -1593,3 +1593,5 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .fase-cancelado { color: var(--ink-faint); }
 .and-risco-atencao { color: var(--amber-ink); font-weight: 700; }
 .and-risco-atraso { color: var(--rust); font-weight: 700; }
+
+.pill-mini.pill-excluido { background: var(--bg-panel-alt); color: var(--ink-faint); border: 1px dashed var(--line); font-style: italic; }
