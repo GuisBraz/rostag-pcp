@@ -862,6 +862,33 @@ describe('carga máquina de cortes e recursos da caldeiraria', () => {
   });
 });
 
+describe('excluir o projeto e o que é dele', () => {
+  test('GP do projeto e Gerência apagam RNC, PGM, conversa e tarefas do projeto; outros não', async () => {
+    // doP é do GP "gp" (G); doT não
+    await semear('equipes/E1/rncs/r1', { projetoId: 'doP', opId: 'x', numero: '1', descricao: 'd', situacao: 'aberta' });
+    await semear('equipes/E1/rncs/r2', { projetoId: 'doT', opId: 'y', numero: '2', descricao: 'd', situacao: 'aberta' });
+    await semear('equipes/E1/pgms/p1', { projetoId: 'doP', numero: '0X1', situacao: 'cortando' });
+    await semear('equipes/E1/projetos/doP/chat/c1', { autorUid: T, autorNome: 'T', texto: 'oi', criadoEm: 'x' });
+    await semear('equipes/E1/tarefas/t1', { projetoId: 'doP', criadoPorUid: M, paraUid: T, titulo: 'x', status: 'aberta' });
+    for (const uid of [T, U, K, Q]) {
+      await assertFails(como(uid).doc('equipes/E1/rncs/r1').delete());
+      await assertFails(como(uid).doc('equipes/E1/projetos/doP/chat/c1').delete());
+    }
+    await assertFails(como(G).doc('equipes/E1/rncs/r2').delete());
+    await assertSucceeds(como(G).doc('equipes/E1/rncs/r1').delete());
+    await assertSucceeds(como(G).doc('equipes/E1/pgms/p1').delete());
+    await assertSucceeds(como(G).doc('equipes/E1/projetos/doP/chat/c1').delete());
+    await assertSucceeds(como(G).doc('equipes/E1/tarefas/t1').delete());
+    await assertSucceeds(como(M).doc('equipes/E1/rncs/r2').delete());
+    // RNC de OP que ainda existe: ninguém apaga (histórico)
+    await semear('equipes/E1/ops/opViva', op({ projetoId: 'doP' }));
+    await semear('equipes/E1/rncs/r3', { projetoId: 'doP', opId: 'opViva', numero: '3', descricao: 'd', situacao: 'aberta' });
+    await assertFails(como(G).doc('equipes/E1/rncs/r3').delete());
+    await assertFails(como(M).doc('equipes/E1/rncs/r3').delete());
+    await assertFails(como(G).doc('equipes/E1/projetos/doP/chat/c2').update({ texto: 'x' }));
+  });
+});
+
 describe('PGMs (programas de corte)', () => {
   const pgm = (uid, extra) => ({ numero: '0X0989', projetoId: 'doT', commessa: '2025-016', maquinaTexto: 'White Martins ATC3 PLASMA', maquina: 'plasma',
     tempoMin: 22.02, quantidade: 1, horas: 0.367, chapa: 'CH 1/2', dimensoes: '4000 x 1500 x 12.7', material: 'A-36', peso: 601.98,

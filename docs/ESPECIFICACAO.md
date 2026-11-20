@@ -248,6 +248,18 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   que ainda vão para pintura / serviço externo / TTAT / oxidação) → Pronto
   para entrega; ou Paralisado / Entregue / Cancelado. Ordena e filtra.
 
+## 4.1.3 Excluir projeto (cascata) e limpeza de órfãos
+
+- Excluir um projeto (Gerência ou GP dele) apaga, nesta ordem: itens das filas
+  das máquinas (se quem exclui pode mexer nelas), OPs, RNCs (só depois que a
+  OP não existe — RNC de OP viva ninguém apaga), PGMs, tarefas, conversa,
+  lista de avanço, comerciais, serviços, valores e por fim o projeto.
+- O que a pessoa não pode apagar é limpo depois: o programador, ao abrir a
+  Carga Máquina, tira da fila OP/PGM que não existe mais (confere no
+  servidor); cada um apaga as próprias notificações de projeto excluído.
+- Notificação de projeto excluído aparece marcada e sem "Abrir"; o filtro
+  junta essas em "Projetos excluídos".
+
 ## 4.2 Página do projeto do técnico e Todas as OPs
 
 - **Cartões no projeto (só técnico):** **Checklist** (abre e fecha o cronograma

@@ -441,27 +441,6 @@
     </div>
   </div>
 
-  <div id="carga-caldeiraria" hidden>
-    <div id="cc-quadro" class="prog-area"></div>
-    <div class="ano-resumo" id="cc-resumo"></div>
-    <div class="card panel-pad carga-bloco">
-      <div class="carga-cab">
-        <div class="panel-title" data-i18n="cg.tituloFab">Carga fábrica — próximas 8 semanas</div>
-        <div class="carga-cap" id="cc-cap-form">
-          <label for="cc-cap" data-i18n="cg.capLabel">Capacidade (kg/semana)</label>
-          <input id="cc-cap" type="number" min="1" step="100" data-enter="salvarCapacidadeFabrica">
-          <button type="button" class="btn btn-outline btn-mini" data-acao="salvarCapacidadeFabrica" data-i18n="btn.salvar">Salvar</button>
-        </div>
-      </div>
-      <div class="panel-note" id="cc-nota">—</div>
-      <div style="height:300px"><canvas id="chartCargaFabrica"></canvas></div>
-    </div>
-    <div class="card panel-pad carga-bloco">
-      <div class="panel-title" data-i18n="cg.porProjeto">Carga por projeto</div>
-      <div class="panel-note" data-i18n="cg.porProjetoNota">Peso das OPs de caldeiraria ainda em aberto em cada projeto.</div>
-      <div id="cc-projetos"></div>
-    </div>
-  </div>
 </div>
 
 <!-- ==================== FÁBRICA (OPs) ==================== -->
@@ -1194,49 +1173,6 @@
 </div>
 
 <!-- ==================== PROGRAMAR OP ==================== -->
-<div class="modal-overlay" id="modal-programar" role="dialog" aria-modal="true" aria-labelledby="prog-titulo">
-  <div class="modal-box">
-    <div class="modal-header">
-      <div><h2 id="prog-titulo">Programar</h2><div id="prog-sub" class="opd-sub"></div></div>
-      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-programar" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="prog-corpo"></div>
-      <div class="hint-txt prog-aviso" id="prog-aviso"></div>
-      <div class="form-error" id="prog-erro"></div>
-    </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-programar" data-i18n="btn.cancelar">Cancelar</button>
-      <button type="button" class="btn btn-primary" data-acao="salvarProgramacao" data-i18n="prog.salvar">Programar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ==================== FINALIZADAS: COMMESSAS E PEÇAS ==================== -->
-<div class="modal-overlay tela-cheia" id="modal-fin-commessas" role="dialog" aria-modal="true" aria-labelledby="finc-titulo">
-  <div class="modal-box">
-    <div class="modal-header">
-      <div><h2 id="finc-titulo">—</h2><div class="hint-txt" id="finc-sub"></div></div>
-      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-fin-commessas" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
-    </div>
-    <div class="modal-body"><div class="fin-commessas" id="finc-lista"></div></div>
-  </div>
-</div>
-<div class="modal-overlay tela-cheia" id="modal-fin-itens" role="dialog" aria-modal="true" aria-labelledby="fini-titulo">
-  <div class="modal-box">
-    <div class="modal-header">
-      <div><h2 id="fini-titulo">—</h2><div class="hint-txt" id="fini-sub"></div></div>
-      <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-fin-itens" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="fin-itens-topo"><span class="hint" id="fini-resumo"></span>
-        <button type="button" class="btn btn-primary" id="fini-romaneio" data-acao="exportarRomaneio" data-i18n="fin.romaneio">⭳ Exportar romaneio</button></div>
-      <div id="fini-lista"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ==================== OP MANUAL ==================== -->
 <div class="modal-overlay" id="modal-op" role="dialog" aria-modal="true" aria-labelledby="opm-titulo">
   <div class="modal-box">
     <div class="modal-header">

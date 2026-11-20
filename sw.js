@@ -6,7 +6,7 @@
    nova aparece no próximo carregamento, sem ficar presa em cache.
    Os dados (Firestore) não passam por aqui: o próprio SDK guarda o cache.
 --------------------------------------------------------------------------- */
-const CACHE = 'rostag-pcp-v46';
+const CACHE = 'rostag-pcp-v48';
 const ARQUIVOS = [
   './', 'index.html', 'manifest.json', 'css/app.css', 'css/temas.css', 'vendor/chart.umd.min.js', 'img/logo.png',
   'img/favicon.png', 'img/sobre.jpg', 'img/logo-sofir.png', 'img/login-arte.webp', 'img/login-fundo.webp',
@@ -19,7 +19,7 @@ const ARQUIVOS = [
   'js/dominio/opPdf.js', 'js/dominio/papeis.js', 'js/dominio/pedidoPdf.js', 'js/dominio/planilha.js', 'js/dominio/producao.js',
   'js/dominio/programacao.js', 'js/dominio/recursos.js', 'js/dominio/andamento.js', 'js/dominio/pgm.js', 'js/dominio/projeto.js', 'js/dominio/rnc.js', 'js/dominio/semana.js',
   'js/dominio/serie.js', 'js/dominio/servicos.js', 'js/dominio/tarefas.js',
-  'js/dados/auth.js', 'js/dados/avanco.js', 'js/dados/carga.js', 'js/dados/checklist.js', 'js/dados/comerciais.js', 'js/dados/firebase.js',
+  'js/dados/auth.js', 'js/dados/avanco.js', 'js/dados/carga.js', 'js/dados/cascata.js', 'js/dados/checklist.js', 'js/dados/comerciais.js', 'js/dados/firebase.js',
   'js/dados/ops.js', 'js/dados/pgms.js', 'js/dados/programacao.js', 'js/dados/rncs.js', 'js/dados/store.js', 'js/dados/tarefas.js',
   'js/ui/acesso.js', 'js/ui/ano.js', 'js/ui/app.js', 'js/ui/atalhos.js', 'js/ui/atualizacao.js', 'js/ui/avanco.js',
   'js/ui/bibliotecas.js', 'js/ui/carga.js', 'js/ui/cargaEspecial.js', 'js/ui/cargaFabrica.js', 'js/ui/cargaMaquina.js', 'js/ui/checklistPadrao.js', 'js/ui/comerciais.js', 'js/ui/componentes.js', 'js/ui/dados.js',

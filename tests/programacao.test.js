@@ -24,16 +24,6 @@ test('data prevista: nunca antes de hoje; depois do prazo só avisa', () => {
   assert.equal(Prog.validarData('', H).erro, 'vazia');
 });
 
-test('carga por terceirizada: kg das OPs em fábrica', () => {
-  const ops = [
-    { area: 'caldeiraria', status: 'aberta', pesoTotal: 100, programacao: { terceirizadaId: 't1', terceirizada: 'Metal A', previsaoFim: '2026-11-20' } },
-    { area: 'caldeiraria', status: 'aberta', pesoTotal: 50, programacao: { terceirizadaId: 't1', terceirizada: 'Metal A', previsaoFim: '2026-11-21' } },
-    { area: 'caldeiraria', status: 'aberta', pesoTotal: 999 },
-    { area: 'caldeiraria', status: 'aprovada', pesoTotal: 70, programacao: { terceirizadaId: 't2', previsaoFim: '2026-11-20' } }
-  ];
-  const r = Prog.cargaTerceirizadas(ops, [{ id: 't1', nome: 'Metal A' }, { id: 't2', nome: 'Metal B' }]);
-  assert.deepEqual(r.map(function (l) { return [l.terceirizada.nome, l.kg, l.ops.length]; }), [['Metal A', 150, 2], ['Metal B', 0, 0]]);
-});
 
 test('fila da máquina: horas por dia útil, a OP seguinte espera a anterior, "não antes de" e atraso', () => {
   const maquina = { id: 'm1', nome: 'Forest', horasDia: 8, fila: [{ opId: 'a' }, { opId: 'b', horas: 10 }, { opId: 'c', naoAntes: '2026-11-20' }, { opId: 'x' }, { opId: 'd' }] };

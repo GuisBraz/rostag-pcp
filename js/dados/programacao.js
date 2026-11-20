@@ -1,6 +1,5 @@
 /* ---------------------------------------------------------------------------
    Programação das OPs no Firestore:
-     - terceirizadas da caldeiraria (equipes/{id}/terceirizadas)
      - programação da OP de caldeiraria (op.programacao)
      - fila de cada máquina da usinagem (maquinas/{id}.fila)
      - horas reais da OP de usinagem (op.horasReais)
@@ -15,23 +14,6 @@ import * as Auth from './auth.js';
 function equipe() { return db().collection('equipes').doc(Auth.equipeAtualId()); }
 function refOp(id) { return equipe().collection('ops').doc(id); }
 function refMaquina(id) { return equipe().collection('maquinas').doc(id); }
-
-/* ---------------------------------------------------------- terceirizadas */
-let parar = null;
-export function escutarTerceirizadas(aoReceber) {
-  pararEscuta();
-  parar = equipe().collection('terceirizadas').onSnapshot(function (qs) {
-    const lista = [];
-    qs.forEach(function (d) { lista.push(Object.assign({ id: d.id }, d.data())); });
-    lista.sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { numeric: true }); });
-    aoReceber(lista);
-  }, function (e) { console.warn('terceirizadas indisponíveis:', e && e.code); aoReceber([]); });
-}
-export function pararEscuta() { if (parar) { parar(); parar = null; } }
-export function salvarTerceirizada(nome) {
-  return equipe().collection('terceirizadas').add({ nome: String(nome || '').trim().slice(0, 60), ativa: true, criadoEm: agoraIso(), atualizadoEm: agoraIso() });
-}
-export function excluirTerceirizada(id) { return equipe().collection('terceirizadas').doc(id).delete(); }
 
 /* --------------------------------- recursos da caldeiraria (config/recursosCald) */
 let pararRec = null;
@@ -75,27 +57,6 @@ export function baixaEtapa(ops, indice, dia) {
 }
 
 /* ------------------------------------------------------------ caldeiraria */
-export function programarCald(opId, terceirizada, previsaoFim, inicio) {
-  return programarVariasCald([opId], terceirizada, inicio, previsaoFim);
-}
-// Programa várias OPs de uma vez: empresa (SOFIR ou terceirizada), início e previsão de término.
-export function programarVariasCald(opIds, empresa, inicio, previsaoFim) {
-  const lote = db().batch(), agora = agoraIso();
-  (opIds || []).forEach(function (id) {
-    lote.update(refOp(id), { programacao: { terceirizadaId: empresa.id, terceirizada: String(empresa.nome || '').slice(0, 60),
-      inicio: inicio || '', previsaoFim: previsaoFim, historico: [], em: agora, porUid: Auth.uid() } });
-  });
-  return lote.commit();
-}
-// Reagendar: nova previsão; a anterior entra no histórico (a OP fica "reagendada").
-export function reagendarCald(op, novaData) {
-  const pr = op.programacao || {};
-  return refOp(op.id).update({ programacao: { terceirizadaId: pr.terceirizadaId, terceirizada: pr.terceirizada || '', inicio: pr.inicio || '',
-    previsaoFim: novaData, historico: (pr.historico || []).concat([pr.previsaoFim]).slice(-30), em: agoraIso(), porUid: Auth.uid() } });
-}
-// Tira da fábrica: volta para a mão da programadora (conta de novo a espera).
-export function tirarDaFabrica(opId) { return refOp(opId).update({ programacao: null, desprogramadaEm: agoraIso() }); }
-
 /* --------------------------------------------------------------- usinagem */
 function itemFila(f) {
   const r = { opId: String(f.opId) };

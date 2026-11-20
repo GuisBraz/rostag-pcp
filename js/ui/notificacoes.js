@@ -19,6 +19,7 @@ import { agendasAtuais, agendaPorOp } from './programacao.js';
 import * as Semana from '../dominio/semana.js';
 import * as Auth from '../dados/auth.js';
 import * as Store from '../dados/store.js';
+import * as Cascata from '../dados/cascata.js';
 import { $, registrarAcoes } from './dom.js';
 import { toast } from './toast.js';
 import { alternarPopup, fecharPopups } from './app.js';
@@ -234,6 +235,15 @@ function rotuloDia(dia) {
 // (carregados uma vez, só para dar o nome). null = projeto excluído;
 // undefined = ainda carregando a lista de todos.
 const EXCLUIDOS = '__excluidos';
+const conferidos = new Set();
+function limparDeExcluidos(lista) {
+  const ids = {};
+  lista.forEach(function (n) { if (n.real && n.projetoId && commessaDe(n.projetoId) === null && !conferidos.has(n.projetoId)) (ids[n.projetoId] = ids[n.projetoId] || []).push(n.id.replace(/^real:/, '')); });
+  Object.keys(ids).forEach(function (pid) {
+    conferidos.add(pid);
+    Cascata.existe('projetos', pid).then(function (sim) { if (!sim) Auth.apagarNotificacoes(ids[pid]); }).catch(function () { /* fora do ar: tenta na próxima */ conferidos.delete(pid); });
+  });
+}
 let pedindoTodos = false;
 function commessaDe(id) {
   const p = buscarProjeto(id) || (estado.projetosFabrica || []).find(function (x) { return x.id === id; });
@@ -263,6 +273,7 @@ export function renderTelaNotificacoes(listaPronta) {
   const ids = Array.from(new Set(lista.map(function (n) { return n.projetoId; }).filter(Boolean)));
   const vivos = ids.filter(function (id) { return commessaDe(id); }).sort(function (a, b) { return String(commessaDe(a)).localeCompare(String(commessaDe(b)), 'pt-BR', { numeric: true }); });
   const nExcl = lista.filter(function (n) { return n.projetoId && commessaDe(n.projetoId) === null; }).length;
+  if (nExcl) limparDeExcluidos(lista);
   sel.innerHTML = '<option value="">' + esc(T('btn.todos')) + '</option>' + vivos.map(function (id) {
     return '<option value="' + esc(id) + '">' + esc(commessaDe(id)) + '</option>';
   }).join('') + (nExcl ? '<option value="' + EXCLUIDOS + '">' + esc(T('n.projExcluidos', nExcl)) + '</option>' : '');

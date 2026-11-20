@@ -265,7 +265,6 @@ html[data-tema="escuro"] .toast { border: 1px solid var(--line); }
 .tl-sidebar-item .cm { font-family:var(--mono); font-size:10.5px; color:var(--terracotta); display:block; }
 .empty-state { text-align:center; padding:40px 20px; color:var(--ink-faint); font-size:13px; }
 
-
 /* ================= SEMÁFORO DE TAREFAS E PRAZOS ================= */
 .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .dot-planejada  { background: var(--ink-faint); }
@@ -336,7 +335,6 @@ kbd { font-family: var(--mono); font-size: 10.5px; background: var(--bg-panel-al
   .janelas { grid-template-columns: 1fr; }
 }
 
-
 /* ---------- CABEÇALHO DO DETALHE ---------- */
 .detail-commessa { font-family: var(--mono); font-size: 11.5px; font-weight: 600; color: var(--terracotta); letter-spacing: 0.04em; margin-bottom: 3px; }
 
@@ -355,7 +353,6 @@ kbd { font-family: var(--mono); font-size: 10.5px; background: var(--bg-panel-al
 .ano-kpi { flex: 1; min-width: 130px; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; background: var(--bg-panel-alt); }
 .ano-kpi .rot { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink-faint); margin-bottom: 5px; }
 .ano-kpi .val { font-size: 21px; font-weight: 800; }
-
 
 /* ---------- BOTÃO DE ALERTA (paralisar) ---------- */
 .btn-warn { background: var(--amber-bg); color: var(--amber-ink); border: 1px solid var(--amber); }
@@ -455,12 +452,7 @@ div:has(> canvas) { position: relative; }
 .linha-projeto { cursor: pointer; }
 .col-commessa { font-family: var(--mono); color: var(--terracotta); font-weight: 600; white-space: nowrap; }
 .nowrap { white-space: nowrap; }
-.col-progresso { width: 140px; }
 .col-finalizar { width: 1%; white-space: nowrap; text-align: right; }
-.mini-progresso { display: flex; align-items: center; gap: 8px; }
-.mini-progresso .trilho { flex: 1; min-width: 50px; background: var(--line-soft); border-radius: 6px; height: 8px; overflow: hidden; }
-.mini-progresso .trilho > div { height: 100%; background: var(--teal); }
-.mini-progresso span { font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim); }
 
 /* ---------- DETALHE ---------- */
 .hint-inline { color: var(--ink-faint); }
@@ -491,7 +483,6 @@ div:has(> canvas) { position: relative; }
 .convite-link { font-size: 11px; word-break: break-all; }
 .pill-mini { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 20px; background: var(--bg-panel-alt); border: 1px solid var(--line); color: var(--ink-dim); margin-left: 4px; }
 .erro-txt { color: var(--rust); }
-
 
 /* ---------------- sistema integrado: fábrica, OPs, RNC, produção ---------------- */
 .janelas.janelas-3 { grid-template-columns: repeat(3, 1fr); }
@@ -560,12 +551,9 @@ td.num { text-align: right; font-family: var(--mono); font-size: 11.5px; white-s
 .rnc-card { padding: 14px 16px; border-left: 4px solid var(--rust); }
 .rnc-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .rnc-op { font-weight: 700; color: var(--rust); font-size: 12.5px; }
-.rnc-aguarda { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--amber-ink); background: var(--amber-bg); padding: 2px 8px; border-radius: 20px; }
 .rnc-peca { font-size: 12px; margin-bottom: 8px; }
 .rnc-obs { background: var(--rust-bg); color: var(--ink); border-radius: 7px; padding: 9px 11px; font-size: 12.5px; white-space: pre-wrap; margin-bottom: 8px; }
 .rnc-card.rnc-encerrada { border-left-color: var(--line); }
-.rnc-card.rnc-encerrada .rnc-aguarda { color: var(--ink-dim); background: var(--bg-panel-alt); }
-.rnc-acoes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .op-retrabalho { background: var(--rust-bg); color: var(--rust); border: 1px solid var(--rust); }
 .op-desvio { background: var(--amber-bg); color: var(--amber-ink); border: 1px solid var(--amber); }
 .op-morta { background: var(--bg-panel-alt); color: var(--ink-faint); border: 1px dashed var(--ink-faint); text-decoration: line-through; }
@@ -580,7 +568,6 @@ td.num { text-align: right; font-family: var(--mono); font-size: 11.5px; white-s
 .baixa-botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .baixa-botoes .btn { padding: 14px 10px; font-size: 14px; justify-content: center; }
 @media (max-width: 480px) { .baixa-botoes { grid-template-columns: 1fr; } }
-
 
 .planilha-resumo ul { margin: 6px 0 0 18px; padding: 0; font-size: 12.5px; line-height: 1.6; }
 .planilha-erros { margin-top: 10px; color: var(--rust); font-size: 12px; }
@@ -988,9 +975,6 @@ tr.op-proj-atrasado { box-shadow: none !important; }
 .opd-rnc { font-size: 12.5px; padding: 4px 0; }
 .ord-ferramentas { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .ord-lista { display: flex; flex-direction: column; gap: 14px; }
-.ord-projeto { overflow: hidden; }
-.ord-topo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--bg-panel-alt); font-size: 13px; }
-.ord-prazo { margin-left: auto; font-size: 12px; color: var(--ink-dim); }
 .ord-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .ord-tab th { text-align: left; font-size: 10.5px; font-weight: 700; color: var(--ink-faint); padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .ord-tab td { padding: 8px 10px; border-bottom: 1px solid var(--line-soft); color: var(--ink); vertical-align: top; }
@@ -1021,7 +1005,6 @@ tr.op-proj-atrasado { box-shadow: none !important; }
 @media (max-width: 720px) {
   .prog-quadro, .fin-botoes, .opd-grid { grid-template-columns: 1fr; }
   .opd-linha { grid-template-columns: 110px 1fr; }
-  .ord-prazo { margin-left: 0; }
 }
 
 /* ---- página do projeto do técnico, planilha em espelho e lista de OPs ---- */
@@ -1030,19 +1013,6 @@ tr.op-proj-atrasado { box-shadow: none !important; }
 .esp-topo-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .esp-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
 .esp-resumo { margin-bottom: 10px; }
-.esp-wrap { overflow: auto; max-height: calc(100vh - 210px); border: 1px solid var(--line); border-radius: 8px; background: var(--bg-panel); }
-.esp-tab { border-collapse: collapse; font-size: 11.5px; table-layout: fixed; }
-.esp-tab td { border: 1px solid var(--line-soft); padding: 4px 6px; color: var(--ink); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.esp-tab tr.esp-topo td { background: var(--bg-panel-alt); font-weight: 600; }
-.esp-tab tr.esp-grupo td { background: #1F3864; color: #fff; font-weight: 800; text-align: center; letter-spacing: .03em; }
-.esp-tab tr.esp-cab td { background: #D9E1F2; color: #1F2937; font-weight: 700; text-align: center; white-space: normal; position: sticky; top: 0; z-index: 2; font-size: 10.5px; }
-.esp-tab tr.esp-item:hover td { background: var(--bg-panel-alt); }
-.esp-tab tr.esp-comercial td { color: var(--ink-dim); font-style: italic; }
-.esp-tab td.esp-num { text-align: right; font-family: var(--mono); }
-.esp-tab td.esp-flag { text-align: center; }
-.esp-tab td.esp-obs { color: var(--amber-ink); white-space: normal; }
-.esp-tab td.esp-vivo { background: var(--bg-panel-alt); font-weight: 700; }
-.esp-tab td.esp-vivo.esp-ok { background: var(--green-bg); color: var(--green); }
 .esp-rodape { margin-top: 8px; }
 .lops-tabela { max-height: calc(100vh - 260px); overflow: auto; }
 .opd-texto { white-space: pre-wrap; font-size: 12px; color: var(--ink-dim); margin-top: 3px; line-height: 1.45; }

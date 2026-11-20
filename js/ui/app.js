@@ -92,6 +92,7 @@ export function renderTudo() {
 
 // Depois de dados novos (do servidor ou desfeitos): tudo que depende da lista.
 export function redesenhar() {
+  estado.rev = (estado.rev || 0) + 1;
   refreshOpcoes();
   renderTudo();
   if (estado.idDetalhe) renderDetalhe();

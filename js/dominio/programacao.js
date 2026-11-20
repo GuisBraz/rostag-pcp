@@ -57,19 +57,6 @@ export function validarData(data, h, prazo) {
 
 /* ------------------------------------------------------------ caldeiraria */
 // Peso que está com cada terceirizada (OPs em fábrica). Sem capacidade fixa.
-export function cargaTerceirizadas(ops, terceirizadas) {
-  const linhas = {};
-  (terceirizadas || []).forEach(function (t) { linhas[t.id] = { terceirizada: t, kg: 0, ops: [] }; });
-  (ops || []).forEach(function (o) {
-    if (o.area !== 'caldeiraria' || situacao(o) !== 'programada') return;
-    const id = o.programacao.terceirizadaId || '';
-    const l = linhas[id] = linhas[id] || { terceirizada: { id: id, nome: o.programacao.terceirizada || '—' }, kg: 0, ops: [] };
-    l.kg += Number(o.pesoTotal) || 0;
-    l.ops.push(o);
-  });
-  return Object.keys(linhas).map(function (k) { return linhas[k]; })
-    .sort(function (a, b) { return b.kg - a.kg || String(a.terceirizada.nome).localeCompare(String(b.terceirizada.nome)); });
-}
 
 /* --------------------------------------------------------------- usinagem */
 function proximoUtil(d) { let x = d; while (fds(x)) x = addDias(x, 1); return x; }
@@ -189,11 +176,6 @@ export function proximasEtapas(o) {
 }
 
 /* ------------------------------------------------- carga fábrica (caldeiraria) */
-// A fabricação interna (SOFIR) é sempre uma opção, além das terceirizadas.
-export const SOFIR = { id: 'sofir', nome: 'SOFIR', interna: true };
-export function empresasCald(terceirizadas) {
-  return [SOFIR].concat((terceirizadas || []).filter(function (t) { return t.ativa !== false && t.id !== SOFIR.id; }));
-}
 // Prazo da OP programada: 'atraso' (previsão vencida) · 'vence' (até 3 dias) · 'prazo'.
 export function prazoCald(o, h) {
   const pr = o && o.programacao;

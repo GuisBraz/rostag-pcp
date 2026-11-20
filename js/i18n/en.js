@@ -644,4 +644,5 @@ export default {
   'fase.pcp':'PCP', 'fase.aguardandoOps':'Waiting for orders', 'fase.fabricacao':'Fabrication', 'fase.acabamento':'Finishing', 'fase.pronto':'Ready to deliver',
   'fase.paralisado':'On hold', 'fase.entregue':'Delivered', 'fase.cancelado':'Cancelled',
   'n.projExcluido':'deleted project', 'n.projExcluidos':'Deleted projects ({0})',
+  't.excluidoResto':'(no permission to delete: {0} — removed when someone allowed opens the screen)',
 };
