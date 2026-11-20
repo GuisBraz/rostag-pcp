@@ -949,4 +949,9 @@ export default {
   'pe.ondeTit':'Onde entra na fila?', 'pe.ondeQ':'A parte da {0}: furar a fila (entra logo depois da OP em máquina e o resto é reprogramado) ou ir para o fim da fila?',
   'n.cm-gelo':'{0}: OP {1} congelada — passou da hora de retomar', 'n.cm-geloM':'{0} · retorno era {1}. Retome ou reprograme a parada.',
   'n.cm-reprog':'{0}: OP {1} com {2} operação(ões) aguardando reprogramação', 'n.cm-reprogM':'No fim da fila em: {0}.',
+  'c.fase':'FASE', 'c.andamento':'ANDAMENTO', 'f.fase':'FASE', 'and.pcp':'PCP', 'and.fabrica':'Fábrica', 'and.semOps':'Fábrica: ainda sem OPs (o andamento conta só o PCP)',
+  'and.dica':'Caldeiraria {0}% · Usinagem {1}% · {2} OP(s) em aberto · {3} em RNC', 'and.esperado':'pelo tempo já deveria estar em ~{0}%',
+  'and.risco.atencao':'fábrica atrás do tempo', 'and.risco.atraso':'fábrica em risco de atraso',
+  'fase.pcp':'PCP', 'fase.aguardandoOps':'Aguardando OPs', 'fase.fabricacao':'Fabricação', 'fase.acabamento':'Acabamento', 'fase.pronto':'Pronto para entrega',
+  'fase.paralisado':'Paralisado', 'fase.entregue':'Entregue', 'fase.cancelado':'Cancelado',
 };

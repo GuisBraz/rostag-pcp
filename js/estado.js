@@ -6,7 +6,7 @@ export const estado = {
   projetos: [],
   carregado: false,          // primeira leitura da equipe já chegou
   filtroDash: { ano: '', mes: '', solicDe: '', entregaAte: '', descricao: '', gp: '', status: '', pcp: '' },
-  filtroProj: { busca: '', status: '', pcp: '', gp: '' },
+  filtroProj: { busca: '', status: '', pcp: '', gp: '', fase: '' },
   ordem: { campo: 'entrega', dir: 1 },
   ordemVisivel: [],          // ids na ordem da lista — usado pelo ↑/↓ no detalhe
   idDetalhe: null,

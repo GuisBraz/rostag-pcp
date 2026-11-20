@@ -8,6 +8,7 @@ import { STATUS_KEYS, SIT_ORDEM } from '../dominio/constantes.js';
 import * as Projeto from '../dominio/projeto.js';
 import * as Cronograma from '../dominio/cronograma.js';
 import * as Producao from '../dominio/producao.js';
+import * as Andamento from '../dominio/andamento.js';
 import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes } from './dom.js';
 import { filtrarProj, limparCampos, atualizarBadge } from './filtros.js';
@@ -25,9 +26,28 @@ const COLUNAS = [
   { campo: 'gp', rot: 'c.gp' },
   { campo: 'pcp', rot: 'c.pcp', calc: function (p) { return SIT_ORDEM.indexOf(Projeto.situacaoPcp(p)); } },
   { campo: 'entrega', rot: 'c.entrega' },
-  { campo: 'progresso', rot: 'c.progresso', calc: Projeto.progresso },
+  { campo: 'fase', rot: 'c.fase', calc: function (p) { return Andamento.FASES.indexOf(andamentoDe(p).fase); } },
+  { campo: 'andamento', rot: 'c.andamento', calc: function (p) { return andamentoDe(p).geral; } },
   { campo: 'status', rot: 'c.status', calc: function (p) { return STATUS_KEYS.indexOf(Projeto.status(p)); } }
 ];
+
+// Andamento geral: PCP (checklist) 20% + Fábrica (peças feitas das OPs) 80%
+export function andamentoDe(p) { return Andamento.calcular(p, opsDoProjeto(p.id)); }
+function celulaAndamento(a) {
+  const barra = function (rot, v, cls) {
+    return '<div class="and-linha"><span class="and-rot">' + esc(rot) + '</span><div class="trilho' + (cls || '') + '"><div style="width:' + (v || 0) + '%"></div></div>' +
+      '<span class="and-pct">' + (v == null ? '—' : v + '%') + '</span></div>';
+  };
+  const s = a.stats;
+  const dica = a.fabrica == null ? T('and.semOps')
+    : T('and.dica', s.caldeiraria.pct, s.usinagem.pct, s.abertas, s.retrabalho) + (a.esperado != null ? ' · ' + T('and.esperado', a.esperado) : '');
+  return '<td class="col-andamento" title="' + esc(dica) + '"><div class="and-cel"><b class="and-geral">' + a.geral + '%</b><div class="and-barras">' +
+    barra(T('and.pcp'), a.pcp) + barra(T('and.fabrica'), a.fabrica, a.risco ? ' risco-' + a.risco : '') + '</div></div></td>';
+}
+function celulaFase(a) {
+  return '<td><span class="fase-chip fase-' + a.fase + '">' + esc(T('fase.' + a.fase)) + '</span>' +
+    (a.risco ? '<div class="hint-txt and-risco-' + a.risco + '">' + esc(T('and.risco.' + a.risco)) + '</div>' : '') + '</td>';
+}
 
 function valorOrdenacao(p, campo) {
   const col = COLUNAS.find(function (c) { return c.campo === campo; });
@@ -87,14 +107,12 @@ export function renderProjetos() {
     return;
   }
   $('projetos-tbody').innerHTML = lista.map(function (p) {
-    const st = Projeto.status(p), pr = Projeto.progresso(p);
+    const st = Projeto.status(p), and = andamentoDe(p);
     return '<tr class="linha-projeto" data-acao="abrirProjeto" data-arg="' + esc(p.id) + '" tabindex="0" role="button" aria-label="' + esc(p.commessa + ' — ' + p.descricao) + '">' +
       '<td class="col-commessa">' + esc(p.commessa) + '</td>' +
       '<td>' + esc(p.cliente) + '</td><td>' + esc(p.descricao) + '</td><td>' + esc(p.gp) + '</td>' +
       '<td class="nowrap">' + celulaPcp(p) + '</td>' +
-      '<td class="nowrap">' + br(p.entrega) + '</td>' +
-      '<td class="col-progresso"><div class="mini-progresso"><div class="trilho"><div style="width:' + pr + '%"></div></div>' +
-        '<span>' + pr + '%</span></div></td>' +
+      '<td class="nowrap">' + br(p.entrega) + '</td>' + celulaFase(and) + celulaAndamento(and) +
       '<td><span class="pill pill-' + st + '">' + esc(STATUS_LABEL(st)) + '</span></td>' +
       (comFinalizar ? celulaFinalizar(p) : '') + '</tr>';
   }).join('');

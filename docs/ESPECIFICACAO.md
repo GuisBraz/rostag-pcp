@@ -237,6 +237,17 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   SOFIR e terceirizadas saem; programação antiga fica marcada até reprogramar.
   `op.programacao` ganha `etapas [{t, q, i, f, b}]`, `grupo` e `semRecurso`.
 
+## 4.1.2 Aba Projetos: andamento geral e fase
+
+- **Andamento:** número geral = PCP 20% + Fábrica 80% (sem OPs, só o PCP),
+  com as barras de PCP (checklist) e Fábrica (peças feitas das OPs do
+  projeto); a dica mostra caldeiraria, usinagem, OPs em aberto e em RNC. A
+  barra da Fábrica fica laranja/vermelha quando está atrás do tempo que já
+  passou da produção (15 / 30 pontos ou depois do fim da produção).
+- **Fase:** PCP → Aguardando OPs → Fabricação → Acabamento (aprovadas pelo CQ
+  que ainda vão para pintura / serviço externo / TTAT / oxidação) → Pronto
+  para entrega; ou Paralisado / Entregue / Cancelado. Ordena e filtra.
+
 ## 4.2 Página do projeto do técnico e Todas as OPs
 
 - **Cartões no projeto (só técnico):** **Checklist** (abre e fecha o cronograma
