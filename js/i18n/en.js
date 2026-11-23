@@ -645,4 +645,11 @@ export default {
   'fase.paralisado':'On hold', 'fase.entregue':'Delivered', 'fase.cancelado':'Cancelled',
   'n.projExcluido':'deleted project', 'n.projExcluidos':'Deleted projects ({0})',
   't.excluidoResto':'(no permission to delete: {0} — removed when someone allowed opens the screen)',
+  'ctl.titulo':'📄 Job list spreadsheet (new projects)', 'ctl.nota':'Choose the “Controle de Commesse em aberto” file. While the site is open, every 5 minutes it reads the Controle sheet and creates new projects (skips delivered and existing ones; repeated job numbers become one project; 2025-016, 2025-031, 2025-067, 2026-003, 2026-004 and 2025-005 come in per OM). Works in Chrome or Edge.',
+  'ctl.escolher':'Choose file', 'ctl.trocar':'Change file', 'ctl.esquecer':'Stop reading', 'ctl.agora':'Check now', 'ctl.permitir':'Allow reading', 'ctl.ativo':'reading every 5 min',
+  'ctl.semPermissao':'waiting for permission', 'ctl.nuncaLida':'Not read yet.', 'ctl.resumo':'Last check: {0} · {1} rows · {2} delivered · {3} already on the site',
+  'ctl.ultimos':'Imported on {0}:', 'ctl.semData':'{0} without shipping date (imported once the date is filled)', 'ctl.erroAba':'Could not find the Controle sheet with Commesses, Cliente and Status columns.',
+  'ctl.erroLer':'Could not read the file (moved, renamed or no access). Choose it again.', 'ctl.semSuporte':'Automatic spreadsheet reading needs Chrome or Edge on a computer.',
+  'ctl.pedirPermissao':'Job list spreadsheet ({0}): allow reading to bring new projects.', 'ctl.importados':'{0} new project(s) from the job list spreadsheet.',
+  'ctl.notif':'📄 {0} new project(s) imported from the spreadsheet: {1}', 'ctl.criadoPor':'Job list spreadsheet',
 };

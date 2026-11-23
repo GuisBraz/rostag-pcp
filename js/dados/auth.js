@@ -623,8 +623,9 @@ export function revogarConvite(codigo) { return db().collection('convites').doc(
 // Avisos entre pessoas (designação, cronograma, planilha, RNC, chat...).
 // Qualquer membro gera, só para outro membro da mesma equipe (regra); o
 // destinatário lê as próprias e marca como lidas.
-export function criarNotificacao(paraUid, tipo, mensagem, projetoId) {
-  if (!usuario || !paraUid || paraUid === usuario.uid) return Promise.resolve();
+// paraMim: avisos do próprio site (ex.: projetos importados da planilha) também chegam a quem rodou.
+export function criarNotificacao(paraUid, tipo, mensagem, projetoId, paraMim) {
+  if (!usuario || !paraUid || (paraUid === usuario.uid && !paraMim)) return Promise.resolve();
   return db().collection('notificacoes').add({
     paraUid: paraUid, tipo: tipo, mensagem: String(mensagem || '').slice(0, 500), projetoId: projetoId || null, equipeId: equipeAtualId_,
     deUid: usuario.uid, deNome: nomeExibicao(), lida: false, criadoEm: agoraIso()
