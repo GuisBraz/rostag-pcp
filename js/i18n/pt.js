@@ -969,4 +969,7 @@ export default {
   'om.tirar':'Tirar {0}', 'om.addRot':'Commessa do contrato', 'om.add':'Adicionar', 'om.invalido':'Digite a commessa no formato 2026-010.', 'om.adicionado':'Contrato {0} adicionado.',
   'om.tirarQ':'Tirar {0} dos contratos com OM? As OMs continuam como projetos, só deixam de ficar agrupadas.', 'om.tirarOk':'Tirar', 'om.tirado':'Contrato {0} tirado da lista.',
   'fm.errOmFalta':'{0} é um contrato com OM: informe o número da OM.', 'fm.errDupOm':'Já existe a OM {1} no contrato {0}.',
+  'c.fasePcp':'FASE / PCP', 'fin.curto':'✔ Finalizar',
+  'lista.esperaTit':'Aguardando cronograma ({0})', 'lista.esperaNota':'designados para você; as tarefas chegam quando o GP definir as datas', 'lista.esperaChecklist':'O checklist abre quando o GP definir o cronograma deste projeto.',
+  'pl.qtdC':'QTD', 'pl.pesoUnitC':'P. UNIT. (KG)', 'pl.pesoTotalC':'P. TOTAL (KG)', 'pl.comercialC':'COM.', 'pl.usinagemC':'USI', 'pl.pinturaC':'PINT.', 'pl.oxidacaoC':'OXID.', 'pl.servicosC':'SERV.',
 };

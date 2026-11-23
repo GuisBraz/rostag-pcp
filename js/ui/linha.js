@@ -2,7 +2,7 @@
    Linha do tempo — posicionada pela entrega, colorida pelo status.
 --------------------------------------------------------------------------- */
 import { estado, nomeProjeto } from '../estado.js';
-import { esc, br, hoje } from '../nucleo/fmt.js';
+import { esc, br, hoje, nomeCurto } from '../nucleo/fmt.js';
 import { T, STATUS_LABEL } from '../i18n/index.js';
 import * as Projeto from '../dominio/projeto.js';
 import { $, registrarAcoes } from './dom.js';
@@ -66,7 +66,7 @@ export function renderLinha() {
       '<div class="tl-date" style="color:' + corStatus(st) + '">' + br(p.entrega) + ' · ' + esc(STATUS_LABEL(st)) + '</div>' +
       '<div class="tl-commessa">' + esc(nomeProjeto(p)) + '</div>' +
       '<div class="tl-desc">' + esc(p.descricao) + '</div>' +
-      '<div class="tl-meta"><span class="dot dot-' + sitPcp + '"></span>PCP ' + Projeto.progresso(p) + '% · ' + esc(p.cliente) + (p.gp && p.gp !== '—' ? ' · ' + esc(T('tl.gp', p.gp)) : '') + '</div></' + (abre ? 'button' : 'div') + '>';
+      '<div class="tl-meta"><span class="dot dot-' + sitPcp + '"></span>PCP ' + Projeto.progresso(p) + '% · ' + esc(p.cliente) + (p.gp && p.gp !== '—' ? ' · ' + esc(T('tl.gp', nomeCurto(p.gp))) : '') + '</div></' + (abre ? 'button' : 'div') + '>';
     return '<div class="tl-row"><div class="tl-side ' + (esquerda ? '' : 'empty') + '">' + (esquerda ? card : '') + '</div>' +
       '<div class="tl-center"><div class="tl-dot" style="background:' + corStatus(st) + '"></div></div>' +
       '<div class="tl-side ' + (!esquerda ? '' : 'empty') + '">' + (!esquerda ? card : '') + '</div></div>';

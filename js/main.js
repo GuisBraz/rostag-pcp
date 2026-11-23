@@ -17,6 +17,7 @@ import * as DadosCarga from './dados/carga.js';
 import * as Ops from './dados/ops.js';
 import * as DadosRncs from './dados/rncs.js';
 import * as DadosChecklist from './dados/checklist.js';
+import './ui/vigiaLargura.js';
 import * as UiContratos from './ui/contratos.js';
 import * as Despertador from './ui/despertador.js';
 import * as DadosPgms from './dados/pgms.js';
@@ -56,8 +57,9 @@ let papelCarregado = null;     // a consulta muda conforme o cargo
 /* ------------------------------------------------------------ dados */
 function aoReceberProjetos(lista) {
   const primeira = !estado.carregado;
-  // o técnico só recebe o projeto depois que o GP define o cronograma
-  estado.projetos = Auth.papel() === 'tecnico' ? lista.filter(function (p) { return !Projeto.aguardandoCronograma(p); }) : lista;
+  // o técnico também vê os projetos que ainda aguardam o cronograma do GP (bloco cinza na
+  // lista, só consulta); as tarefas e o aviso só chegam quando o cronograma é definido
+  estado.projetos = lista;
   estado.carregado = true;
   Cronograma.invalidar();
   migrarChecklistsUmaVez();

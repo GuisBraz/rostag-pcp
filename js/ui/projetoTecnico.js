@@ -99,6 +99,9 @@ function abrirEspelho(projetoId) {
 
 // Colunas da planilha personalizada: [rótulo, campo do item ou função]
 const MARCA = function (v) { return v ? '<span class="pl-marca" aria-label="✓">●</span>' : ''; };
+// OP: só os 6 primeiros dígitos (o final 01001 é padrão); o número inteiro vai na dica
+const OP = function (n) { const s = String(n || ''); return /^\d{6}01001$/.test(s) ? '<span title="' + esc(s) + '">' + esc(s.slice(0, 6)) + '</span>' : esc(s); };
+// [rótulo, valor, classe, filtro, rótulo curto do cabeçalho (o nome inteiro vai na dica)]
 const COLUNAS = [
   ['pl.rev', function (i) { return esc(i.rev); }, 'pl-c'],
   ['pl.desenho', function (i) { return esc(i.desenho); }, 'mono'],
@@ -107,29 +110,30 @@ const COLUNAS = [
     return '<span class="pl-desc">' + esc(i.descricao) + '</span>' +
       (i.obs ? ' <span class="pl-obs" title="' + esc(i.obs) + '" aria-label="' + esc(T('pl.obs') + ': ' + i.obs) + '" tabindex="0">💬</span>' : '');
   }, 'pl-descricao'],
-  ['pl.qtd', function (i) { return i.qtd == null ? '' : numeroBr(i.qtd); }, 'num'],
-  ['pl.pesoUnit', function (i) { return i.pesoUnit == null ? '' : numeroBr(i.pesoUnit); }, 'num'],
-  ['pl.pesoTotal', function (i) { return i.pesoTotal == null ? '' : numeroBr(i.pesoTotal); }, 'num'],
-  ['pl.comercial', function (i) { return MARCA(i.comercial); }, 'pl-c', 'comercial'],
+  ['pl.qtd', function (i) { return i.qtd == null ? '' : numeroBr(i.qtd); }, 'num', null, 'pl.qtdC'],
+  ['pl.pesoUnit', function (i) { return i.pesoUnit == null ? '' : numeroBr(i.pesoUnit); }, 'num', null, 'pl.pesoUnitC'],
+  ['pl.pesoTotal', function (i) { return i.pesoTotal == null ? '' : numeroBr(i.pesoTotal); }, 'num', null, 'pl.pesoTotalC'],
+  ['pl.comercial', function (i) { return MARCA(i.comercial); }, 'pl-c', 'comercial', 'pl.comercialC'],
   ['pl.cald', function (i) { return MARCA(i.cald); }, 'pl-c', 'cald'],
-  ['pl.usinagem', function (i) { return MARCA(i.usin); }, 'pl-c', 'usin'],
-  ['pl.pintura', function (i) { return MARCA(i.marcas && i.marcas.pintura); }, 'pl-c', 'pintura'],
-  ['pl.oxidacao', function (i) { return MARCA(i.marcas && i.marcas.oxidacao); }, 'pl-c', 'oxidacao'],
-  ['pl.servicos', function (i) { return MARCA(i.marcas && i.marcas.servicoExterno); }, 'pl-c', 'servicoExterno'],
+  ['pl.usinagem', function (i) { return MARCA(i.usin); }, 'pl-c', 'usin', 'pl.usinagemC'],
+  ['pl.pintura', function (i) { return MARCA(i.marcas && i.marcas.pintura); }, 'pl-c', 'pintura', 'pl.pinturaC'],
+  ['pl.oxidacao', function (i) { return MARCA(i.marcas && i.marcas.oxidacao); }, 'pl-c', 'oxidacao', 'pl.oxidacaoC'],
+  ['pl.servicos', function (i) { return MARCA(i.marcas && i.marcas.servicoExterno); }, 'pl-c', 'servicoExterno', 'pl.servicosC'],
   ['pl.ttat', function (i) { return MARCA(i.marcas && i.marcas.ttat); }, 'pl-c', 'ttat'],
-  ['pl.produto', function (i) { return esc(i.produto); }, 'mono'],
-  ['pl.opCald', function (i) { return esc(i.opCald); }, 'mono'],
-  ['pl.opUsin', function (i) { return esc(i.opUsin); }, 'mono']
+  ['pl.produto', function (i) { return esc(i.produto); }, 'mono pl-cod'],
+  ['pl.opCald', function (i) { return OP(i.opCald); }, 'mono'],
+  ['pl.opUsin', function (i) { return OP(i.opUsin); }, 'mono']
 ];
 
 // A lista do projeto do jeito do site: as peças (os comerciais só com o filtro
 // "Comercial"). Clicar no título de uma coluna de marca filtra por ela.
 function tabelaPlanilha(itens, pecas, filtros) {
   const cab = COLUNAS.map(function (c) {
-    if (!c[3]) return '<th class="' + c[2] + '">' + esc(T(c[0])) + '</th>';
+    const rot = esc(T(c[4] || c[0]));
+    if (!c[3]) return '<th class="' + c[2] + '"' + (c[4] ? ' title="' + esc(T(c[0])) + '"' : '') + '>' + rot + '</th>';
     const ativo = !!filtros[c[3]];
     return '<th class="' + c[2] + ' pl-filtro' + (ativo ? ' ativo' : '') + '" data-acao="filtroPlanilha" data-arg="' + c[3] + '" role="button" tabindex="0"' +
-      ' aria-pressed="' + ativo + '" title="' + esc(T(ativo ? 'pl.filtroTirar' : 'pl.filtroPor', T(c[0]))) + '">' + esc(T(c[0])) + (ativo ? ' ✕' : '') + '</th>';
+      ' aria-pressed="' + ativo + '" title="' + esc(T(ativo ? 'pl.filtroTirar' : 'pl.filtroPor', T(c[0]))) + '" aria-label="' + esc(T(c[0])) + '">' + rot + (ativo ? ' ✕' : '') + '</th>';
   }).join('');
   if (!pecas.length) {
     return '<div class="table-wrap pl-wrap"><table class="ord-tab pl-tab"><thead><tr>' + cab + '</tr></thead></table>' +
@@ -204,8 +208,9 @@ document.addEventListener('rostag:planilhaGravada', function (e) {
 
 registrarAcoes({
   alternarChecklist: function (id) {
-    checklistAberto = !checklistAberto;
     const p = buscarProjeto(id);
+    if (p && Projeto.aguardandoCronograma(p) && !Auth.souGPouCoordenador()) { toast(T('lista.esperaChecklist')); return; }
+    checklistAberto = !checklistAberto;
     if (p) renderCartoesTecnico(p);
   },
   abrirEspelho: abrirEspelho,
