@@ -293,6 +293,20 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - Planilha: contrato sem número de OM na linha (2025-006) vira um subprojeto
   por descrição; descrições iguais juntam (embarque mais longe).
 
+## 4.1.6 Telas sem barra horizontal
+
+- Nenhuma tela tem barra de rolagem horizontal, exceto Carga Máquina e Carga
+  Fábrica (mapas com muitos dias). Aba Projetos: Commessa (descrição em linha
+  pequena embaixo), Cliente, Entrega, Fase (andamento na dica), Status e
+  Finalizar. Planilha de avanço: títulos curtos nas colunas de marca (nome
+  inteiro na dica) e OP com 6 dígitos.
+- Nome de pessoa sem cadastro aparece sem o "@…" do e-mail.
+- No site local (localhost) um vigia avisa no console quando alguma tela passa
+  da largura.
+- Técnico vê também os projetos designados que aguardam o cronograma do GP,
+  num bloco cinza no fim da lista (só consulta; o checklist abre e as tarefas
+  chegam quando o cronograma é definido).
+
 ## 4.2 Página do projeto do técnico e Todas as OPs
 
 - **Cartões no projeto (só técnico):** **Checklist** (abre e fecha o cronograma

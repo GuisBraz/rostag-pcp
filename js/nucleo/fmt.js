@@ -70,3 +70,9 @@ export function iniciais(nome) {
   return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
 }
 
+
+// Nome de pessoa para as telas: conta sem nome cadastrado vem como e-mail → só a parte antes do @
+export function nomeCurto(n) {
+  const s = String(n == null ? '' : n).trim();
+  return s.indexOf('@') > 0 ? s.slice(0, s.indexOf('@')) : s;
+}

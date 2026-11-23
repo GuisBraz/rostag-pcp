@@ -1050,7 +1050,12 @@ tr.lops-linha-fora td:first-child { box-shadow: inset 4px 0 0 var(--violet); }
 .pl-tab th { position: sticky; top: 0; background: var(--bg-panel); z-index: 1; }
 .pl-tab th.pl-c, .pl-tab td.pl-c { text-align: center; }
 .pl-tab td { white-space: nowrap; }
-.pl-tab td.pl-descricao { white-space: normal; min-width: 220px; }
+.pl-tab td.pl-descricao { white-space: normal; min-width: 180px; }
+/* planilha cabe na tela: cabeçalhos quebram, células mais justas, códigos longos quebram */
+.pl-tab th { white-space: normal; line-height: 1.2; }
+.pl-tab th, .pl-tab td { padding-left: 7px; padding-right: 7px; }
+.pl-tab td.mono { white-space: normal; overflow-wrap: anywhere; }
+.pl-tab td.pl-cod { min-width: 70px; }
 .pl-tab tr.pl-conjunto td { background: var(--bg-panel-alt); font-weight: 700; }
 .pl-tab tr.pl-nivel1 td.pl-descricao { padding-left: 22px; }
 .pl-tab tr.pl-nivel2 td.pl-descricao { padding-left: 34px; }
@@ -1542,10 +1547,10 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .cm-tl-rotulos .cm-tl-maq small { font-size: 10.5px; color: var(--ink-faint); }
 
 /* aba Projetos: andamento geral (PCP + Fábrica) e fase */
-.col-andamento { min-width: 210px; }
-.and-cel { display: flex; align-items: center; gap: 10px; }
+.col-andamento { min-width: 104px; width: 1%; }
+.and-cel { display: flex; align-items: center; gap: 8px; }
 .and-geral { font: 800 15px var(--mono); min-width: 44px; }
-.and-barras { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.and-barras { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 44px; }
 .and-linha { display: grid; grid-template-columns: 52px 1fr 38px; gap: 6px; align-items: center; font-size: 10.5px; }
 .and-rot { color: var(--ink-dim); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
 .and-pct { font-family: var(--mono); color: var(--ink-dim); text-align: right; }
@@ -1591,3 +1596,22 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .om-chip-x:hover { color: var(--rust); }
 .om-novo { display: flex; gap: 8px; align-items: center; }
 .om-novo .input { max-width: 180px; }
+
+/* Projetos sem barra horizontal: colunas que quebram, descrição em 2 linhas, andamento compacto */
+.and-barras > .trilho { height: 5px; border-radius: 5px; background: var(--line-soft); overflow: hidden; }
+.and-barras > .trilho > div { height: 100%; background: var(--blue, #2F5BDB); border-radius: 5px; }
+.and-barras > .trilho.risco-atencao > div { background: var(--amber); }
+.and-barras > .trilho.risco-atraso > div { background: var(--rust); }
+.corta2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.col-desc { min-width: 140px; }
+.col-gp, .col-cliente { overflow-wrap: anywhere; }
+.col-fase .fase-pcp { margin-top: 4px; }
+.col-fase .sit-chip { white-space: normal; font-size: 11px; }
+.lp-desc { font-family: var(--font); font-size: 11.5px; font-weight: 500; color: var(--ink-dim); margin-top: 2px; white-space: normal; max-width: 360px;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.linha-om .lp-desc { padding-left: 16px; }
+/* técnico: projetos que aguardam o cronograma do GP (só consulta) */
+.linha-bloco-espera td { background: var(--bg-panel-alt); color: var(--ink-dim); font-weight: 700; font-size: 12px; padding: 12px; border-top: 2px solid var(--line); cursor: default; }
+tbody tr.linha-bloco-espera:hover td { background: var(--bg-panel-alt); }
+.linha-espera td { opacity: .6; }
+.linha-espera:hover td { opacity: .85; }

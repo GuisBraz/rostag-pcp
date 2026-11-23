@@ -658,4 +658,7 @@ export default {
   'om.tirar':'Remove {0}', 'om.addRot':'Contract job number', 'om.add':'Add', 'om.invalido':'Type the job number as 2026-010.', 'om.adicionado':'Contract {0} added.',
   'om.tirarQ':'Remove {0} from the contracts with work orders? The WOs stay as projects, just no longer grouped.', 'om.tirarOk':'Remove', 'om.tirado':'Contract {0} removed from the list.',
   'fm.errOmFalta':'{0} is a contract with work orders: enter the WO number.', 'fm.errDupOm':'WO {1} already exists in contract {0}.',
+  'c.fasePcp':'PHASE / PCP', 'fin.curto':'✔ Finish',
+  'lista.esperaTit':'Waiting for schedule ({0})', 'lista.esperaNota':'assigned to you; tasks arrive when the PM sets the dates', 'lista.esperaChecklist':'The checklist opens once the PM sets this project\'s schedule.',
+  'pl.qtdC':'QTY', 'pl.pesoUnitC':'U. WT. (KG)', 'pl.pesoTotalC':'T. WT. (KG)', 'pl.comercialC':'COM.', 'pl.usinagemC':'MACH.', 'pl.pinturaC':'PAINT', 'pl.oxidacaoC':'OXID.', 'pl.servicosC':'SERV.',
 };

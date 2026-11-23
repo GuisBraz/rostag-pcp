@@ -5,7 +5,7 @@ import * as Auth from '../dados/auth.js';
 import { estado, opsDoProjeto } from '../estado.js';
 import * as Andamento from '../dominio/andamento.js';
 import { T, meses } from '../i18n/index.js';
-import { esc } from '../nucleo/fmt.js';
+import { esc, nomeCurto } from '../nucleo/fmt.js';
 import * as Projeto from '../dominio/projeto.js';
 import { $, registrarAcoes } from './dom.js';
 import { alternarPopup } from './app.js';
@@ -72,7 +72,7 @@ function preencherSelect(id, valores, atual) {
   const el = $(id);
   if (!el) return;
   el.innerHTML = '<option value="">' + esc(T('btn.todos')) + '</option>' +
-    valores.map(function (v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('');
+    valores.map(function (v) { return '<option value="' + esc(v) + '">' + esc(nomeCurto(v)) + '</option>'; }).join('');
   el.value = valores.indexOf(atual) >= 0 ? atual : '';
 }
 function preencherDatalist(id, valores) {

@@ -6,7 +6,7 @@ import { estado, buscarProjeto, projetoAtual, opsDoProjeto, nomeProjeto } from '
 import * as Producao from '../dominio/producao.js';
 import { abrirEditarProjeto } from './formulario.js';
 import { prefs } from '../nucleo/prefs.js';
-import { esc, br, hoje, difDias, dataDoInstante, horaDoInstante, numeroBr } from '../nucleo/fmt.js';
+import { esc, br, hoje, difDias, dataDoInstante, horaDoInstante, numeroBr, nomeCurto } from '../nucleo/fmt.js';
 import { T, plural, STATUS_LABEL, SIT_LABEL } from '../i18n/index.js';
 import { DIAS_MAX_TAREFA } from '../dominio/constantes.js';
 import * as Projeto from '../dominio/projeto.js';
@@ -44,7 +44,7 @@ export function renderDetalhe() {
 
   $('detail-commessa').textContent = nomeProjeto(p);
   $('detail-titulo').textContent = p.descricao;
-  $('detail-sub').textContent = p.cliente + ' · ' + T('f.gp') + ' ' + p.gp + ' · ' + T('d.tecnico') + ' ' + (p.tecnico || '—');
+  $('detail-sub').textContent = p.cliente + ' · ' + T('f.gp') + ' ' + nomeCurto(p.gp) + ' · ' + T('d.tecnico') + ' ' + (nomeCurto(p.tecnico) || '—');
   const pill = $('detail-status-pill');
   pill.textContent = STATUS_LABEL(st);
   pill.className = 'pill pill-' + st;

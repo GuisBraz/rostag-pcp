@@ -2,11 +2,10 @@
    Lista de projetos — tabela ordenável com filtro.
 --------------------------------------------------------------------------- */
 import { estado, buscarProjeto, opsDoProjeto, nomeProjeto } from '../estado.js';
-import { esc, br, brCurto, hoje } from '../nucleo/fmt.js';
-import { T, plural, STATUS_LABEL, SIT_LABEL } from '../i18n/index.js';
-import { STATUS_KEYS, SIT_ORDEM } from '../dominio/constantes.js';
+import { esc, br, hoje } from '../nucleo/fmt.js';
+import { T, plural, STATUS_LABEL } from '../i18n/index.js';
+import { STATUS_KEYS } from '../dominio/constantes.js';
 import * as Projeto from '../dominio/projeto.js';
-import * as Cronograma from '../dominio/cronograma.js';
 import * as Producao from '../dominio/producao.js';
 import * as Andamento from '../dominio/andamento.js';
 import * as Contratos from '../dominio/contratos.js';
@@ -23,12 +22,8 @@ export { refreshOpcoes } from './filtros.js';
 const COLUNAS = [
   { campo: 'commessa', rot: 'c.commessa' },
   { campo: 'cliente', rot: 'c.cliente' },
-  { campo: 'descricao', rot: 'c.descricao' },
-  { campo: 'gp', rot: 'c.gp' },
-  { campo: 'pcp', rot: 'c.pcp', calc: function (p) { return SIT_ORDEM.indexOf(Projeto.situacaoPcp(p)); } },
   { campo: 'entrega', rot: 'c.entrega' },
   { campo: 'fase', rot: 'c.fase', calc: function (p) { return Andamento.FASES.indexOf(andamentoDe(p).fase); } },
-  { campo: 'andamento', rot: 'c.andamento', calc: function (p) { return andamentoDe(p).geral; } },
   { campo: 'status', rot: 'c.status', calc: function (p) { return STATUS_KEYS.indexOf(Projeto.status(p)); } }
 ];
 
@@ -40,38 +35,18 @@ export function andamentoDe(p) {
   if (!memoAnd.has(p.id)) memoAnd.set(p.id, Andamento.calcular(p, opsDoProjeto(p.id)));
   return memoAnd.get(p.id);
 }
-function celulaAndamento(a) {
-  const barra = function (rot, v, cls) {
-    return '<div class="and-linha"><span class="and-rot">' + esc(rot) + '</span><div class="trilho' + (cls || '') + '"><div style="width:' + (v || 0) + '%"></div></div>' +
-      '<span class="and-pct">' + (v == null ? '—' : v + '%') + '</span></div>';
-  };
-  const s = a.stats;
-  const dica = a.fabrica == null ? T('and.semOps')
-    : T('and.dica', s.caldeiraria.pct, s.usinagem.pct, s.abertas, s.retrabalho) + (a.esperado != null ? ' · ' + T('and.esperado', a.esperado) : '');
-  return '<td class="col-andamento" title="' + esc(dica) + '"><div class="and-cel"><b class="and-geral">' + a.geral + '%</b><div class="and-barras">' +
-    barra(T('and.pcp'), a.pcp) + barra(T('and.fabrica'), a.fabrica, a.risco ? ' risco-' + a.risco : '') + '</div></div></td>';
-}
+// Fase do projeto (e o aviso de risco da fábrica); o andamento vai na dica
 function celulaFase(a) {
-  return '<td><span class="fase-chip fase-' + a.fase + '">' + esc(T('fase.' + a.fase)) + '</span>' +
+  const s = a.stats;
+  const dica = T('c.andamento') + ' ' + a.geral + '% · ' + T('and.pcp') + ' ' + a.pcp + '% · ' + T('and.fabrica') + ' ' + (a.fabrica == null ? '—' : a.fabrica + '%') +
+    (a.fabrica == null ? '' : '\n' + T('and.dica', s.caldeiraria.pct, s.usinagem.pct, s.abertas, s.retrabalho));
+  return '<td class="col-fase" title="' + esc(dica) + '"><span class="fase-chip fase-' + a.fase + '">' + esc(T('fase.' + a.fase)) + '</span>' +
     (a.risco ? '<div class="hint-txt and-risco-' + a.risco + '">' + esc(T('and.risco.' + a.risco)) + '</div>' : '') + '</td>';
 }
 
 function valorOrdenacao(p, campo) {
   const col = COLUNAS.find(function (c) { return c.campo === campo; });
   return col && col.calc ? col.calc(p) : p[campo];
-}
-
-function celulaPcp(p) {
-  const st = Projeto.status(p);
-  if (st === 'cancelado') return '<span class="sit-chip" style="color:var(--ink-faint)"><span class="dot dot-planejada"></span>—</span>';
-  const c = Cronograma.calcular(p);
-  if (st === 'concluido' || c.concluido) {
-    return '<span class="sit-chip"><span class="dot dot-concluida"></span>' + esc(T('lista.pcpConcluido')) + '</span>';
-  }
-  const s = Projeto.situacaoPcp(p);
-  const texto = c.proxima && c.proxima.fim ? brCurto(c.proxima.fim) + ' · ' + SIT_LABEL(s) : SIT_LABEL(s);
-  return '<span class="sit-chip" title="' + esc(T('lista.proxima', c.proxima ? c.proxima.t : '—')) + '">' +
-    '<span class="dot dot-' + s + '"></span>' + esc(texto) + '</span>';
 }
 
 // Gerência e GP finalizam a commessa pela lista (o GP só os projetos dele).
@@ -81,8 +56,8 @@ function celulaFinalizar(p) {
   const st = Projeto.status(p);
   if (st === 'concluido') return '<td class="col-finalizar"><span class="hint-txt">' + esc(T('fin.em', br(p.concluidoEm))) + '</span></td>';
   if (st === 'cancelado') return '<td class="col-finalizar"><span class="hint-txt">—</span></td>';
-  return '<td class="col-finalizar"><button type="button" class="btn btn-success btn-mini" data-acao="finalizarCommessa" data-arg="' + esc(p.id) + '">' +
-    esc(T('fin.botao')) + '</button></td>';
+  return '<td class="col-finalizar"><button type="button" class="btn btn-success btn-mini" data-acao="finalizarCommessa" data-arg="' + esc(p.id) + '" title="' + esc(T('fin.titulo')) + '">' +
+    esc(T('fin.curto')) + '</button></td>';
 }
 
 // Contratos com OM: uma linha que abre e fecha, com as OMs dentro.
@@ -93,28 +68,26 @@ function gravarAbertos() { try { localStorage.setItem(CHAVE_ABERTOS, JSON.string
 function linhaProjeto(p, comFinalizar, sub) {
   const st = Projeto.status(p), and = andamentoDe(p);
   const com = sub ? '<span class="om-sub" title="' + esc(nomeProjeto(p)) + '">' + (p.om ? esc(T('om.rot', p.om)) : '<span class="om-falta">' + esc(T('om.semOm')) + '</span>') + '</span>' : esc(nomeProjeto(p));
+  // a descrição vai numa linha pequena embaixo do número (sem coluna própria)
+  const desc = '<div class="lp-desc" title="' + esc(p.descricao) + '">' + esc(p.descricao || '') + '</div>';
   return '<tr class="linha-projeto' + (sub ? ' linha-om' : '') + '" data-acao="abrirProjeto" data-arg="' + esc(p.id) + '" tabindex="0" role="button" aria-label="' + esc(nomeProjeto(p) + ' — ' + p.descricao) + '">' +
-    '<td class="col-commessa">' + com + '</td>' +
-    '<td>' + esc(p.cliente) + '</td><td>' + esc(p.descricao) + '</td><td>' + esc(p.gp) + '</td>' +
-    '<td class="nowrap">' + celulaPcp(p) + '</td>' +
-    '<td class="nowrap">' + br(p.entrega) + '</td>' + celulaFase(and) + celulaAndamento(and) +
+    '<td class="col-commessa">' + com + desc + '</td>' +
+    '<td class="col-cliente">' + esc(p.cliente) + '</td>' +
+    '<td class="nowrap">' + br(p.entrega) + '</td>' + celulaFase(and) +
     '<td><span class="pill pill-' + st + '">' + esc(STATUS_LABEL(st)) + '</span></td>' +
     (comFinalizar ? celulaFinalizar(p) : '') + '</tr>';
 }
-function linhaContrato(g, comFinalizar, aberto) {
+function linhaContrato(g, comFinalizar, aberto, prefixo) {
   const ps = g.projetos;
   const abertas = ps.filter(Projeto.aberto);
   const atrasadas = ps.filter(function (p) { return Projeto.status(p) === 'atrasado'; }).length;
   const prox = abertas.map(function (p) { return p.entrega; }).filter(Boolean).sort()[0];
-  const ands = abertas.map(function (p) { return andamentoDe(p).geral; });
-  const media = ands.length ? Math.round(ands.reduce(function (a, b) { return a + b; }, 0) / ands.length) : null;
-  const gp = (ps.find(function (p) { return p.gp && p.gp !== '—'; }) || ps[0]).gp;
   const cli = (ps.find(function (p) { return p.cliente && p.cliente !== '—'; }) || ps[0]).cliente;
-  return '<tr class="linha-contrato' + (aberto ? ' aberto' : '') + '" data-acao="alternarContrato" data-arg="' + esc(g.contrato) + '" tabindex="0" role="button" aria-expanded="' + aberto + '">' +
-    '<td class="col-commessa"><span class="om-seta" aria-hidden="true">' + (aberto ? '▾' : '▸') + '</span><b>' + esc(g.contrato) + '</b></td>' +
-    '<td>' + esc(cli) + '</td><td><b>' + esc(T('om.nOms', ps.length)) + '</b><span class="hint-txt"> · ' + esc(T('om.nAbertas', abertas.length)) + '</span></td><td>' + esc(gp || '—') + '</td>' +
-    '<td></td><td class="nowrap">' + (prox ? '<span class="hint-txt">' + esc(T('om.proxima')) + '</span> ' + br(prox) : '—') + '</td><td></td>' +
-    '<td class="col-andamento">' + (media == null ? '—' : '<b class="and-geral">' + media + '%</b> <span class="hint-txt">' + esc(T('om.media')) + '</span>') + '</td>' +
+  return '<tr class="linha-contrato' + (aberto ? ' aberto' : '') + '" data-acao="alternarContrato" data-arg="' + esc((prefixo || '') + g.contrato) + '" tabindex="0" role="button" aria-expanded="' + aberto + '">' +
+    '<td class="col-commessa"><span class="om-seta" aria-hidden="true">' + (aberto ? '▾' : '▸') + '</span><b>' + esc(g.contrato) + '</b>' +
+      '<div class="lp-desc">' + esc(T('om.nOms', ps.length)) + ' · ' + esc(T('om.nAbertas', abertas.length)) + '</div></td>' +
+    '<td class="col-cliente">' + esc(cli) + '</td>' +
+    '<td class="nowrap">' + (prox ? '<span class="hint-txt">' + esc(T('om.proxima')) + '</span> ' + br(prox) : '—') + '</td><td></td>' +
     '<td>' + (atrasadas ? '<span class="pill pill-atrasado">' + esc(T('om.nAtrasadas', atrasadas)) + '</span>' : (abertas.length ? '<span class="pill pill-andamento">' + esc(T('om.emDia')) + '</span>' : '')) + '</td>' +
     (comFinalizar ? '<td class="col-finalizar"><button type="button" class="btn btn-outline btn-mini" data-acao="novaOm" data-arg="' + esc(g.contrato) + '">' + esc(T('om.nova')) + '</button></td>' : '') + '</tr>';
 }
@@ -137,9 +110,13 @@ export function renderProjetos() {
     if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * estado.ordem.dir;
     return String(va).localeCompare(String(vb), 'pt-BR', { numeric: true }) * estado.ordem.dir;
   });
-  const grupos = Contratos.agrupar(lista);
+  // técnico: os projetos que ainda aguardam o cronograma do GP vão para um bloco no fim
+  const souTec = Auth.papel() === 'tecnico';
+  const espera = souTec ? lista.filter(Projeto.aguardandoCronograma) : [];
+  const grupos = Contratos.agrupar(souTec ? lista.filter(function (p) { return !Projeto.aguardandoCronograma(p); }) : lista);
+  const gruposEspera = Contratos.agrupar(espera);
   estado.ordemVisivel = [];
-  grupos.forEach(function (g) { (g.projeto ? [g.projeto] : g.projetos).forEach(function (p) { estado.ordemVisivel.push(p.id); }); });
+  grupos.concat(gruposEspera).forEach(function (g) { (g.projeto ? [g.projeto] : g.projetos).forEach(function (p) { estado.ordemVisivel.push(p.id); }); });
 
   $('proj-count').textContent = lista.length === total
     ? plural(total, 'lista.projeto', 'lista.projetos')
@@ -152,11 +129,18 @@ export function renderProjetos() {
   }
   // com busca digitada, os contratos abrem para mostrar a OM encontrada
   const buscando = !!String(estado.filtroProj.busca || '').trim();
-  $('projetos-tbody').innerHTML = grupos.map(function (g) {
-    if (g.projeto) return linhaProjeto(g.projeto, comFinalizar, false);
-    const aberto = buscando || abertos.has(g.contrato);
-    return linhaContrato(g, comFinalizar, aberto) + (aberto ? g.projetos.map(function (p) { return linhaProjeto(p, comFinalizar, true); }).join('') : '');
-  }).join('');
+  const linhas = function (gs, chaveAberto) {
+    return gs.map(function (g) {
+      if (g.projeto) return linhaProjeto(g.projeto, comFinalizar, false);
+      const aberto = buscando || abertos.has(chaveAberto + g.contrato);
+      return linhaContrato(g, comFinalizar, aberto, chaveAberto) + (aberto ? g.projetos.map(function (p) { return linhaProjeto(p, comFinalizar, true); }).join('') : '');
+    }).join('');
+  };
+  $('projetos-tbody').innerHTML = linhas(grupos, '') +
+    (espera.length ? '<tr class="linha-bloco-espera"><td colspan="' + (COLUNAS.length + (comFinalizar ? 1 : 0)) + '">⏳ ' + esc(T('lista.esperaTit', espera.length)) +
+      '<span class="hint-txt"> — ' + esc(T('lista.esperaNota')) + '</span></td></tr>' +
+      '' : '') +
+    (espera.length ? linhas(gruposEspera, 'espera:').replace(/<tr class="(linha-[a-z-]+)/g, '<tr class="$1 linha-espera') : '');
 }
 
 // Abre a lista só com os projetos que têm tarefa do PCP nessa situação.
