@@ -17,6 +17,7 @@ import * as DadosCarga from './dados/carga.js';
 import * as Ops from './dados/ops.js';
 import * as DadosRncs from './dados/rncs.js';
 import * as DadosChecklist from './dados/checklist.js';
+import * as UiContratos from './ui/contratos.js';
 import * as Despertador from './ui/despertador.js';
 import * as DadosPgms from './dados/pgms.js';
 import * as DadosProg from './dados/programacao.js';
@@ -142,6 +143,8 @@ function escutarEquipe() {
   estado.maquinas = []; estado.cfgFabrica = {}; estado.setores = {};
   // PGMs (programas de corte): o técnico inclui, a programadora de caldeiraria programa
   estado.pgms = [];
+  // contratos com OM (Configurações): toda a equipe lê, para agrupar e nomear as OMs
+  UiContratos.iniciar();
   // planilha "Controle de Commesse": a Gerência traz os projetos novos a cada 5 min
   Despertador.iniciar();
   if (papelCarregado === 'tecnico' || papelCarregado === 'planejador' || papelCarregado === 'prog_caldeiraria' || Papeis.ehGerente(papelCarregado)) DadosPgms.escutar(function (l) { estado.pgms = l; redesenhar(); });
@@ -234,6 +237,7 @@ function sairDoApp() {
   Store.pararTodos();
   estado.projetosFabrica = null;
   Despertador.parar();
+  UiContratos.parar();
   DadosPgms.pararEscuta();
   DadosProg.pararRecursos();
   Ops.pararEscuta();

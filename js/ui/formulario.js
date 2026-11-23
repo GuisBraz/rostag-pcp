@@ -4,10 +4,11 @@
    projeto) e designa o técnico. O cronograma macro (PCP + fim da produção)
    pode ficar em branco: o projeto fica "aguardando cronograma".
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, projetoAtual, opsDoProjeto } from '../estado.js';
+import { estado, buscarProjeto, projetoAtual, opsDoProjeto, nomeProjeto } from '../estado.js';
 import { hoje, esc, br } from '../nucleo/fmt.js';
 import { T, STATUS_LABEL } from '../i18n/index.js';
 import * as Projeto from '../dominio/projeto.js';
+import * as Contratos from '../dominio/contratos.js';
 import { papelEfetivo } from '../dominio/papeis.js';
 import * as Auth from '../dados/auth.js';
 import * as Ops from '../dados/ops.js';
@@ -63,8 +64,17 @@ function atualizarPreviews() {
 // Lista padrão da equipe (Configurações → Geral), se houver.
 function itensPadrao() { return estado.checklistPadrao ? estado.checklistPadrao.itens : null; }
 
-export function abrirNovoProjeto() {
+// "+ Nova OM" no contrato: já vem com commessa, cliente e o GP do contrato
+function abrirNovaOm(base) {
+  if (!Auth.souGPouCoordenador() || !base) return;
+  const irmaos = Contratos.doContrato(base, estado.projetos);
+  const ref = irmaos.find(function (p) { return p.gpUid; }) || irmaos[0] || {};
+  abrirNovoProjeto({ commessa: base, cliente: ref.cliente && ref.cliente !== '—' ? ref.cliente : '', gpUid: ref.gpUid || null, gp: ref.gp || null });
+}
+
+export function abrirNovoProjeto(pre) {
   if (!Auth.souGPouCoordenador()) return;
+  pre = pre && typeof pre === 'object' && pre.commessa ? pre : null;
   editandoId = null;
   limparForm();
   $('f-dataSolicitacao').value = hoje();
@@ -74,8 +84,13 @@ export function abrirNovoProjeto() {
   atualizarPreviews();
   // o gerente escolhe o GP; o GP que cria vira o GP do projeto
   const souGp = !Auth.souGerente();
-  preencherOpcoesMembros(souGp ? Auth.uid() : null, souGp ? Auth.nomeExibicao() : null, null, null);
-  abrirModal('modal-projeto', { foco: 'f-commessa', aoFechar: function () { editandoId = null; } });
+  if (pre) {
+    $('f-commessa').value = pre.commessa; $('f-cliente').value = pre.cliente || '';
+    $('modal-projeto-title').textContent = T('om.novaTitulo', pre.commessa);
+  }
+  const gpPre = pre && pre.gpUid && !souGp ? pre.gpUid : null;
+  preencherOpcoesMembros(souGp ? Auth.uid() : gpPre, souGp ? Auth.nomeExibicao() : (pre && pre.gp), null, null);
+  abrirModal('modal-projeto', { foco: pre ? 'f-om' : 'f-commessa', aoFechar: function () { editandoId = null; } });
 }
 
 export function abrirEditarProjeto(campoFoco) {
@@ -143,15 +158,26 @@ function salvarProjeto() {
       reagendamentos: [], paralisacoes: [], checklist: Projeto.checklistNovo(itensPadrao()), criadoPor: Auth.nomeExibicao() }, d);
     estado.projetos.push(p);
   }
+  // contrato com OM: um GP só para todas as OMs (a Gerência troca numa, vale para todas)
+  const irmaosGp = [];
+  if (Auth.souGerente() && Contratos.ehContrato(p.commessa)) {
+    Contratos.doContrato(Contratos.base(p.commessa), estado.projetos).forEach(function (o) {
+      if (o.id !== p.id && Projeto.aberto(o) && (o.gpUid || null) !== (p.gpUid || null)) { o.gpUid = p.gpUid || null; o.gp = p.gp; irmaosGp.push(o); }
+    });
+  }
   const definiuAgora = d.cronogramaDefinido && (!antes || !antes.definido);
   if (definiuAgora) Projeto.distribuirTarefas(p);
 
   fecharModal('modal-projeto');
   redesenhar();
-  toast(eraEdicao ? T('t.atualizado', p.commessa) : T('t.incluido', p.commessa, p.checklist.length));
+  toast(eraEdicao ? T('t.atualizado', nomeProjeto(p)) : T('t.incluido', nomeProjeto(p), p.checklist.length));
   (v.avisos || []).forEach(function (a) { toast(a, { tipo: 'erro' }); });
+  if (irmaosGp.length) toast(T('om.gpTodas', p.gp, irmaosGp.length));
   persistir().then(function () {
     avisarEnvolvidos(p, antes, definiuAgora);
+    irmaosGp.forEach(function (o) {
+      Ops.sincronizarDesignacao(o, opsDoProjeto(o.id)).catch(function (e) { console.warn('OPs não acompanharam a designação:', e); });
+    });
     if (antes && (antes.gpUid !== (p.gpUid || null) || antes.responsavelUid !== (p.responsavelUid || null))) {
       Ops.sincronizarDesignacao(p, opsDoProjeto(p.id)).catch(function (e) { console.warn('OPs não acompanharam a designação:', e); });
     }
@@ -160,7 +186,7 @@ function salvarProjeto() {
 
 // Notificações 1 a 4 — só depois de gravado.
 function avisarEnvolvidos(p, antes, definiuAgora) {
-  const com = p.commessa;
+  const com = nomeProjeto(p);
   const gpNovo = p.gpUid || null, tecNovo = p.responsavelUid || null;
   if (!antes) {
     if (gpNovo) Auth.criarNotificacao(gpNovo, 'projetoCriado', T('notif.projetoCriado', com, p.descricao), p.id);
@@ -187,7 +213,8 @@ function avisarEnvolvidos(p, antes, definiuAgora) {
 });
 
 registrarAcoes({
-  abrirNovoProjeto: abrirNovoProjeto,
+  abrirNovoProjeto: function () { abrirNovoProjeto(); },
+  novaOm: abrirNovaOm,
   abrirEditarProjeto: function (campo) { abrirEditarProjeto(campo); },
   salvarProjeto: salvarProjeto
 });

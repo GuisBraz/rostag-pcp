@@ -3,7 +3,7 @@
    em tela simples (abertura, disposição, seguimento), o PDF na folha SOFIR
    R02 e a aba RNC por situação.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto } from '../estado.js';
+import { estado, buscarProjeto, nomeDaOp } from '../estado.js';
 import { esc, hoje, br, dataHora } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Rnc from '../dominio/rnc.js';
@@ -315,7 +315,7 @@ export function renderRnc() {
       '<div class="rnc-topo"><span class="mono rnc-op">RNC ' + esc(r.numero) + '</span>' +
         '<span class="pill-area area-' + esc(r.area) + '">' + esc(T('area.' + r.area)) + '</span>' +
         '<span class="pill-rnc rnc-etapa-' + et + '">' + esc(T('rn.etapa.' + et)) + '</span>' + res + '</div>' +
-      '<div class="rnc-peca"><b class="mono">' + esc(r.commessa) + '</b> · OP ' + esc(r.op) + ' · ' + esc(T('rnc.peca', r.desenho, r.item || '—')) +
+      '<div class="rnc-peca"><b class="mono">' + esc(nomeDaOp(r)) + '</b> · OP ' + esc(r.op) + ' · ' + esc(T('rnc.peca', r.desenho, r.item || '—')) +
         (r.produto ? ' · ' + esc(r.produto) : '') + ' · ' + esc(T('rn.qtdCurta', r.qtdNc || '—', r.qtd || '—')) + '</div>' +
       '<div class="rnc-obs">' + esc(r.descricao || '—') + '</div>' +
       (r.disposicao ? '<div class="hint-txt"><b>' + esc(T('rf.disposicaoCurta')) + '</b> ' + esc(r.disposicao) + (r.dispResponsavel ? ' — ' + esc(r.dispResponsavel) : '') + '</div>' : '') +

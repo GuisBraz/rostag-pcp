@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------------
    Linha do tempo — posicionada pela entrega, colorida pelo status.
 --------------------------------------------------------------------------- */
-import { estado } from '../estado.js';
+import { estado, nomeProjeto } from '../estado.js';
 import { esc, br, hoje } from '../nucleo/fmt.js';
 import { T, STATUS_LABEL } from '../i18n/index.js';
 import * as Projeto from '../dominio/projeto.js';
@@ -43,7 +43,7 @@ export function renderLinha() {
   const ordenados = fonte.slice().sort(function (a, b) { return a.entrega.localeCompare(b.entrega); });
   $('tl-sidebar-list').innerHTML = ordenados.length ? ordenados.map(function (p) {
     return '<button type="button" class="tl-sidebar-item" data-acao="focarNaLinha" data-arg="' + esc(p.id) + '">' +
-      '<span class="cm">' + esc(p.commessa) + '</span>' + esc(p.descricao) + '</button>';
+      '<span class="cm">' + esc(nomeProjeto(p)) + '</span>' + esc(p.descricao) + '</button>';
   }).join('') : '<div class="empty-state">' + esc(T(estado.carregado ? 'lista.semProjetos' : 'x.carregandoDados')) + '</div>';
 
   const itens = ordenados.map(function (p) { return { tipo: 'projeto', data: p.entrega, p: p }; });
@@ -64,7 +64,7 @@ export function renderLinha() {
     const card = '<' + (abre ? 'button type="button"' : 'div') + ' class="tl-card ' + cls + (abre ? '' : ' tl-so-leitura') + '" id="' + idElemento(p.id) + '"' +
       (abre ? ' data-acao="abrirProjeto" data-arg="' + esc(p.id) + '"' : '') + '>' +
       '<div class="tl-date" style="color:' + corStatus(st) + '">' + br(p.entrega) + ' · ' + esc(STATUS_LABEL(st)) + '</div>' +
-      '<div class="tl-commessa">' + esc(p.commessa) + '</div>' +
+      '<div class="tl-commessa">' + esc(nomeProjeto(p)) + '</div>' +
       '<div class="tl-desc">' + esc(p.descricao) + '</div>' +
       '<div class="tl-meta"><span class="dot dot-' + sitPcp + '"></span>PCP ' + Projeto.progresso(p) + '% · ' + esc(p.cliente) + (p.gp && p.gp !== '—' ? ' · ' + esc(T('tl.gp', p.gp)) : '') + '</div></' + (abre ? 'button' : 'div') + '>';
     return '<div class="tl-row"><div class="tl-side ' + (esquerda ? '' : 'empty') + '">' + (esquerda ? card : '') + '</div>' +

@@ -6,7 +6,7 @@
      Itens comerciais    → tela cheia: pedidos de compra e chegadas (comerciais.js)
      Serviços            → tela cheia: envios e retornos dos serviços externos (servicos.js)
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, opsDoProjeto } from '../estado.js';
+import { estado, buscarProjeto, opsDoProjeto, nomeProjeto } from '../estado.js';
 import { esc, numeroBr, dataHora } from '../nucleo/fmt.js';
 import { T, plural } from '../i18n/index.js';
 import * as Projeto from '../dominio/projeto.js';
@@ -150,7 +150,7 @@ export function renderEspelho() {
   if (!espelho || !$('modal-espelho').classList.contains('open')) return;
   const p = buscarProjeto(espelho.projetoId);
   const ops = opsDoProjeto(espelho.projetoId);
-  $('esp-titulo').textContent = T('esp.titulo', (p && p.commessa) || '');
+  $('esp-titulo').textContent = T('esp.titulo', (p && nomeProjeto(p)) || '');
   $('esp-sub').textContent = (p && p.descricao) || '';
   const mexe = podeMexer(p), doc = espelho.doc;
   $('esp-acoes').innerHTML =
@@ -184,7 +184,7 @@ function apagarListaOps(_a, _b, btn) {
   const ops = opsDoProjeto(p.id);
   const apagaveis = Auth.souGerente() ? ops : ops.filter(function (o) { return Producao.statusOp(o) === 'aberta'; });
   const ficam = ops.length - apagaveis.length;
-  confirmar(T('esp.apagarQ', p.commessa, apagaveis.length) + (ficam ? ' ' + T('esp.apagarFicam', ficam) : ''),
+  confirmar(T('esp.apagarQ', nomeProjeto(p), apagaveis.length) + (ficam ? ' ' + T('esp.apagarFicam', ficam) : ''),
     { titulo: T('esp.apagar'), textoOk: T('btn.excluir'), perigo: true }).then(function (ok) {
     if (!ok) return;
     comBotaoOcupado(btn, Ops.apagarVarias(apagaveis.map(function (o) { return o.id; }))

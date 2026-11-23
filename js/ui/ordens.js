@@ -6,7 +6,7 @@
    programador, só as OPs da área dele); o cartão abre, em tela cheia, as OPs
    do projeto com filtros (listaOps.js).
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, opVisivel } from '../estado.js';
+import { estado, buscarProjeto, opVisivel, nomeDaOp } from '../estado.js';
 import { esc, br, numeroBr, compararNatural } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Prog from '../dominio/programacao.js';
@@ -68,7 +68,7 @@ export function renderOrdens() {
     const atrasado = Prog.projetoAtrasado(p);
     const barras = area ? barra(T('area.' + area), s[area] || s) : barra(T('fab.geral'), s) + barra(T('area.caldeiraria'), s.caldeiraria) + barra(T('area.usinagem'), s.usinagem);
     return '<div class="card panel-pad av-card av-card-cq ord-cartao' + (atrasado ? ' op-proj-atrasado' : '') + '" data-acao="abrirOpsOrdens" data-arg="' + esc(pid) + '" role="button" tabindex="0">' +
-      '<div class="av-head"><b class="mono">' + esc(o0.commessa) + '</b>' + (atrasado ? ' <span class="pill-prog prog-atrasado">' + esc(T('prog.projAtrasado')) + '</span>' : '') + '</div>' +
+      '<div class="av-head"><b class="mono">' + esc(nomeDaOp(o0)) + '</b>' + (atrasado ? ' <span class="pill-prog prog-atrasado">' + esc(T('prog.projAtrasado')) + '</span>' : '') + '</div>' +
       '<div class="hint-txt av-desc">' + esc((p && p.descricao) || o0.descricaoProjeto || '') + '</div>' +
       '<div class="hint-txt">' + esc(T('ord.nOps', ops.length)) + (p && p.prodFim ? ' · ' + esc(T('prog.prazo', br(p.prodFim))) : '') + '</div>' +
       barras +

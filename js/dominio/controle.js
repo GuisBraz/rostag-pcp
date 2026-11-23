@@ -6,9 +6,9 @@
    site é ignorado (o site manda depois de importado). Sem Firebase.
 --------------------------------------------------------------------------- */
 import { chave, texto, commessaBase, mesmaCommessa } from './planilha.js';
+import * as Contratos from './contratos.js';
 
-// Commessas com subprojetos (uma por OM)
-export const EXCECOES = ['2025-016', '2025-031', '2025-067', '2026-003', '2026-004', '2025-005'];
+// Commessas com subprojetos (uma por OM): os contratos de Configurações
 const LIM = { commessa: 40, cliente: 80, descricao: 160, om: 40 };
 
 function p2(n) { return String(n).padStart(2, '0'); }
@@ -52,7 +52,7 @@ export function partesCommessa(txt) {
   const resto = texto(s.slice(m.index + m[0].length).replace(/^[\s\-–·:]+/, '').replace(/\bREV\.?\s*\d+\b/i, ''));
   return { base: base, om: resto.slice(0, LIM.om) };
 }
-function ehExcecao(base, excecoes) { return (excecoes || EXCECOES).some(function (e) { return mesmaCommessa(e, base); }); }
+function ehExcecao(base, excecoes) { return (excecoes || Contratos.atual()).some(function (e) { return mesmaCommessa(e, base); }); }
 
 /** matriz da aba (linhas × colunas) → { ok, motivo?, linhas: [{ base, om, cliente, descricao, status, entrega }] } */
 export function lerControle(matriz) {
@@ -69,32 +69,34 @@ export function lerControle(matriz) {
   return { ok: true, linhas: linhas };
 }
 
-/** linhas → projetos candidatos (sem Entregues; repetidas juntas; exceções por OM) */
+/** linhas → projetos candidatos (sem Entregues; repetidas juntas; contratos por OM —
+    linha de contrato sem número de OM vira um subprojeto pela descrição) */
 export function agrupar(linhas, excecoes) {
   const grupos = {}, ordem = [];
   (linhas || []).forEach(function (l) {
     if (chave(l.status) === 'ENTREGUE') return;
     const exc = ehExcecao(l.base, excecoes);
-    const k = exc && l.om ? l.base + '|' + chave(l.om) : l.base;
-    if (!grupos[k]) { grupos[k] = { chave: k, base: l.base, om: exc ? l.om : '', cliente: '', descricoes: [], entrega: null, linhas: 0 }; ordem.push(k); }
+    const k = exc ? l.base + '|' + (l.om ? chave(l.om) : 'D' + chave(l.descricao)) : l.base;
+    if (!grupos[k]) { grupos[k] = { chave: k, base: l.base, om: exc ? l.om : '', contrato: exc, cliente: '', descricoes: [], entrega: null, linhas: 0 }; ordem.push(k); }
     const g = grupos[k];
     g.linhas++;
     if (!g.cliente && l.cliente) g.cliente = l.cliente;
-    if (l.descricao && g.descricoes.indexOf(l.descricao) < 0) g.descricoes.push(l.descricao);
+    if (l.descricao && !g.descricoes.some(function (d) { return chave(d) === chave(l.descricao); })) g.descricoes.push(l.descricao);
     if (l.entrega && (!g.entrega || l.entrega > g.entrega)) g.entrega = l.entrega;
   });
   return ordem.map(function (k) {
     const g = grupos[k];
-    return { chave: g.chave, base: g.base, om: g.om, commessa: g.base.slice(0, LIM.commessa), cliente: (g.cliente || '—').slice(0, LIM.cliente),
+    return { chave: g.chave, base: g.base, om: g.om, contrato: g.contrato, commessa: g.base.slice(0, LIM.commessa), cliente: (g.cliente || '—').slice(0, LIM.cliente),
       descricao: g.descricoes.join(' · ').slice(0, LIM.descricao) || g.base, entrega: g.entrega, linhas: g.linhas };
   });
 }
 
-// Já existe no site? (commessa sem REV/COMPL; nas exceções, a mesma OM)
+// Já existe no site? (commessa sem REV/COMPL; nos contratos, a mesma OM — ou a
+// mesma descrição, quando a linha não traz OM)
 export function jaExiste(c, projetos) {
   return (projetos || []).some(function (p) {
-    if (!mesmaCommessa(p.commessa, c.base)) return false;
-    if (!c.om) return true;
+    if (!mesmaCommessa(p.commessa, c.base) && Contratos.base(p.commessa) !== c.base) return false;
+    if (!c.om) return !c.contrato || chave(p.descricao) === chave(c.descricao);
     const om = chave(c.om);
     if (chave(p.om) === om || chave(p.commessa).indexOf(om) >= 0) return true;
     // projeto da exceção cadastrado antes sem a OM: reconhece pela descrição
@@ -103,7 +105,7 @@ export function jaExiste(c, projetos) {
 }
 
 // Id fixo (duas pessoas importando ao mesmo tempo não duplicam)
-export function idDe(c) { return 'ctl_' + (c.base + (c.om ? '_' + c.om : '')).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60); }
+export function idDe(c) { return 'ctl_' + (c.base + (c.om ? '_' + c.om : c.contrato ? '_' + c.descricao : '')).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60); }
 
 /** → { novos: [candidatos], existentes: n, entregues: n, semData: [candidatos sem embarque] } */
 export function novosProjetos(matriz, projetos, excecoes) {

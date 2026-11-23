@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------------
    Painel Geral — indicadores, "precisa de atenção" e gráficos.
 --------------------------------------------------------------------------- */
-import { estado } from '../estado.js';
+import { estado, nomeProjeto } from '../estado.js';
 import { prefs } from '../nucleo/prefs.js';
 import { esc, br, hoje, difDias } from '../nucleo/fmt.js';
 import { T, plural, STATUS_LABEL, SIT_LABEL } from '../i18n/index.js';
@@ -92,7 +92,7 @@ function renderAtencao(lista) {
 
   $('prazos-proximos').innerHTML = itens.length ? itens.map(function (it) {
     return '<button type="button" class="tl-sidebar-item atencao-item ' + (it.grave ? 'grave' : 'aviso') + '" data-acao="abrirProjeto" data-arg="' + esc(it.p.id) + '">' +
-      '<div class="atencao-topo"><span>' + esc(it.p.commessa) + '</span><span>' + br(it.data) + '</span></div>' +
+      '<div class="atencao-topo"><span>' + esc(nomeProjeto(it.p)) + '</span><span>' + br(it.data) + '</span></div>' +
       '<div class="atencao-desc">' + esc(it.p.descricao) + '</div>' +
       '<div class="atencao-rot">' + esc(it.rot) + '</div></button>';
   }).join('') : '<div class="empty-state">' + esc(T('g.atencaoVazio')) + '</div>';

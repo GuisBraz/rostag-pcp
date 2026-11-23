@@ -274,6 +274,23 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - Depois: integrador lendo direto o banco do TOTVS Protheus (comerciais,
   serviços e OPs), sem planilha no meio.
 
+## 4.1.5 Contratos com OM (subprojetos)
+
+- OM = Ordem de Manutenção: num contrato (ex.: 2026-004, AMT) o cliente envia
+  vários subprojetos, cada um com escopo e entrega próprios. Cada OM é um
+  projeto independente (cronograma, OPs, avanço, comerciais, serviços, RNC,
+  chat); o contrato é só um agrupador.
+- Lista de contratos em Configurações → Geral (só a Gerência edita;
+  padrão: 2025-006, 2025-016, 2025-031, 2025-067, 2026-003, 2026-004).
+- Identidade = commessa + OM: no contrato a OM é obrigatória no projeto novo e
+  não repete. Nome nas telas: "2026-004 · OM 900038789147".
+- Aba Projetos: linha do contrato que abre e fecha (nº de OMs, em aberto,
+  próxima entrega, andamento médio, atrasadas) e "+ Nova OM" (commessa,
+  cliente e GP já preenchidos). Busca digitada abre os contratos.
+- Um GP por contrato: a Gerência troca o GP numa OM e vale para as OMs abertas.
+- Planilha: contrato sem número de OM na linha (2025-006) vira um subprojeto
+  por descrição; descrições iguais juntam (embarque mais longe).
+
 ## 4.2 Página do projeto do técnico e Todas as OPs
 
 - **Cartões no projeto (só técnico):** **Checklist** (abre e fecha o cronograma
