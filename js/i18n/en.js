@@ -653,7 +653,7 @@ export default {
   'ctl.pedirPermissao':'Job list spreadsheet ({0}): allow reading to bring new projects.', 'ctl.importados':'{0} new project(s) from the job list spreadsheet.',
   'ctl.notif':'📄 {0} new project(s) imported from the spreadsheet: {1}', 'ctl.criadoPor':'Job list spreadsheet',
   'om.rot':'WO {0}', 'om.semOm':'WO missing', 'om.nOms':'{0} WO(s)', 'om.nAbertas':'{0} open', 'om.nAtrasadas':'{0} late', 'om.emDia':'on time',
-  'om.proxima':'next', 'om.media':'avg', 'om.nova':'+ New WO', 'om.novaTitulo':'New WO — contract {0}', 'om.gpTodas':'PM {0} also set on the other {1} WO(s) of the contract.',
+  'om.proxima':'next', 'om.media':'avg', 'om.nova':'+ New WO', 'om.novaTitulo':'New WO — contract {0}', 'om.gpTodas':'PM {0} and process technician {1} also set on the other {2} WO(s) of the contract.',
   'om.cfgTitulo':'🗂 Contracts with work orders', 'om.cfgNota':'Job numbers whose projects are split by work order (OM): each OM is a project, grouped under the contract. The job list spreadsheet also uses this list.',
   'om.tirar':'Remove {0}', 'om.addRot':'Contract job number', 'om.add':'Add', 'om.invalido':'Type the job number as 2026-010.', 'om.adicionado':'Contract {0} added.',
   'om.tirarQ':'Remove {0} from the contracts with work orders? The WOs stay as projects, just no longer grouped.', 'om.tirarOk':'Remove', 'om.tirado':'Contract {0} removed from the list.',

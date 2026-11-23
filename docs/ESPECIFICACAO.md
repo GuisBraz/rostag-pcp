@@ -287,7 +287,9 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - Aba Projetos: linha do contrato que abre e fecha (nº de OMs, em aberto,
   próxima entrega, andamento médio, atrasadas) e "+ Nova OM" (commessa,
   cliente e GP já preenchidos). Busca digitada abre os contratos.
-- Um GP por contrato: a Gerência troca o GP numa OM e vale para as OMs abertas.
+- Um GP e um técnico por contrato: editar uma OM leva GP e técnico para as OMs
+  abertas (a Gerência muda todas; o GP, as que já são dele). Número do
+  contrato e das OMs em verde na lista.
 - Planilha: contrato sem número de OM na linha (2025-006) vira um subprojeto
   por descrição; descrições iguais juntam (embarque mais longe).
 
