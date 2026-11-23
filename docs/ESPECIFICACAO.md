@@ -260,6 +260,20 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - Notificação de projeto excluído aparece marcada e sem "Abrir"; o filtro
   junta essas em "Projetos excluídos".
 
+## 4.1.4 Planilha "Controle de Commesse" → projetos novos (despertador)
+
+- A Gerência escolhe o arquivo em Configurações (Chrome/Edge lembram o acesso;
+  a cada abertura do site o navegador pede "permitir leitura"). Com o site
+  aberto, a cada 5 min ele relê a aba Controle (só se o arquivo mudou) e cria
+  os projetos novos: ignora Entregues e os que já existem (commessa sem
+  REV/COMPL); commessa repetida vira um projeto (descrições juntas, embarque
+  mais longe); 2025-016, 2025-031, 2025-067, 2026-003, 2026-004 e 2025-005
+  entram por OM. Entrega = Prazo de embarque previsto (sem data: espera). O
+  projeto entra "aguardando cronograma", sem GP/técnico; id fixo (não duplica).
+  Aviso no sino de toda a Gerência. O que já está no site não muda.
+- Depois: integrador lendo direto o banco do TOTVS Protheus (comerciais,
+  serviços e OPs), sem planilha no meio.
+
 ## 4.2 Página do projeto do técnico e Todas as OPs
 
 - **Cartões no projeto (só técnico):** **Checklist** (abre e fecha o cronograma

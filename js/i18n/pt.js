@@ -956,4 +956,11 @@ export default {
   'fase.paralisado':'Paralisado', 'fase.entregue':'Entregue', 'fase.cancelado':'Cancelado',
   'n.projExcluido':'projeto excluído', 'n.projExcluidos':'Projetos excluídos ({0})',
   't.excluidoResto':'(sem permissão para apagar: {0} — some quando quem pode abrir a tela)',
+  'ctl.titulo':'📄 Planilha de commesses (projetos novos)', 'ctl.nota':'Escolha o arquivo “Controle de Commesse em aberto”. Com o site aberto, a cada 5 minutos ele lê a aba Controle e cria os projetos novos (ignora Entregues e os que já existem; commessa repetida vira um projeto; 2025-016, 2025-031, 2025-067, 2026-003, 2026-004 e 2025-005 entram por OM). Funciona no Chrome ou Edge.',
+  'ctl.escolher':'Escolher arquivo', 'ctl.trocar':'Trocar arquivo', 'ctl.esquecer':'Parar de ler', 'ctl.agora':'Consultar agora', 'ctl.permitir':'Permitir leitura', 'ctl.ativo':'lendo a cada 5 min',
+  'ctl.semPermissao':'aguardando permissão', 'ctl.nuncaLida':'Ainda não lida.', 'ctl.resumo':'Última consulta: {0} · {1} linhas · {2} entregues · {3} já no site',
+  'ctl.ultimos':'Importados em {0}:', 'ctl.semData':'{0} sem data de embarque (entram quando a data for preenchida)', 'ctl.erroAba':'Não achei a aba Controle com as colunas Commesses, Cliente e Status.',
+  'ctl.erroLer':'Não consegui ler o arquivo (movido, renomeado ou sem acesso). Escolha de novo.', 'ctl.semSuporte':'A leitura automática da planilha precisa do Chrome ou Edge no computador.',
+  'ctl.pedirPermissao':'Planilha de commesses ({0}): permita a leitura para trazer os projetos novos.', 'ctl.importados':'{0} projeto(s) novo(s) da planilha de commesses.',
+  'ctl.notif':'📄 {0} projeto(s) novo(s) importado(s) da planilha: {1}', 'ctl.criadoPor':'Planilha de commesses',
 };
