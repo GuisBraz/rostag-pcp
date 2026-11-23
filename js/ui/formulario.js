@@ -69,7 +69,9 @@ function abrirNovaOm(base) {
   if (!Auth.souGPouCoordenador() || !base) return;
   const irmaos = Contratos.doContrato(base, estado.projetos);
   const ref = irmaos.find(function (p) { return p.gpUid; }) || irmaos[0] || {};
-  abrirNovoProjeto({ commessa: base, cliente: ref.cliente && ref.cliente !== '—' ? ref.cliente : '', gpUid: ref.gpUid || null, gp: ref.gp || null });
+  const refTec = irmaos.find(function (p) { return p.responsavelUid; }) || {};
+  abrirNovoProjeto({ commessa: base, cliente: ref.cliente && ref.cliente !== '—' ? ref.cliente : '', gpUid: ref.gpUid || null, gp: ref.gp || null,
+    tecUid: refTec.responsavelUid || null, tec: refTec.tecnico || null });
 }
 
 export function abrirNovoProjeto(pre) {
@@ -89,7 +91,7 @@ export function abrirNovoProjeto(pre) {
     $('modal-projeto-title').textContent = T('om.novaTitulo', pre.commessa);
   }
   const gpPre = pre && pre.gpUid && !souGp ? pre.gpUid : null;
-  preencherOpcoesMembros(souGp ? Auth.uid() : gpPre, souGp ? Auth.nomeExibicao() : (pre && pre.gp), null, null);
+  preencherOpcoesMembros(souGp ? Auth.uid() : gpPre, souGp ? Auth.nomeExibicao() : (pre && pre.gp), pre ? pre.tecUid : null, pre ? pre.tec : null);
   abrirModal('modal-projeto', { foco: pre ? 'f-om' : 'f-commessa', aoFechar: function () { editandoId = null; } });
 }
 
@@ -158,11 +160,18 @@ function salvarProjeto() {
       reagendamentos: [], paralisacoes: [], checklist: Projeto.checklistNovo(itensPadrao()), criadoPor: Auth.nomeExibicao() }, d);
     estado.projetos.push(p);
   }
-  // contrato com OM: um GP só para todas as OMs (a Gerência troca numa, vale para todas)
+  // contrato com OM: o mesmo GP e o mesmo técnico em todas as OMs abertas (edita uma, vale
+  // para todas). A Gerência muda todas; o GP, as que já são dele.
   const irmaosGp = [];
-  if (Auth.souGerente() && Contratos.ehContrato(p.commessa)) {
+  if (Contratos.ehContrato(p.commessa)) {
+    const souGer = Auth.souGerente();
     Contratos.doContrato(Contratos.base(p.commessa), estado.projetos).forEach(function (o) {
-      if (o.id !== p.id && Projeto.aberto(o) && (o.gpUid || null) !== (p.gpUid || null)) { o.gpUid = p.gpUid || null; o.gp = p.gp; irmaosGp.push(o); }
+      if (o.id === p.id || !Projeto.aberto(o) || (!souGer && o.gpUid !== Auth.uid())) return;
+      const gpDif = (o.gpUid || null) !== (p.gpUid || null), tecDif = (o.responsavelUid || null) !== (p.responsavelUid || null);
+      if (!gpDif && !tecDif) return;
+      o.gpUid = p.gpUid || null; o.gp = p.gp;
+      o.responsavelUid = p.responsavelUid || null; o.tecnico = p.tecnico || '';
+      irmaosGp.push(o);
     });
   }
   const definiuAgora = d.cronogramaDefinido && (!antes || !antes.definido);
@@ -172,7 +181,7 @@ function salvarProjeto() {
   redesenhar();
   toast(eraEdicao ? T('t.atualizado', nomeProjeto(p)) : T('t.incluido', nomeProjeto(p), p.checklist.length));
   (v.avisos || []).forEach(function (a) { toast(a, { tipo: 'erro' }); });
-  if (irmaosGp.length) toast(T('om.gpTodas', p.gp, irmaosGp.length));
+  if (irmaosGp.length) toast(T('om.gpTodas', p.gp || '—', p.tecnico || '—', irmaosGp.length));
   persistir().then(function () {
     avisarEnvolvidos(p, antes, definiuAgora);
     irmaosGp.forEach(function (o) {

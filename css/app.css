@@ -1578,7 +1578,8 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .linha-contrato { background: var(--bg-panel-alt); cursor: pointer; }
 .linha-contrato:hover { background: var(--line-soft); }
 .linha-contrato td { border-top: 1px solid var(--line); }
-.linha-contrato .col-commessa b { font-family: var(--mono); }
+.linha-contrato .col-commessa b { font-family: var(--mono); color: var(--green); }
+.linha-om .om-sub { color: var(--green); }
 .om-seta { display: inline-block; width: 16px; color: var(--ink-dim); }
 .linha-om .col-commessa { padding-left: 30px; }
 .om-sub { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }

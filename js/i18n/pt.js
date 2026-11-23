@@ -964,7 +964,7 @@ export default {
   'ctl.pedirPermissao':'Planilha de commesses ({0}): permita a leitura para trazer os projetos novos.', 'ctl.importados':'{0} projeto(s) novo(s) da planilha de commesses.',
   'ctl.notif':'📄 {0} projeto(s) novo(s) importado(s) da planilha: {1}', 'ctl.criadoPor':'Planilha de commesses',
   'om.rot':'OM {0}', 'om.semOm':'OM a informar', 'om.nOms':'{0} OM(s)', 'om.nAbertas':'{0} em aberto', 'om.nAtrasadas':'{0} atrasada(s)', 'om.emDia':'em dia',
-  'om.proxima':'próx.', 'om.media':'média', 'om.nova':'+ Nova OM', 'om.novaTitulo':'Nova OM — contrato {0}', 'om.gpTodas':'GP {0} também nas outras {1} OM(s) do contrato.',
+  'om.proxima':'próx.', 'om.media':'média', 'om.nova':'+ Nova OM', 'om.novaTitulo':'Nova OM — contrato {0}', 'om.gpTodas':'GP {0} e técnico {1} também nas outras {2} OM(s) do contrato.',
   'om.cfgTitulo':'🗂 Contratos com OM', 'om.cfgNota':'Commessas cujos projetos são separados por OM (Ordem de Manutenção): cada OM é um projeto, agrupado no contrato. A planilha de commesses também usa esta lista.',
   'om.tirar':'Tirar {0}', 'om.addRot':'Commessa do contrato', 'om.add':'Adicionar', 'om.invalido':'Digite a commessa no formato 2026-010.', 'om.adicionado':'Contrato {0} adicionado.',
   'om.tirarQ':'Tirar {0} dos contratos com OM? As OMs continuam como projetos, só deixam de ficar agrupadas.', 'om.tirarOk':'Tirar', 'om.tirado':'Contrato {0} tirado da lista.',
