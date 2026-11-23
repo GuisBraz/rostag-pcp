@@ -5,6 +5,7 @@ import { hoje, difDias, dataValida, br } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Cronograma from './cronograma.js';
 import { CHECKLIST_PADRAO, DIAS_MAX_TAREFA } from './constantes.js';
+import * as Contratos from './contratos.js';
 
 // Status do PROJETO: marcados à mão têm prioridade; o resto vem da entrega.
 export function status(p) {
@@ -81,6 +82,14 @@ export function validar(d, projetos, idEditando) {
   if (!v.ok) return v;
   if (d.dataSolicitacao && d.pcpInicio && d.dataSolicitacao > d.pcpInicio) {
     return { ok: false, campos: ['dataSolicitacao'], msg: T('fm.errSolic') };
+  }
+  // contrato com OM: cada OM é um projeto (commessa + OM não repete); projeto novo exige a OM
+  if (Contratos.ehContrato(d.commessa)) {
+    if (!d.om && !idEditando) return { ok: false, campos: ['om'], msg: T('fm.errOmFalta', Contratos.base(d.commessa)) };
+    const b = Contratos.base(d.commessa);
+    const dupOm = d.om && projetos.some(function (p) { return p.id !== idEditando && Contratos.base(p.commessa) === b && Contratos.mesmaOm(p.om, d.om); });
+    if (dupOm) return { ok: false, campos: ['om'], msg: T('fm.errDupOm', b, d.om) };
+    return { ok: true, avisos: avisosCronograma(d) };
   }
   const chave = String(d.commessa).trim().toLowerCase();
   const dup = projetos.some(function (p) { return p.id !== idEditando && String(p.commessa).trim().toLowerCase() === chave; });

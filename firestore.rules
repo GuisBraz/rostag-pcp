@@ -691,6 +691,12 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['mapa', 'atualizadoEm', 'atualizadoPorUid'])
           && request.resource.data.mapa is map && request.resource.data.mapa.size() <= 200
           && request.resource.data.atualizadoPorUid == request.auth.uid;
+        // contratos com OM (commessas separadas por OM): só a Gerência
+        allow create, update: if doc == 'contratos'
+          && souGerenteDe(equipeId)
+          && request.resource.data.keys().hasOnly(['lista', 'atualizadoEm', 'atualizadoPorUid'])
+          && request.resource.data.lista is list && request.resource.data.lista.size() <= 60
+          && request.resource.data.atualizadoPorUid == request.auth.uid;
         allow create, update: if doc == 'fabrica'
           && (souPapel(equipeId, 'prog_caldeiraria') || souGerenteDe(equipeId))
           && request.resource.data.keys().hasOnly(['capacidadeKgSemana', 'atualizadoEm', 'atualizadoPorUid'])

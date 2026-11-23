@@ -26,6 +26,7 @@ import { renderJanelaCargaFab } from './cargaFabrica.js';
 import { render as renderJanelaPgms } from './pgms.js';
 import { renderJanelaEspecial } from './cargaEspecial.js';
 import { renderConfig as renderConfigControle } from './despertador.js';
+import { renderConfig as renderConfigContratos } from './contratos.js';
 import { renderTarefas, atualizarContador as atualizarContadorTarefas } from './tarefas.js';
 import { renderNotificacoes } from './notificacoes.js';
 import { renderCarga } from './carga.js';
@@ -107,6 +108,7 @@ export function redesenhar() {
   renderJanelaPgms();
   renderJanelaEspecial();
   renderConfigControle();
+  renderConfigContratos();
   atualizarContadorTarefas();
 }
 

@@ -2,7 +2,7 @@
    Fábrica — lista de OPs (por situação), avanço por projeto e a planilha
    de OPs (técnico). A baixa do CQ e a RNC ficam em qualidade.js.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, opsDoProjeto, opVisivel } from '../estado.js';
+import { estado, buscarProjeto, opsDoProjeto, opVisivel, nomeProjeto } from '../estado.js';
 import { esc, br, dataDoInstante, dataHora, compararNatural, numeroBr } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Papeis from '../dominio/papeis.js';
@@ -262,7 +262,7 @@ export function abrirPlanilha(projetoFixo) {
   if (!lista.length) { toast(T('fab.semProjetos'), { tipo: 'erro' }); return; }
   lida = null;
   const sel = $('planilha-projeto');
-  sel.innerHTML = lista.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.commessa + ' — ' + p.descricao) + '</option>'; }).join('');
+  sel.innerHTML = lista.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(nomeProjeto(p) + ' — ' + p.descricao) + '</option>'; }).join('');
   const fixo = typeof projetoFixo === 'string' && lista.some(function (p) { return p.id === projetoFixo; }) ? projetoFixo : null;
   if (fixo) sel.value = fixo;
   else if (estado.filtroFab.projeto && lista.some(function (p) { return p.id === estado.filtroFab.projeto; })) sel.value = estado.filtroFab.projeto;

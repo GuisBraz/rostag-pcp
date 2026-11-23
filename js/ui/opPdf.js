@@ -6,7 +6,7 @@
    bater só aparece como aviso na conferência. PDF que veio só como imagem
    é lido por OCR (ver pdfTexto.js) e fica marcado para conferir.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto } from '../estado.js';
+import { estado, buscarProjeto, nomeProjeto } from '../estado.js';
 import { esc, numeroBr } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as OpPdf from '../dominio/opPdf.js';
@@ -40,7 +40,7 @@ export function abrirImportarPdf(projetoId) {
   if (!lista.length) { toast(T('fab.semProjetos'), { tipo: 'erro' }); return; }
   projetoFixo = projetoId && lista.some(function (p) { return p.id === projetoId; }) ? projetoId : null;
   const sel = $('oppdf-projeto');
-  sel.innerHTML = lista.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.commessa + ' — ' + p.descricao) + '</option>'; }).join('');
+  sel.innerHTML = lista.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(nomeProjeto(p) + ' — ' + p.descricao) + '</option>'; }).join('');
   if (projetoFixo) sel.value = projetoFixo;
   sel.disabled = !!projetoFixo;
   lidos = [];
@@ -123,7 +123,7 @@ function mostrar() {
     }
     const p = l.pdf, o = l.op;
     const peca = o ? esc(o.desenho) + (o.posicao ? ' · ' + esc(T('pdf.pos', o.posicao)) : '') + '<div class="hint-txt">' + esc(o.commessa + ' — ' + (o.descricao || '')) + '</div>'
-      : esc(p.desenho) + '<div class="hint-txt">' + esc(p.commessa + ' — ' + p.descricao) + '</div>';
+      : esc(p.desenho) + '<div class="hint-txt">' + esc(nomeProjeto(p) + ' — ' + p.descricao) + '</div>';
     const opers = '<b>' + p.operacoes.length + '</b> · ' + esc(numeroBr(p.horas)) + ' h' +
       '<div class="hint-txt">' + esc(Array.from(new Set(p.operacoes.map(function (x) { return x.setor; }))).join(', ')) + '</div>';
     let conf;

@@ -2,7 +2,7 @@
    Fábrica → Adicionar OPs → Manual: cadastra (ou corrige) uma OP por vez.
    Técnico de processo (nos projetos dele) e Gerência, como a planilha.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto } from '../estado.js';
+import { estado, buscarProjeto, nomeProjeto } from '../estado.js';
 import { esc } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as OpManual from '../dominio/opManual.js';
@@ -34,7 +34,7 @@ export function abrirOpManual(opId, projetoFixo) {
   if (!op && !lista.length) { toast(T('fab.semProjetos'), { tipo: 'erro' }); return; }
   editandoId = op ? op.id : null;
   const sel = $('opm-projeto');
-  sel.innerHTML = lista.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.commessa + ' — ' + p.descricao) + '</option>'; }).join('');
+  sel.innerHTML = lista.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(nomeProjeto(p) + ' — ' + p.descricao) + '</option>'; }).join('');
   if (op && !lista.some(function (p) { return p.id === op.projetoId; })) {
     sel.innerHTML += '<option value="' + esc(op.projetoId) + '">' + esc(op.commessa) + '</option>';
   }

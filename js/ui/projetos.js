@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------------
    Lista de projetos — tabela ordenável com filtro.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, opsDoProjeto } from '../estado.js';
+import { estado, buscarProjeto, opsDoProjeto, nomeProjeto } from '../estado.js';
 import { esc, br, brCurto, hoje } from '../nucleo/fmt.js';
 import { T, plural, STATUS_LABEL, SIT_LABEL } from '../i18n/index.js';
 import { STATUS_KEYS, SIT_ORDEM } from '../dominio/constantes.js';
@@ -9,6 +9,7 @@ import * as Projeto from '../dominio/projeto.js';
 import * as Cronograma from '../dominio/cronograma.js';
 import * as Producao from '../dominio/producao.js';
 import * as Andamento from '../dominio/andamento.js';
+import * as Contratos from '../dominio/contratos.js';
 import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes } from './dom.js';
 import { filtrarProj, limparCampos, atualizarBadge } from './filtros.js';
@@ -84,6 +85,40 @@ function celulaFinalizar(p) {
     esc(T('fin.botao')) + '</button></td>';
 }
 
+// Contratos com OM: uma linha que abre e fecha, com as OMs dentro.
+const CHAVE_ABERTOS = 'rostag.contratos.abertos';
+let abertos = (function () { try { return new Set(JSON.parse(localStorage.getItem(CHAVE_ABERTOS) || '[]')); } catch (e) { return new Set(); } })();
+function gravarAbertos() { try { localStorage.setItem(CHAVE_ABERTOS, JSON.stringify(Array.from(abertos))); } catch (e) { /* sem armazenamento */ } }
+
+function linhaProjeto(p, comFinalizar, sub) {
+  const st = Projeto.status(p), and = andamentoDe(p);
+  const com = sub ? '<span class="om-sub" title="' + esc(nomeProjeto(p)) + '">' + (p.om ? esc(T('om.rot', p.om)) : '<span class="om-falta">' + esc(T('om.semOm')) + '</span>') + '</span>' : esc(nomeProjeto(p));
+  return '<tr class="linha-projeto' + (sub ? ' linha-om' : '') + '" data-acao="abrirProjeto" data-arg="' + esc(p.id) + '" tabindex="0" role="button" aria-label="' + esc(nomeProjeto(p) + ' — ' + p.descricao) + '">' +
+    '<td class="col-commessa">' + com + '</td>' +
+    '<td>' + esc(p.cliente) + '</td><td>' + esc(p.descricao) + '</td><td>' + esc(p.gp) + '</td>' +
+    '<td class="nowrap">' + celulaPcp(p) + '</td>' +
+    '<td class="nowrap">' + br(p.entrega) + '</td>' + celulaFase(and) + celulaAndamento(and) +
+    '<td><span class="pill pill-' + st + '">' + esc(STATUS_LABEL(st)) + '</span></td>' +
+    (comFinalizar ? celulaFinalizar(p) : '') + '</tr>';
+}
+function linhaContrato(g, comFinalizar, aberto) {
+  const ps = g.projetos;
+  const abertas = ps.filter(Projeto.aberto);
+  const atrasadas = ps.filter(function (p) { return Projeto.status(p) === 'atrasado'; }).length;
+  const prox = abertas.map(function (p) { return p.entrega; }).filter(Boolean).sort()[0];
+  const ands = abertas.map(function (p) { return andamentoDe(p).geral; });
+  const media = ands.length ? Math.round(ands.reduce(function (a, b) { return a + b; }, 0) / ands.length) : null;
+  const gp = (ps.find(function (p) { return p.gp && p.gp !== '—'; }) || ps[0]).gp;
+  const cli = (ps.find(function (p) { return p.cliente && p.cliente !== '—'; }) || ps[0]).cliente;
+  return '<tr class="linha-contrato' + (aberto ? ' aberto' : '') + '" data-acao="alternarContrato" data-arg="' + esc(g.contrato) + '" tabindex="0" role="button" aria-expanded="' + aberto + '">' +
+    '<td class="col-commessa"><span class="om-seta" aria-hidden="true">' + (aberto ? '▾' : '▸') + '</span><b>' + esc(g.contrato) + '</b></td>' +
+    '<td>' + esc(cli) + '</td><td><b>' + esc(T('om.nOms', ps.length)) + '</b><span class="hint-txt"> · ' + esc(T('om.nAbertas', abertas.length)) + '</span></td><td>' + esc(gp || '—') + '</td>' +
+    '<td></td><td class="nowrap">' + (prox ? '<span class="hint-txt">' + esc(T('om.proxima')) + '</span> ' + br(prox) : '—') + '</td><td></td>' +
+    '<td class="col-andamento">' + (media == null ? '—' : '<b class="and-geral">' + media + '%</b> <span class="hint-txt">' + esc(T('om.media')) + '</span>') + '</td>' +
+    '<td>' + (atrasadas ? '<span class="pill pill-atrasado">' + esc(T('om.nAtrasadas', atrasadas)) + '</span>' : (abertas.length ? '<span class="pill pill-andamento">' + esc(T('om.emDia')) + '</span>' : '')) + '</td>' +
+    (comFinalizar ? '<td class="col-finalizar"><button type="button" class="btn btn-outline btn-mini" data-acao="novaOm" data-arg="' + esc(g.contrato) + '">' + esc(T('om.nova')) + '</button></td>' : '') + '</tr>';
+}
+
 export function renderProjetos() {
   memoAnd.clear();   // um cálculo por projeto nesta tela (a ordenação reaproveita)
   const comFinalizar = podeFinalizar();
@@ -102,7 +137,9 @@ export function renderProjetos() {
     if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * estado.ordem.dir;
     return String(va).localeCompare(String(vb), 'pt-BR', { numeric: true }) * estado.ordem.dir;
   });
-  estado.ordemVisivel = lista.map(function (p) { return p.id; });
+  const grupos = Contratos.agrupar(lista);
+  estado.ordemVisivel = [];
+  grupos.forEach(function (g) { (g.projeto ? [g.projeto] : g.projetos).forEach(function (p) { estado.ordemVisivel.push(p.id); }); });
 
   $('proj-count').textContent = lista.length === total
     ? plural(total, 'lista.projeto', 'lista.projetos')
@@ -113,15 +150,12 @@ export function renderProjetos() {
     $('projetos-tbody').innerHTML = '<tr><td colspan="' + (COLUNAS.length + (comFinalizar ? 1 : 0)) + '"><div class="empty-state">' + esc(msg) + '</div></td></tr>';
     return;
   }
-  $('projetos-tbody').innerHTML = lista.map(function (p) {
-    const st = Projeto.status(p), and = andamentoDe(p);
-    return '<tr class="linha-projeto" data-acao="abrirProjeto" data-arg="' + esc(p.id) + '" tabindex="0" role="button" aria-label="' + esc(p.commessa + ' — ' + p.descricao) + '">' +
-      '<td class="col-commessa">' + esc(p.commessa) + '</td>' +
-      '<td>' + esc(p.cliente) + '</td><td>' + esc(p.descricao) + '</td><td>' + esc(p.gp) + '</td>' +
-      '<td class="nowrap">' + celulaPcp(p) + '</td>' +
-      '<td class="nowrap">' + br(p.entrega) + '</td>' + celulaFase(and) + celulaAndamento(and) +
-      '<td><span class="pill pill-' + st + '">' + esc(STATUS_LABEL(st)) + '</span></td>' +
-      (comFinalizar ? celulaFinalizar(p) : '') + '</tr>';
+  // com busca digitada, os contratos abrem para mostrar a OM encontrada
+  const buscando = !!String(estado.filtroProj.busca || '').trim();
+  $('projetos-tbody').innerHTML = grupos.map(function (g) {
+    if (g.projeto) return linhaProjeto(g.projeto, comFinalizar, false);
+    const aberto = buscando || abertos.has(g.contrato);
+    return linhaContrato(g, comFinalizar, aberto) + (aberto ? g.projetos.map(function (p) { return linhaProjeto(p, comFinalizar, true); }).join('') : '');
   }).join('');
 }
 
@@ -149,14 +183,14 @@ function finalizarCommessa(id) {
   if (ops) avisos.push(T('fin.avisoOps', ops));
   const faltam = (p.checklist || []).filter(function (i) { return !i.done; }).length;
   if (faltam) avisos.push(T('fin.avisoPcp', faltam));
-  const msg = T('fin.q', p.commessa, br(hoje())) + (avisos.length ? '\n\n⚠ ' + avisos.join('\n⚠ ') : '');
+  const msg = T('fin.q', nomeProjeto(p), br(hoje())) + (avisos.length ? '\n\n⚠ ' + avisos.join('\n⚠ ') : '');
   confirmar(msg, { titulo: T('fin.titulo'), textoOk: T('fin.botao') }).then(function (ok) {
     if (!ok || !buscarProjeto(p.id) || !Projeto.aberto(p)) return;
     const aberta = Projeto.pausaAtual(p);
     if (aberta) aberta.fim = hoje();
     p.status = 'concluido'; p.concluidoEm = hoje(); p.canceladoEm = null; p.pedido = null;
     redesenhar();
-    toast(T('fin.feito', p.commessa));
+    toast(T('fin.feito', nomeProjeto(p)));
     persistir().catch(function () { /* persistir já avisou e desfez */ });
   });
 }
@@ -167,5 +201,10 @@ registrarAcoes({
     if (estado.ordem.campo === campo) estado.ordem.dir *= -1; else { estado.ordem.campo = campo; estado.ordem.dir = 1; }
     renderProjetos();
   },
-  abrirProjeto: function (id) { irPara('projetos', id); }
+  abrirProjeto: function (id) { irPara('projetos', id); },
+  alternarContrato: function (c) {
+    if (abertos.has(c)) abertos.delete(c); else abertos.add(c);
+    gravarAbertos();
+    renderProjetos();
+  }
 });

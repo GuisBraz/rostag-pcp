@@ -8,7 +8,7 @@
    Sistema que continuam valendo ganham estado novo e voltam como não lidos.
 --------------------------------------------------------------------------- */
 import * as Recursos from '../dominio/recursos.js';
-import { estado, buscarProjeto } from '../estado.js';
+import { estado, buscarProjeto, nomeProjeto } from '../estado.js';
 import { esc, br, brCurto, hoje, addDias, dataDoInstante, horaDoInstante } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Alertas from '../dominio/alertas.js';
@@ -247,7 +247,7 @@ function limparDeExcluidos(lista) {
 let pedindoTodos = false;
 function commessaDe(id) {
   const p = buscarProjeto(id) || (estado.projetosFabrica || []).find(function (x) { return x.id === id; });
-  if (p) return p.commessa;
+  if (p) return nomeProjeto(p);
   if (Auth.souGerente() || estado.projetosFabrica) return null;
   if (!pedindoTodos) {
     pedindoTodos = true;

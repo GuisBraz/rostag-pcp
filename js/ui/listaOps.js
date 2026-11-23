@@ -8,7 +8,7 @@
    No projeto, destaca as OPs sem roteiro (PDF não importado) e as que estão
    fora da planilha de avanço (OP extra, entrou só pelo PDF ou manual).
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, opVisivel } from '../estado.js';
+import { estado, buscarProjeto, opVisivel, nomeDaOp, nomeProjeto } from '../estado.js';
 import { esc, br, numeroBr, compararNatural } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Prog from '../dominio/programacao.js';
@@ -117,7 +117,7 @@ export function render() {
   const p = aberta.projetoId ? buscarProjeto(aberta.projetoId) : null;
   // o CQ não carrega os projetos: o nome vem da própria OP
   const op0 = aberta.projetoId && !p ? estado.ops.find(function (o) { return o.projetoId === aberta.projetoId; }) : null;
-  $('lops-titulo').textContent = p ? T('lops.tituloProjeto', p.commessa) : (op0 ? T('lops.tituloProjeto', op0.commessa) : T('lops.titulo.' + aberta.grupo));
+  $('lops-titulo').textContent = p ? T('lops.tituloProjeto', nomeProjeto(p)) : (op0 ? T('lops.tituloProjeto', op0.commessa) : T('lops.titulo.' + aberta.grupo));
   $('lops-sub').textContent = p ? (p.descricao || '') : (op0 ? (op0.descricaoProjeto || '') : T('lops.sub'));
   const adicionar = podeAdicionar(p), apaga = podeApagar(p);
   const nMarc = Object.keys(marcadas).filter(function (id) { return marcadas[id]; }).length;
@@ -199,7 +199,7 @@ export function render() {
       const trava = marca ? travaApagar(o) : null;
       return '<tr class="ord-linha' + classeAtraso(o) + (sr ? ' lops-linha-semRoteiro' : '') + (fp ? ' lops-linha-fora' : '') + (marcadas[o.id] ? ' lops-marcada' : '') + '" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '" tabindex="0" role="button">' +
         (marca ? '<td class="lops-marca"><input type="checkbox" data-change="marcarOpLista" data-arg="' + esc(o.id) + '"' + (marcadas[o.id] && !trava ? ' checked' : '') + (trava ? ' disabled title="' + esc(trava) + '"' : '') + ' aria-label="' + esc(T('lops.marcar', o.numero)) + '"></td>' : '') +
-        (aberta.projetoId ? '' : '<td class="mono">' + esc(o.commessa) + '</td>') +
+        (aberta.projetoId ? '' : '<td class="mono">' + esc(nomeDaOp(o)) + '</td>') +
         '<td class="mono">' + esc(o.numero) + (fp ? '<div><span class="lops-badge lops-badge-foraPlanilha">' + esc(T('lops.badge.foraPlanilha')) + '</span></div>' : '') + '</td>' +
         '<td><span class="pill-area area-' + esc(o.area) + '">' + esc(T('area.' + o.area)) + '</span></td>' +
         '<td class="mono">' + esc(o.desenho) + '</td><td>' + esc(o.posicao || '—') + '</td><td>' + esc(o.descricao || '—') +

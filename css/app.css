@@ -1573,3 +1573,20 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 .ctl-bloco summary { cursor: pointer; font-weight: 700; }
 .ctl-lista { margin: 6px 0 0; padding-left: 20px; font-size: 12.5px; color: var(--ink-dim); max-height: 220px; overflow-y: auto; }
 .ctl-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+/* Contratos com OM: linha do contrato que abre e fecha, OMs dentro */
+.linha-contrato { background: var(--bg-panel-alt); cursor: pointer; }
+.linha-contrato:hover { background: var(--line-soft); }
+.linha-contrato td { border-top: 1px solid var(--line); }
+.linha-contrato .col-commessa b { font-family: var(--mono); }
+.om-seta { display: inline-block; width: 16px; color: var(--ink-dim); }
+.linha-om .col-commessa { padding-left: 30px; }
+.om-sub { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+.om-sub::before { content: '↳ '; color: var(--ink-faint); }
+.om-falta { color: var(--amber-ink); font-style: italic; }
+.om-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.om-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg-panel); }
+.om-chip-x { border: 0; background: none; cursor: pointer; font-size: 16px; line-height: 1; color: var(--ink-dim); padding: 0 4px; border-radius: 50%; }
+.om-chip-x:hover { color: var(--rust); }
+.om-novo { display: flex; gap: 8px; align-items: center; }
+.om-novo .input { max-width: 180px; }

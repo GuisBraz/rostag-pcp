@@ -11,7 +11,7 @@ import { avisoReprogramar, avisarOcupadas } from './cargaEspecial.js';
 import * as Pgm from '../dominio/pgm.js';
 import * as DadosPgms from '../dados/pgms.js';
 import * as Cascata from '../dados/cascata.js';
-import { estado, buscarProjeto, opVisivel } from '../estado.js';
+import { estado, buscarProjeto, opVisivel, nomeDaOp } from '../estado.js';
 import { esc, br, hoje, addDias, fds, difDias, numeroBr, compararNatural } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Prog from '../dominio/programacao.js';
@@ -322,7 +322,7 @@ function planilha(ag, h) {
     return '<tr class="cm-' + sit + (atrasada ? ' cm-atraso' : '') + '"' + (atrasada ? ' title="' + esc(T('cm.passaPrazo', br(it.prazo))) + '"' : '') + '><td class="c"><b>' + (i + 1) + '</b></td>' +
       '<td class="mono"><span class="cm-cor" style="background:' + corOp(o.id) + '"></span><button type="button" class="link-btn mono" ' +
         (ehPgm ? 'data-acao="mapaOpCargaMaq" data-arg="' + arg + '"' : 'data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '"') + '>' + esc(o.numero) + '</button></td>' +
-      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td class="cm-txt">' + esc(o.descricao || o.desenho) + '</td><td class="cm-txt"' + (semHoras ? ' title="' + esc(T('cm.semHoras')) + '"' : '') + '>' + esc(nomeOperacao(it)) + '</td>' +
+      '<td class="mono cf-com">' + esc(nomeDaOp(o)) + '</td><td class="cm-txt">' + esc(o.descricao || o.desenho) + '</td><td class="cm-txt"' + (semHoras ? ' title="' + esc(T('cm.semHoras')) + '"' : '') + '>' + esc(nomeOperacao(it)) + '</td>' +
       '<td class="num">' + (vivo ? '<input type="text" inputmode="numeric" class="cm-horas' + (semHoras ? ' cm-horas-falta' : '') + '" value="' + esc(it.horas > 0 ? horasHM(it.horas) : '') + '" placeholder="hh:mm" data-change="horasCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('cm.horas')) + '"' + (semHoras ? ' title="' + esc(T('cm.semHoras')) + '"' : '') + '>' : horasHM(it.horas)) + '</td>' +
       '<td>' + inicioCel + '</td><td>' + fimCel + '</td><td class="num">' + (it.prazo ? br(it.prazo) : '—') + '</td>' +
       '<td><span class="pill-cm cm-p-' + sit + '"' + (sitDica ? ' title="' + esc(sitDica) + '"' : '') + '>' + esc(sitTxt) + '</span></td>' +
@@ -362,7 +362,7 @@ function listaPgms(m) {
     '</th><th class="num">' + esc(T('cm.pesoChapas')) + '</th><th class="num">' + esc(T('cm.horas')) + '</th><th>' + esc(T('cm.inicioOpc')) + '</th><th></th></tr></thead><tbody>' +
     esp.map(function (p) {
       const arg = esc(m.id) + '" data-arg2="' + esc(Pgm.PREFIXO + p.id + '#*');
-      return '<tr><td class="mono"><span class="cm-cor" style="background:' + corOp(Pgm.PREFIXO + p.id) + '"></span><b>' + esc(p.numero) + '</b></td><td class="mono cf-com">' + esc(p.commessa) + '</td>' +
+      return '<tr><td class="mono"><span class="cm-cor" style="background:' + corOp(Pgm.PREFIXO + p.id) + '"></span><b>' + esc(p.numero) + '</b></td><td class="mono cf-com">' + esc(nomeDaOp(p)) + '</td>' +
         '<td class="cm-txt">' + esc([p.chapa, p.dimensoes].filter(Boolean).join(' · ')) + '</td><td class="num">' + esc(T('cm.pgmDet', p.peso ? numeroBr(Math.round(p.peso * 10) / 10) : '—', p.quantidade || 1)) + '</td>' +
         '<td class="num">' + esc(horasHM(p.horas)) + '</td>' +
         '<td><input type="text" class="cm-dt cm-dtm" inputmode="numeric" autocomplete="off" placeholder="' + MOLDE_TXT + '" aria-label="' + esc(T('cm.inicioOpc')) + '" title="' + esc(T('cm.inicioDica')) + '"></td>' +
@@ -388,7 +388,7 @@ function listaProgramar(m, esp) {
     const arg = esc(m.id) + '" data-arg2="' + esc(x.chave);
     return '<tr data-busca="' + esc(chave) + '"' + (busca && chave.indexOf(busca) < 0 ? ' hidden' : '') + '>' +
       '<td class="mono"><span class="cm-cor" style="background:' + corOp(o.id) + '"></span><button type="button" class="link-btn mono" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '">' + esc(o.numero) + '</button></td>' +
-      '<td class="mono cf-com">' + esc(o.commessa) + '</td><td class="cm-txt">' + esc(o.descricao || o.desenho) + '</td><td class="cm-txt">' + esc(oper) + '</td>' +
+      '<td class="mono cf-com">' + esc(nomeDaOp(o)) + '</td><td class="cm-txt">' + esc(o.descricao || o.desenho) + '</td><td class="cm-txt">' + esc(oper) + '</td>' +
       '<td class="num">' + (x.operacao.horas > 0 ? horasHM(x.operacao.horas) : '<span class="cm-prog-sem">' + esc(T('cm.semHorasCurto')) + '</span>') + '</td>' +
       '<td class="num' + (vencido ? ' cm-prog-vencido' : '') + '"' + (vencido ? ' title="' + esc(T('cm.prazoVencido')) + '"' : '') + '>' + (prazo ? br(prazo) : '—') + '</td>' +
       '<td><input type="text" class="cm-dt cm-dtm" inputmode="numeric" autocomplete="off" placeholder="' + MOLDE_TXT + '" aria-label="' + esc(T('cm.inicioOpc')) + '" title="' + esc(T('cm.inicioDica')) + '"></td>' +
@@ -528,7 +528,7 @@ function mapa(ag, h) {
     const cls = (chave === primeira ? ' maq' : '') + (it.atraso ? ' atraso' : '') + (!(it.horas > 0) ? ' semh' : '') + (sg.cont ? ' cont' : '') + (it.congelada ? ' gelo' : '') + (it.reprogramar ? ' reprog' : '');
     cards += '<button type="button" class="cm-tl-card-op' + cls + '" style="left:' + cx + 'px;top:' + cy + 'px;width:' + Z.card + 'px;height:' + Z.ch + 'px;--cor:' + corOp(o.id) + '"' +
       ' data-acao="mapaOpCargaMaq" data-arg="' + esc(m.id) + '" data-arg2="' + esc(chave) + '" title="' + esc(dica) + '">' +
-      '<b>' + (it.congelada ? '❄ ' : '') + (sg.cont ? '↪ ' : '') + esc(opCurta(o.numero)) + '</b><small>' + esc(o.commessa) + (it.parte ? ' · ' + esc(T('pe.pc', it.parte.pecas)) : '') + '</small></button>';
+      '<b>' + (it.congelada ? '❄ ' : '') + (sg.cont ? '↪ ' : '') + esc(opCurta(o.numero)) + '</b><small>' + esc(nomeDaOp(o)) + (it.parte ? ' · ' + esc(T('pe.pc', it.parte.pecas)) : '') + '</small></button>';
   });
   // setas: do fim de uma OP ao começo da próxima
   let setas = '';
@@ -676,7 +676,7 @@ function painelCaminho(ag) {
   if (!itens.length) { ui.geralSel = null; return ''; }
   itens.sort(function (a, b) { return (a.n || 0) - (b.n || 0) || String(a.inicioDt).localeCompare(String(b.inicioDt)); });
   const o = itens[0].op, p = buscarProjeto(o.projetoId);
-  return '<div class="cm-caminho"><div class="cm-caminho-topo"><b class="mono">OP ' + esc(o.numero) + '</b><span class="mono cf-com">' + esc(o.commessa) + '</span>' +
+  return '<div class="cm-caminho"><div class="cm-caminho-topo"><b class="mono">OP ' + esc(o.numero) + '</b><span class="mono cf-com">' + esc(nomeDaOp(o)) + '</span>' +
     (p && p.prodFim ? '<span class="hint-txt">' + esc(T('prog.prazo', br(p.prodFim))) + '</span>' : '') +
     '<button type="button" class="link-btn" data-acao="abrirOpDetalhe" data-arg="' + esc(o.id) + '">' + esc(T('cm.abrirOp')) + '</button>' +
     '<button type="button" class="cm-ic cm-ic-mini" data-acao="geralSelCargaMaq" data-arg="" aria-label="' + esc(T('btn.fechar')) + '">✕</button></div><ol class="cm-caminho-lista">' +
@@ -715,7 +715,7 @@ function popupPgm(m, it) {
   const dado = function (r, v, cls) { return v == null || v === '' ? '' : '<div><dt>' + esc(r) + '</dt><dd' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</dd></div>'; };
   $('cm-dia-titulo').textContent = 'PGM ' + p.numero;
   $('cm-dia-sub').textContent = m.nome + ' · ' + T('pgm.s.' + Pgm.situacao(p, f.has(p.id)));
-  $('cm-dia-lista').innerHTML = '<div class="cm-dia-op" style="--cor:' + corOp(it.op.id) + '"><div class="cm-dia-topo"><b class="mono">' + esc(p.numero) + '</b><span class="mono cf-com">' + esc(p.commessa) + '</span></div>' +
+  $('cm-dia-lista').innerHTML = '<div class="cm-dia-op" style="--cor:' + corOp(it.op.id) + '"><div class="cm-dia-topo"><b class="mono">' + esc(p.numero) + '</b><span class="mono cf-com">' + esc(nomeDaOp(p)) + '</span></div>' +
     '<div class="cm-dia-desc">' + esc([p.chapa, p.dimensoes].filter(Boolean).join(' · ')) + '</div><dl class="cm-dia-dados">' +
     dado(T('prog.inicio'), esc(brDt(it.inicioDt)), 'mono') + dado(T('cm.fimPrev'), esc(brDt(it.fimAjustado || it.fimDt)), 'mono') +
     dado(T('cm.horas'), esc(horasHM(it.horas)), 'mono') + dado(T('pgm.tempo'), esc(T('pgm.tempoDet', p.tempoMin, p.quantidade || 1))) +
@@ -752,7 +752,7 @@ function popupOp(mid, chave) {
       dado(T('cm.horas'), it.horas > 0 ? esc(horasHM(it.horas)) : '—', 'mono') +
       dado(T('cm.prazo'), it.prazo ? esc(br(it.prazo)) : '—', 'mono' + (it.atraso ? ' cm-dia-atraso' : '')) +
     '</dl><div class="cm-dia-sec">' + esc(T('cm.secOp')) + '</div><dl class="cm-dia-dados">' +
-      dado(T('fab.cCommessa'), esc(o.commessa) + (p && p.descricao ? ' — ' + esc(p.descricao) : ''), '') +
+      dado(T('fab.cCommessa'), esc(nomeDaOp(o)) + (p && p.descricao ? ' — ' + esc(p.descricao) : ''), '') +
       dado(T('fab.cDesenho'), o.desenho ? esc(o.desenho) + (o.posicao ? ' · ' + esc(T('pdf.pos', o.posicao)) : '') : '') +
       dado(T('pdf.campo.produto'), o.produto ? esc(o.produto) : '') +
       dado(T('fab.cQtd'), o.qtd != null ? numeroBr(o.qtd) : '', 'mono') +
@@ -799,7 +799,7 @@ function baixaHtml(baixa) {
   return '<div class="card"><div class="table-wrap"><table class="ord-tab"><thead><tr><th>OP</th><th>' + esc(T('fab.cCommessa')) + '</th><th>' + esc(T('fab.cDescricao')) + '</th><th class="num">' +
     esc(T('fab.cQtd')) + '</th><th>' + esc(T('passo.pergunta')) + '</th><th></th></tr></thead><tbody>' +
     baixa.sort(function (a, b) { return compararNatural(a.commessa, b.commessa) || compararNatural(a.numero, b.numero); }).map(function (o) {
-      return '<tr><td class="mono">' + esc(o.numero) + '</td><td class="mono cf-com">' + esc(o.commessa) + '</td><td>' + esc(o.descricao || '—') + '</td><td class="num">' + numeroBr(o.qtd) + '</td>' +
+      return '<tr><td class="mono">' + esc(o.numero) + '</td><td class="mono cf-com">' + esc(nomeDaOp(o)) + '</td><td>' + esc(o.descricao || '—') + '</td><td class="num">' + numeroBr(o.qtd) + '</td>' +
         '<td>' + esc(o.proximoPasso ? T('passo.' + o.proximoPasso) : '—') + '</td><td>' + (editar ? '<button type="button" class="btn btn-success btn-mini" data-acao="finalizarOp" data-arg="' + esc(o.id) + '">' + esc(T('prog.finalizar')) + '</button>' : '') + '</td></tr>';
     }).join('') + '</tbody></table></div></div>';
 }

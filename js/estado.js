@@ -2,6 +2,8 @@
    Estado da interface, compartilhado entre as telas.
 --------------------------------------------------------------------------- */
 import * as Projeto from './dominio/projeto.js';
+import { nomeProjeto } from './dominio/contratos.js';
+export { nomeProjeto };
 export const estado = {
   projetos: [],
   carregado: false,          // primeira leitura da equipe já chegou
@@ -58,4 +60,10 @@ export function limparFiltros() {
   Object.keys(estado.filtroDash).forEach(function (k) { estado.filtroDash[k] = ''; });
   Object.keys(estado.filtroProj).forEach(function (k) { estado.filtroProj[k] = ''; });
   Object.keys(estado.filtroFab).forEach(function (k) { estado.filtroFab[k] = ''; });
+}
+
+// Commessa da OP como aparece nas telas: com a OM quando o projeto é de um contrato
+export function nomeDaOp(o) {
+  const p = o && o.projetoId ? buscarProjeto(o.projetoId) : null;
+  return p ? nomeProjeto(p) : String((o && o.commessa) || '');
 }

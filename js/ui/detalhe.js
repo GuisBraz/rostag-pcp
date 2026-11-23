@@ -2,7 +2,7 @@
    Detalhe do projeto — janelas de prazo, informações, ações de status,
    histórico, cronograma, observações por tarefa e conversa.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, projetoAtual, opsDoProjeto } from '../estado.js';
+import { estado, buscarProjeto, projetoAtual, opsDoProjeto, nomeProjeto } from '../estado.js';
 import * as Producao from '../dominio/producao.js';
 import { abrirEditarProjeto } from './formulario.js';
 import { prefs } from '../nucleo/prefs.js';
@@ -42,13 +42,13 @@ export function renderDetalhe() {
   const parado = st === 'paralisado';
   const podeGerir = Auth.souGPouCoordenador();
 
-  $('detail-commessa').textContent = p.commessa;
+  $('detail-commessa').textContent = nomeProjeto(p);
   $('detail-titulo').textContent = p.descricao;
   $('detail-sub').textContent = p.cliente + ' · ' + T('f.gp') + ' ' + p.gp + ' · ' + T('d.tecnico') + ' ' + (p.tecnico || '—');
   const pill = $('detail-status-pill');
   pill.textContent = STATUS_LABEL(st);
   pill.className = 'pill pill-' + st;
-  document.title = p.commessa + ' · ROSTAG PCP';
+  document.title = nomeProjeto(p) + ' · ROSTAG PCP';
 
   // --- janela do PCP ---
   const sitPcp = Projeto.situacaoPcp(p);
@@ -209,7 +209,7 @@ function aplicar(mensagem) {
    projeto para "aguardando cronograma": o GP monta um cronograma macro novo. */
 function paralisarProjeto() {
   const p = projetoAtual();
-  pedirTexto(T('q.paralisar', p.commessa, br(hoje())), {
+  pedirTexto(T('q.paralisar', nomeProjeto(p), br(hoje())), {
     titulo: T('d.paralisar'), rotuloCampo: T('q.motivoRot'), placeholder: T('q.motivoPh'), textoOk: T('d.paralisar')
   }).then(function (motivo) {
     if (motivo === null || !buscarProjeto(p.id)) return;
@@ -221,7 +221,7 @@ function paralisarProjeto() {
 function retomarProjeto() {
   const p = projetoAtual();
   const dias = Projeto.diasParadoAtual(p);
-  confirmar(T('q.retomar', p.commessa, plural(dias, 'x.dia', 'x.dias')), { titulo: T('d.retomar'), textoOk: T('d.retomar') }).then(function (ok) {
+  confirmar(T('q.retomar', nomeProjeto(p), plural(dias, 'x.dia', 'x.dias')), { titulo: T('d.retomar'), textoOk: T('d.retomar') }).then(function (ok) {
     if (!ok || !buscarProjeto(p.id)) return;
     const aberta = Projeto.pausaAtual(p);
     if (aberta) aberta.fim = hoje();
@@ -231,14 +231,14 @@ function retomarProjeto() {
     aplicar(T('t.retomado', plural(dias, 'x.dia', 'x.dias'))).then(function () {
       // se a gravação foi recusada, a tela voltou para o projeto parado: não avisa
       const atual = buscarProjeto(p.id);
-      if (atual && atual.status !== 'paralisado' && p.gpUid) Auth.criarNotificacao(p.gpUid, 'cronograma', T('notif.retomado', p.commessa, plural(dias, 'x.dia', 'x.dias')), p.id);
+      if (atual && atual.status !== 'paralisado' && p.gpUid) Auth.criarNotificacao(p.gpUid, 'cronograma', T('notif.retomado', nomeProjeto(p), plural(dias, 'x.dia', 'x.dias')), p.id);
     });
   });
 }
 function cancelarProjeto() {
   const p = projetoAtual();
   if (p.status !== 'paralisado') { toast(T('d.avisoCancelar'), { tipo: 'erro' }); return; }
-  pedirTexto(T('q.cancelar', p.commessa, plural(Projeto.diasParadoAtual(p), 'x.dia', 'x.dias')),
+  pedirTexto(T('q.cancelar', nomeProjeto(p), plural(Projeto.diasParadoAtual(p), 'x.dia', 'x.dias')),
     { titulo: T('d.cancelarProj'), rotuloCampo: T('ped.motivoRot'), placeholder: T('q.motivoPh'), textoOk: T('d.cancelarProj'), perigo: true }).then(function (motivo) {
     if (motivo === null || !buscarProjeto(p.id)) return;
     if (!motivo) { toast(T('ped.semMotivo'), { tipo: 'erro' }); return; }
@@ -249,7 +249,7 @@ function cancelarProjeto() {
 }
 function reabrirProjeto() {
   const p = projetoAtual();
-  confirmar(T('q.reabrir', p.commessa), { titulo: T('d.reabrir'), textoOk: T('d.reabrir') }).then(function (ok) {
+  confirmar(T('q.reabrir', nomeProjeto(p)), { titulo: T('d.reabrir'), textoOk: T('d.reabrir') }).then(function (ok) {
     if (!ok || !buscarProjeto(p.id)) return;
     p.status = 'ativo'; p.concluidoEm = null; p.canceladoEm = null;
     aplicar(T('t.reaberto'));
@@ -259,7 +259,7 @@ function excluirProjeto() {
   if (!Auth.souGPouCoordenador()) return;
   const p = projetoAtual();
   const ops = opsDoProjeto(p.id);
-  confirmar(T('q.excluirTudo', p.commessa, ops.length), { titulo: T('btn.excluir'), textoOk: T('btn.excluir'), perigo: true }).then(function (ok) {
+  confirmar(T('q.excluirTudo', nomeProjeto(p), ops.length), { titulo: T('btn.excluir'), textoOk: T('btn.excluir'), perigo: true }).then(function (ok) {
     if (!ok) return;
     // tudo o que é do projeto (OPs, RNCs, PGMs, tarefas, conversa, planilha,
     // comerciais, serviços e as filas das máquinas), por último o projeto
@@ -268,7 +268,7 @@ function excluirProjeto() {
       irPara('projetos');
       redesenhar();
       const falhou = r.partes.filter(function (x) { return !x.ok; }).map(function (x) { return x.nome; });
-      toast(T('t.excluidoTudo', p.commessa, ops.length) + (falhou.length ? ' ' + T('t.excluidoResto', falhou.join(', ')) : ''));
+      toast(T('t.excluidoTudo', nomeProjeto(p), ops.length) + (falhou.length ? ' ' + T('t.excluidoResto', falhou.join(', ')) : ''));
     }).catch(function (e) { avisoErro(e); });
   });
 }
@@ -309,7 +309,7 @@ function confirmarReagendar() {
   Projeto.avisosCronograma(p).forEach(function (a) { toast(a, { tipo: 'erro' }); });
   aplicar(T('t.novaData', nomes[campo], br(nova), br(antigo))).then(function () {
     // notificação 3: o técnico fica sabendo que as datas mudaram
-    if (p.responsavelUid) Auth.criarNotificacao(p.responsavelUid, 'datas', T('notif.datasCampo', p.commessa, nomes[campo], br(nova)), p.id);
+    if (p.responsavelUid) Auth.criarNotificacao(p.responsavelUid, 'datas', T('notif.datasCampo', nomeProjeto(p), nomes[campo], br(nova)), p.id);
   });
 }
 
@@ -418,7 +418,7 @@ function enviarChat() {
   const p = projetoAtual();
   Auth.enviarMensagemChat(estado.idDetalhe, txt).then(function () {
     // notificação 13: GP e técnico do projeto (menos quem escreveu)
-    if (p) Auth.notificarVarios([p.gpUid, p.responsavelUid], 'chat', T('notif.chat', p.commessa, Auth.nomeExibicao(), txt.slice(0, 200)), p.id);
+    if (p) Auth.notificarVarios([p.gpUid, p.responsavelUid], 'chat', T('notif.chat', nomeProjeto(p), Auth.nomeExibicao(), txt.slice(0, 200)), p.id);
   }).catch(function (e) {
     input.value = txt;
     toast(T('chat.erro'), { tipo: 'erro' });

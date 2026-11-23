@@ -4,7 +4,7 @@
    resposta); a Gerência aprova (aplica) ou recusa (com motivo). As duas
    pontas recebem notificação.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto } from '../estado.js';
+import { estado, buscarProjeto, nomeProjeto } from '../estado.js';
 import { esc, br, hoje, dataDoInstante } from '../nucleo/fmt.js';
 import { T, plural } from '../i18n/index.js';
 import * as Projeto from '../dominio/projeto.js';
@@ -32,7 +32,7 @@ export function pendentes() {
 /* ------------------------------------------------------------- o GP pede */
 export function pedir(p, tipo) {
   if (!p || Projeto.pedidoPendente(p)) return;
-  pedirTexto(T('ped.q.' + tipo, p.commessa), {
+  pedirTexto(T('ped.q.' + tipo, nomeProjeto(p)), {
     titulo: T('ped.titulo.' + tipo), rotuloCampo: T('ped.motivoRot'), placeholder: T('q.motivoPh'), textoOk: T('ped.enviar')
   }).then(function (motivo) {
     if (motivo === null || !buscarProjeto(p.id)) return;
@@ -41,14 +41,14 @@ export function pedir(p, tipo) {
     gravar(T('ped.enviado')).then(function (ok) {
       if (!ok) return;
       Auth.uidsGerentes().then(function (g) {
-        Auth.notificarVarios(g, 'pedido', T('notif.pedido.' + tipo, p.commessa, Auth.nomeExibicao(), motivo.slice(0, 200)), p.id);
+        Auth.notificarVarios(g, 'pedido', T('notif.pedido.' + tipo, nomeProjeto(p), Auth.nomeExibicao(), motivo.slice(0, 200)), p.id);
       });
     });
   });
 }
 export function desistir(p) {
   if (!p || !Projeto.pedidoPendente(p)) return;
-  confirmar(T('ped.qDesistir', T('ped.tipo.' + p.pedido.tipo), p.commessa), { titulo: T('ped.desistir'), textoOk: T('ped.desistir') }).then(function (ok) {
+  confirmar(T('ped.qDesistir', T('ped.tipo.' + p.pedido.tipo), nomeProjeto(p)), { titulo: T('ped.desistir'), textoOk: T('ped.desistir') }).then(function (ok) {
     if (!ok || !buscarProjeto(p.id)) return;
     p.pedido = null;
     gravar(T('ped.desistiu'));
@@ -77,28 +77,28 @@ export function aplicarCancelar(p, motivo) {
 export function aprovar(p) {
   const ped = Projeto.pedidoPendente(p);
   if (!ped || !souGerente()) return;
-  confirmar(T('ped.qAprovar.' + ped.tipo, p.commessa, ped.porNome || '—', ped.motivo), {
+  confirmar(T('ped.qAprovar.' + ped.tipo, nomeProjeto(p), ped.porNome || '—', ped.motivo), {
     titulo: T('ped.aprovar'), textoOk: T('ped.aprovar'), perigo: ped.tipo === 'cancelar'
   }).then(function (ok) {
     if (!ok || !buscarProjeto(p.id)) return;
     if (ped.tipo === 'paralisar') aplicarParalisar(p, ped.motivo); else aplicarCancelar(p, ped.motivo);
     p.pedido = null;
-    gravar(T('ped.aprovado.' + ped.tipo, p.commessa)).then(function (ok2) {
-      if (ok2 && ped.porUid) Auth.criarNotificacao(ped.porUid, 'pedidoAprovado', T('notif.pedidoAprovado.' + ped.tipo, p.commessa, Auth.nomeExibicao()), p.id);
+    gravar(T('ped.aprovado.' + ped.tipo, nomeProjeto(p))).then(function (ok2) {
+      if (ok2 && ped.porUid) Auth.criarNotificacao(ped.porUid, 'pedidoAprovado', T('notif.pedidoAprovado.' + ped.tipo, nomeProjeto(p), Auth.nomeExibicao()), p.id);
     });
   });
 }
 export function recusar(p) {
   const ped = Projeto.pedidoPendente(p);
   if (!ped || !souGerente()) return;
-  pedirTexto(T('ped.qRecusar', T('ped.tipo.' + ped.tipo), p.commessa), {
+  pedirTexto(T('ped.qRecusar', T('ped.tipo.' + ped.tipo), nomeProjeto(p)), {
     titulo: T('ped.recusar'), rotuloCampo: T('ped.motivoRot'), placeholder: T('ped.recusarPh'), textoOk: T('ped.recusar')
   }).then(function (motivo) {
     if (motivo === null || !buscarProjeto(p.id)) return;
     if (!motivo) { toast(T('ped.semMotivo'), { tipo: 'erro' }); return; }
     p.pedido = null;
     gravar(T('ped.recusado')).then(function (ok) {
-      if (ok && ped.porUid) Auth.criarNotificacao(ped.porUid, 'pedidoRecusado', T('notif.pedidoRecusado', T('ped.tipo.' + ped.tipo), p.commessa, Auth.nomeExibicao(), motivo.slice(0, 200)), p.id);
+      if (ok && ped.porUid) Auth.criarNotificacao(ped.porUid, 'pedidoRecusado', T('notif.pedidoRecusado', T('ped.tipo.' + ped.tipo), nomeProjeto(p), Auth.nomeExibicao(), motivo.slice(0, 200)), p.id);
     });
   });
 }
@@ -127,7 +127,7 @@ export function renderPendencias() {
     const ped = p.pedido;
     return '<div class="card panel-pad pend-card pend-' + esc(ped.tipo) + '">' +
       '<div class="pend-topo"><span class="pill-prod ' + (ped.tipo === 'cancelar' ? 'prod-atrasada' : 'prod-parada') + '">' + esc(T('ped.tipo.' + ped.tipo)) + '</span>' +
-        '<b class="mono">' + esc(p.commessa) + '</b><span class="hint-txt">' + esc(p.descricao || '') + '</span></div>' +
+        '<b class="mono">' + esc(nomeProjeto(p)) + '</b><span class="hint-txt">' + esc(p.descricao || '') + '</span></div>' +
       '<div class="pend-motivo">' + esc(ped.motivo) + '</div>' +
       '<div class="hint-txt">' + esc(T('pend.porEm', ped.porNome || '—', ped.em ? br(dataDoInstante(ped.em)) : '—')) +
         (Projeto.status(p) === 'paralisado' ? ' · ' + esc(T('pend.paradoDesde', plural(Projeto.diasParadoAtual(p), 'x.dia', 'x.dias'))) : '') + '</div>' +

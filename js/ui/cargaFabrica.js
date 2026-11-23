@@ -9,7 +9,7 @@
    recurso" e avisa no sino. Cadastros (empresas, pessoas, dias de trabalho)
    na aba Recursos. Depois da baixa do CQ, ela finaliza a OP.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto, opVisivel } from '../estado.js';
+import { estado, buscarProjeto, opVisivel, nomeDaOp } from '../estado.js';
 import { esc, br, hoje, numeroBr, compararNatural, dataValida } from '../nucleo/fmt.js';
 import { T, meses } from '../i18n/index.js';
 import * as Prog from '../dominio/programacao.js';
@@ -133,7 +133,7 @@ function aguardando(por) {
     const n = l.filter(function (o) { return ui.sel[o.id]; }).length, todas = n === l.length;
     return '<div class="card cf-grupo"><div class="cf-grupo-topo">' +
       (editar ? '<input type="checkbox" data-change="selTodasCargaFab" data-arg2="' + esc(pid) + '"' + (todas ? ' checked' : '') + ' aria-label="' + esc(T('cf.selTodas')) + '">' : '') +
-      '<b class="mono cf-com">' + esc(l[0].commessa) + '</b><span class="hint-txt">' + esc((p && p.descricao) || l[0].descricaoProjeto || '') + '</span>' +
+      '<b class="mono cf-com">' + esc(nomeDaOp(l[0])) + '</b><span class="hint-txt">' + esc((p && p.descricao) || l[0].descricaoProjeto || '') + '</span>' +
       '<span class="cf-grupo-dir">' + esc(T('cf.nOpsKg', l.length, kg(l.reduce(function (t, o) { return t + (Number(o.pesoTotal) || 0); }, 0)))) +
       (editar ? '<button type="button" class="btn btn-primary btn-mini" data-acao="programarCargaFab" data-arg="' + esc(pid) + '"' + (n ? '' : ' disabled') + '>' + esc(n ? T('cf.programarN', n) : T('cf.programar')) + '</button>' : '') + '</span></div>' +
       '<div class="table-wrap"><table class="ord-tab"><thead><tr>' + (editar ? '<th style="width:34px"></th>' : '') + '<th>OP</th><th>' + esc(T('fab.cDesenho')) + '</th><th>' + esc(T('fab.cDescricao')) +
@@ -170,7 +170,7 @@ function listaHtml(por, h, semRec) {
     l.map(function (o) {
       const pr = o.programacao, s = situ(o, h), reag = Prog.reagendada(o), sem = semRec[o.id];
       return '<tr class="ord-linha' + (s.k === 'atraso' ? ' cf-atrasada' : '') + (sem ? ' cf-semrec' : '') + '" data-acao="verOpCargaFab" data-arg="' + esc(o.id) + '" tabindex="0" role="button">' +
-        '<td class="mono">' + esc(o.numero) + '</td><td class="mono cf-com">' + esc(o.commessa) + '</td><td>' + esc(o.descricao || '—') + '<div class="hint-txt mono">' + esc(o.desenho) + '</div></td>' +
+        '<td class="mono">' + esc(o.numero) + '</td><td class="mono cf-com">' + esc(nomeDaOp(o)) + '</td><td>' + esc(o.descricao || '—') + '<div class="hint-txt mono">' + esc(o.desenho) + '</div></td>' +
         '<td class="num">' + numeroBr(o.qtd) + '<div class="hint-txt">' + kg(o.pesoTotal) + '</div></td>' +
         '<td><span class="cf-emp-pill" style="--cor:' + corEmpresa(pr.terceirizadaId) + '">' + esc(pr.terceirizada || '—') + '</span></td>' +
         '<td>' + etapasHtml(o, h, editar) + '</td>' +
@@ -229,7 +229,7 @@ function baixaHtml(por) {
   return '<div class="card"><div class="table-wrap"><table class="ord-tab"><thead><tr><th>OP</th><th>' + esc(T('fab.cCommessa')) + '</th><th>' + esc(T('fab.cDescricao')) + '</th><th class="num">' + esc(T('fab.cQtd')) +
     '</th><th>' + esc(T('cf.empresa')) + '</th><th>' + esc(T('passo.pergunta')) + '</th><th></th></tr></thead><tbody>' +
     por.baixaCq.sort(function (a, b) { return compararNatural(a.commessa, b.commessa) || compararNatural(a.numero, b.numero); }).map(function (o) {
-      return '<tr><td class="mono">' + esc(o.numero) + '</td><td class="mono cf-com">' + esc(o.commessa) + '</td><td>' + esc(o.descricao || '—') + '</td><td class="num">' + numeroBr(o.qtd) + '</td>' +
+      return '<tr><td class="mono">' + esc(o.numero) + '</td><td class="mono cf-com">' + esc(nomeDaOp(o)) + '</td><td>' + esc(o.descricao || '—') + '</td><td class="num">' + numeroBr(o.qtd) + '</td>' +
         '<td>' + esc((o.programacao && o.programacao.terceirizada) || '—') + '</td><td>' + esc(o.proximoPasso ? T('passo.' + o.proximoPasso) : '—') + '</td>' +
         '<td>' + (editar ? '<button type="button" class="btn btn-success btn-mini" data-acao="finalizarOp" data-arg="' + esc(o.id) + '">' + esc(T('prog.finalizar')) + '</button>' : '') + '</td></tr>';
     }).join('') + '</tbody></table></div></div>';
@@ -303,7 +303,7 @@ function abrirJanela(ops, grupo) {
   const c = cfg(), h = hoje(), o0 = ops[0], pr = R.temEtapas(o0) ? o0.programacao : null;
   prog = { ops: ops, grupo: grupo || (ops.length > 1 ? 'g' + Date.now().toString(36) : null), fora: grupo || (ops.length === 1 ? o0.id : null) };
   $('cfp-titulo').textContent = T(pr || o0.programacao ? 'cf.reprogramarTit' : 'cf.programarTit');
-  $('cfp-sub').textContent = T('cf.programarSub', o0.commessa, ops.length, ops.map(function (o) { return o.numero; }).join(', '));
+  $('cfp-sub').textContent = T('cf.programarSub', nomeDaOp(o0), ops.length, ops.map(function (o) { return o.numero; }).join(', '));
   const empAtual = o0.programacao && o0.programacao.terceirizadaId;
   $('cfp-empresa').innerHTML = c.empresas.map(function (e) { return '<option value="' + esc(e.id) + '"' + (e.id === empAtual ? ' selected' : '') + '>' + esc(e.nome) + '</option>'; }).join('');
   $('cfp-etapas').innerHTML = '<div class="cf-et-cab"><span>' + esc(T('cf.etapa')) + '</span><span>' + esc(T('cf.pessoasCol')) + '</span><span>' + esc(T('cf.inicio')) + '</span><span>' + esc(T('cf.fim')) + '</span><span></span></div>' +
@@ -386,7 +386,7 @@ function renderOp() {
   const item = function (rot, val, cls) { return '<div' + (cls ? ' class="' + cls + '"' : '') + '><span>' + esc(rot) + '</span><b>' + val + '</b></div>'; };
   const p = buscarProjeto(o.projetoId);
   $('cfo-corpo').innerHTML = '<div class="rnc-resumo cf-info">' +
-    item('OP', esc(o.numero), 'mono') + item(T('fab.cCommessa'), '<span class="cf-com">' + esc(o.commessa) + '</span>', 'mono') + item(T('fab.cQtd'), esc(T('cg.qtd', numeroBr(o.qtd)))) +
+    item('OP', esc(o.numero), 'mono') + item(T('fab.cCommessa'), '<span class="cf-com">' + esc(nomeDaOp(o)) + '</span>', 'mono') + item(T('fab.cQtd'), esc(T('cg.qtd', numeroBr(o.qtd)))) +
     item(T('fab.cPeso'), kg(o.pesoTotal)) + item(T('cf.inicio'), brAno(pr.inicio)) + item(T('cf.termino'), brAno(pr.previsaoFim)) +
     '<div class="rnc-resumo-peca"><span>' + esc(T('cf.empresa')) + '</span><b class="cf-empresa"><span class="cf-bola" style="background:' + corEmpresa(pr.terceirizadaId) + '"></span>' + esc(pr.terceirizada || '—') + '</b></div></div>' +
     '<div class="sub-titulo">' + esc(T('cf.etapas')) + '</div>' + etapasHtml(o, h, podeEditar()) +

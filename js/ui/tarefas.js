@@ -5,7 +5,7 @@
    Abre pelo cartão "Tarefas" do projeto ou por "Minhas tarefas" no menu.
    Não entra no cronograma nem no % do checklist.
 --------------------------------------------------------------------------- */
-import { estado, buscarProjeto } from '../estado.js';
+import { estado, buscarProjeto, nomeProjeto } from '../estado.js';
 import { esc, br, hoje, dataHora, dataValida } from '../nucleo/fmt.js';
 import { T } from '../i18n/index.js';
 import * as Tarefas from '../dominio/tarefas.js';
@@ -75,7 +75,7 @@ function linha(t, h) {
     (t.status === 'concluida' ? '<span class="tar-check tar-check-ok" aria-hidden="true">✓</span>'
       : (minha ? '<input type="checkbox" class="tar-check" data-acao="concluirTarefa" data-arg="' + esc(t.id) + '" aria-label="' + esc(T('tar.concluir') + ': ' + t.titulo) + '">'
         : '<span class="tar-check" aria-hidden="true"></span>')) +
-    '<div class="tar-conteudo"><div class="tar-titulo">' + (aberta.projetoId ? '' : '<span class="mono tar-commessa">' + esc(t.commessa || (p && p.commessa) || '') + '</span> ') + esc(t.titulo) + '</div>' +
+    '<div class="tar-conteudo"><div class="tar-titulo">' + (aberta.projetoId ? '' : '<span class="mono tar-commessa">' + esc((p && nomeProjeto(p)) || t.commessa || '') + '</span> ') + esc(t.titulo) + '</div>' +
       (t.descricao ? '<div class="tar-desc">' + esc(t.descricao) + '</div>' : '') +
       '<div class="hint-txt">' + esc(T('tar.meta', t.paraNome || '—', t.criadoPorNome || '—', dataHora(t.criadoEm))) + ' ' + prazo + '</div>' +
       (t.status === 'concluida' ? '<div class="tar-feita-info">' + esc(T('tar.feita', t.concluidaPorNome || '—', dataHora(t.concluidaEm), duracaoTxt(t))) + '</div>' +
@@ -87,7 +87,7 @@ function render() {
   if (!aberta || !$('modal-tarefas').classList.contains('open')) return;
   const p = aberta.projetoId ? buscarProjeto(aberta.projetoId) : null;
   const h = hoje();
-  $('tar-titulo').textContent = p ? T('tar.titulo', p.commessa) : T('tar.minhas');
+  $('tar-titulo').textContent = p ? T('tar.titulo', nomeProjeto(p)) : T('tar.minhas');
   $('tar-sub').textContent = p ? (p.descricao || '') : '';
   $('tar-acoes').innerHTML = p && podeCriar(p) ? '<button type="button" class="btn btn-primary btn-mini" data-acao="novaTarefa">' + esc(T('tar.nova')) + '</button>' : '';
   let base;
@@ -113,7 +113,7 @@ function abrirEdicao(t) {
   const p = buscarProjeto(projetoId);
   if (!p || (t ? !podeGerir(t) : !podeCriar(p))) return;
   edit = { id: t ? t.id : null, projetoId: p.id, paraAntes: t ? t.paraUid : null };
-  $('tared-titulo-h').textContent = t ? T('tar.editarTit') : T('tar.novaTit', p.commessa);
+  $('tared-titulo-h').textContent = t ? T('tar.editarTit') : T('tar.novaTit', nomeProjeto(p));
   $('tared-titulo').value = t ? t.titulo : '';
   $('tared-descricao').value = t ? t.descricao : '';
   $('tared-prazo').value = t ? t.prazo || '' : '';
@@ -145,7 +145,7 @@ function salvarEdicao(_a, _b, btn) {
     fecharModal('modal-tarefa');
     toast(T(novo ? 'tar.criada' : 'tar.salva'));
     if (avisar && d.paraUid !== Auth.uid()) {
-      Auth.criarNotificacao(d.paraUid, 'tarefa', T('notif.tarefa', p.commessa, d.titulo, Auth.nomeExibicao() || '', d.prazo ? T('tar.prazo', br(d.prazo)) : T('tar.semPrazo')), p.id);
+      Auth.criarNotificacao(d.paraUid, 'tarefa', T('notif.tarefa', nomeProjeto(p), d.titulo, Auth.nomeExibicao() || '', d.prazo ? T('tar.prazo', br(d.prazo)) : T('tar.semPrazo')), p.id);
     }
   }).catch(function (e) { avisoErro(e); }));
 }
