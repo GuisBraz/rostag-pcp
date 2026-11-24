@@ -79,9 +79,8 @@ export function renderDetalhe() {
   const avanco = stOps.total
     ? '<div class="prod-avanco">' + [['fab.geral', stOps], ['area.caldeiraria', stOps.caldeiraria], ['area.usinagem', stOps.usinagem]].map(function (x) {
       return '<span><b>' + x[1].pct + '%</b> ' + esc(T(x[0])) + ' <span class="hint-inline">(' + esc(T('fab.pecasDeN', numeroBr(x[1].pecasFeitas), numeroBr(x[1].pecas))) + ')</span></span>';
-    }).join('') + (stOps.pecasRnc ? '<span class="prod-rnc">' + esc(T('fab.pecasRnc', numeroBr(stOps.pecasRnc))) + '</span>' : '') +
-      '<button type="button" class="btn btn-outline btn-mini" data-acao="abrirAvanco" data-arg="' + esc(p.id) + '">' + esc(T('av.abrir')) + '</button></div>'
-    : '<div class="hint-inline">' + esc(T('d.semOps')) + ' <button type="button" class="link-btn" data-acao="abrirAvanco" data-arg="' + esc(p.id) + '">' + esc(T('av.abrir')) + '</button></div>';
+    }).join('') + (stOps.pecasRnc ? '<span class="prod-rnc">' + esc(T('fab.pecasRnc', numeroBr(stOps.pecasRnc))) + '</span>' : '') + '</div>'
+    : '<div class="hint-inline">' + esc(T('d.semOps')) + '</div>';
   $('janela-producao').innerHTML = janela(esc(T('d.janelaProd')) + ' <span class="pill-prod prod-' + sitProd + '">' + esc(T('prod.' + sitProd)) + '</span>',
     Producao.inicio(p) ? br(Producao.inicio(p)) + ' → ' + br(p.prodFim) : '—', obsProd, corProd) + avanco;
 

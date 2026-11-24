@@ -9,6 +9,7 @@ import * as Papeis from '../dominio/papeis.js';
 import * as Planilha from '../dominio/planilha.js';
 import * as Avanco from '../dominio/avanco.js';
 import * as Servicos from '../dominio/servicos.js';
+import * as BomResumo from './bomResumo.js';
 import * as DadosAvanco from '../dados/avanco.js';
 import * as Producao from '../dominio/producao.js';
 import * as Projeto from '../dominio/projeto.js';
@@ -252,7 +253,7 @@ let lida = null;   // { ops, ignoradas, erros, avisos, arquivo }
 
 function projetosParaPlanilha() {
   return estado.projetos.filter(function (p) {
-    return Projeto.aberto(p) && !Projeto.aguardandoCronograma(p) && (Auth.souGerente() || p.responsavelUid === Auth.uid());
+    return Projeto.aberto(p) && !Projeto.aguardandoCronograma(p) && BomResumo.podeMexer(p);
   }).sort(function (a, b) { return compararNatural(a.commessa, b.commessa); });
 }
 
@@ -382,6 +383,8 @@ function enviarPlanilha(_a, _b, btn) {
   comBotaoOcupado(btn, Ops.gravarPlanilha(p, c).then(function () {
     return DadosAvanco.salvar(p, lida.lista).catch(function (e) { e.listaFalhou = true; throw e; });
   }).then(function () {
+    // resumo da BOM no projeto (o andamento sai do Avanço)
+    BomResumo.gravar(p, lida.lista.matriz).catch(function (e) { console.warn('resumo da BOM:', e); });
     fecharModal('modal-planilha');
     toast(T('fab.gravadas', c.novas.length, c.atualizadas.length));
     document.dispatchEvent(new CustomEvent('rostag:planilhaGravada', { detail: p.id }));

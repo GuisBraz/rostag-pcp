@@ -9,7 +9,7 @@
        que o CQ já deu baixa (por peças)
 --------------------------------------------------------------------------- */
 import { acharCabecalho, chave, chaveOp, texto, numero, marcado, marcasDa } from './planilha.js';
-import { pecasOp, statusOp } from './producao.js';
+import { pecasOp, statusOp, feitasProg, pctPecas } from './producao.js';
 
 export const MAX_LINHAS = 1500;
 export const MAX_COLUNAS = 60;
@@ -162,7 +162,7 @@ export function pecasDaCadeia(op, idx) {
   const visitar = function (o, prof) {
     if (!o || prof > 10) return;
     const p = pecasOp(o);
-    soma.total += p.total; soma.feitas += p.feitas; soma.rnc += p.rnc; soma.ops.push(o);
+    soma.total += p.total; soma.feitas += feitasProg(o); soma.rnc += p.rnc; soma.ops.push(o);
     (idx.filhas[o.id] || []).forEach(function (f) { visitar(f, prof + 1); });
   };
   visitar(op, 0);
@@ -275,4 +275,94 @@ export function preencher(matriz, merges, ops) {
     });
   }
   return { matriz: matriz, celulas: celulas.concat(resumo), totais: tot };
+}
+
+/* ------------------------------------------------ Avanço vivo (BOM + OPs)
+   A BOM é o escopo (a planilha "virgem"). O Avanço é montado na hora: cada
+   linha da BOM com Cald e/ou Usi acha as OPs dela pelo desenho + posição (ou
+   pelo nº da OP, se a planilha antiga trouxer) e conta as peças com baixa do
+   programador. % da linha = média dos processos (Cald, Usi) que a peça tem;
+   % do projeto = por peça (cada unidade vale igual). Pintura, oxidação, TTAT,
+   serviços e comercial aparecem só como marca (não contam no %, por enquanto). */
+function k(s) { return String(s == null ? '' : s).toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+export function chavePeca(desenho, posicao) { return k(desenho) + '|' + k(posicao); }
+
+// OPs do projeto por área + peça (todas, inclusive retrabalho e mortas: a soma das boas dá o total certo)
+export function indexarPorPeca(ops) {
+  const porPeca = {};
+  (ops || []).forEach(function (o) {
+    const c = o.area + '|' + chavePeca(o.desenho, o.posicao);
+    (porPeca[c] = porPeca[c] || []).push(o);
+  });
+  return { porPeca: porPeca, num: indexarOps(ops) };
+}
+
+// Uma área da linha: { ops, total, feitas, frac, numero, produto }
+function areaDaLinha(row, area, idx) {
+  let ops = idx.porPeca[area + '|' + row.k] || [];
+  const numPlanilha = area === 'caldeiraria' ? row.opCald : row.opUsin;
+  if (!ops.length && numPlanilha) {
+    const op = idx.num.porNumero[area + '|' + chaveOp(numPlanilha)];
+    if (op) ops = pecasDaCadeia(op, idx.num).ops;
+  }
+  const marcada = area === 'caldeiraria' ? row.c : row.u;
+  if (!ops.length && !marcada) return null;
+  const totalOps = ops.reduce(function (a, o) { return a + pecasOp(o).total; }, 0);
+  const total = row.q > 0 ? row.q : (totalOps || 1);
+  const feitas = Math.min(total, ops.reduce(function (a, o) { return a + feitasProg(o); }, 0));
+  const rnc = ops.reduce(function (a, o) { return a + pecasOp(o).rnc; }, 0);
+  const principal = ops.filter(function (o) { return !o.origemOpId; })[0] || ops[0] || null;
+  return { ops: ops, total: total, feitas: feitas, rnc: rnc, frac: total ? feitas / total : 0,
+    numero: principal ? principal.numero : (numPlanilha || ''), produto: principal ? principal.produto || '' : '' };
+}
+
+/** Linha da BOM → { cald, usin, pct, frac } (null quando a peça não tem Cald nem Usi).
+    so: 'caldeiraria' | 'usinagem' — conta só essa área (o programador só vê as OPs da área dele). */
+export function avancoLinha(row, idx, so) {
+  const cald = so === 'usinagem' ? null : areaDaLinha(row, 'caldeiraria', idx), usin = so === 'caldeiraria' ? null : areaDaLinha(row, 'usinagem', idx);
+  const areas = [cald, usin].filter(Boolean);
+  if (!areas.length) return null;
+  const frac = areas.reduce(function (a, x) { return a + x.frac; }, 0) / areas.length;
+  return { cald: cald, usin: usin, frac: frac, pct: frac >= 1 ? 100 : Math.min(99, Math.round(frac * 100)) };
+}
+
+// Itens da BOM (de itens()) → linhas do avanço: { k, q, c, u, opCald, opUsin } das peças com Cald/Usi
+export function linhasDaBom(lista) {
+  return (lista || []).filter(function (i) { return !i.comercial && (i.cald || i.usin); }).map(function (i) {
+    return { k: chavePeca(i.desenho, i.posicao), q: Number(i.qtd) > 0 ? Number(i.qtd) : 0, c: !!i.cald, u: !!i.usin,
+      opCald: i.opCald || '', opUsin: i.opUsin || '' };
+  });
+}
+
+/** % do projeto por peça: { pct, pecas, feitas (equivalentes), linhas, cald: {feitas,total}, usin } */
+export function avancoProjeto(linhas, ops, so) {
+  const idx = indexarPorPeca(ops);
+  const r = { pct: 0, pecas: 0, feitas: 0, linhas: 0, cald: { feitas: 0, total: 0 }, usin: { feitas: 0, total: 0 } };
+  (linhas || []).forEach(function (row) {
+    const a = avancoLinha(row, idx, so);
+    if (!a) return;
+    const q = row.q > 0 ? row.q : Math.max(a.cald ? a.cald.total : 0, a.usin ? a.usin.total : 0);
+    r.linhas++; r.pecas += q; r.feitas += q * a.frac;
+    if (a.cald) { r.cald.feitas += a.cald.feitas; r.cald.total += a.cald.total; }
+    if (a.usin) { r.usin.feitas += a.usin.feitas; r.usin.total += a.usin.total; }
+  });
+  r.pct = pctPecas(r.feitas, r.pecas);
+  r.cald.pct = pctPecas(r.cald.feitas, r.cald.total);
+  r.usin.pct = pctPecas(r.usin.feitas, r.usin.total);
+  return r;
+}
+
+/* Resumo da BOM guardado no projeto (p.bom), para o andamento das listas sem
+   ler a planilha inteira: cada linha vira um texto "chave~qtd~CU~opCald~opUsin". */
+export const MAX_BOM = 1500;
+export function compactar(linhas) {
+  return (linhas || []).slice(0, MAX_BOM).map(function (l) {
+    return [l.k, l.q, (l.c ? 'C' : '') + (l.u ? 'U' : ''), l.opCald || '', l.opUsin || ''].join('~').slice(0, 200);
+  });
+}
+export function descompactar(lista) {
+  return (lista || []).map(function (s) {
+    const p = String(s).split('~');
+    return { k: p[0] || '', q: Number(p[1]) || 0, c: (p[2] || '').indexOf('C') >= 0, u: (p[2] || '').indexOf('U') >= 0, opCald: p[3] || '', opUsin: p[4] || '' };
+  });
 }

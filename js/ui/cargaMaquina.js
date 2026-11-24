@@ -799,7 +799,7 @@ function baixaHtml(baixa) {
   return '<div class="card"><div class="table-wrap"><table class="ord-tab"><thead><tr><th>OP</th><th>' + esc(T('fab.cCommessa')) + '</th><th>' + esc(T('fab.cDescricao')) + '</th><th class="num">' +
     esc(T('fab.cQtd')) + '</th><th>' + esc(T('passo.pergunta')) + '</th><th></th></tr></thead><tbody>' +
     baixa.sort(function (a, b) { return compararNatural(a.commessa, b.commessa) || compararNatural(a.numero, b.numero); }).map(function (o) {
-      return '<tr><td class="mono">' + esc(o.numero) + '</td><td class="mono cf-com">' + esc(nomeDaOp(o)) + '</td><td>' + esc(o.descricao || '—') + '</td><td class="num">' + numeroBr(o.qtd) + '</td>' +
+      return '<tr><td class="mono">' + esc(o.numero) + '</td><td class="mono cf-com">' + esc(nomeDaOp(o)) + '</td><td>' + esc(o.descricao || '—') + '</td><td class="num">' + numeroBr(o.qtd) + (o.baixadas ? '<div class="hint-txt">' + esc(T('prog.baixadasN', numeroBr(o.baixadas))) + '</div>' : '') + '</td>' +
         '<td>' + esc(o.proximoPasso ? T('passo.' + o.proximoPasso) : '—') + '</td><td>' + (editar ? '<button type="button" class="btn btn-success btn-mini" data-acao="finalizarOp" data-arg="' + esc(o.id) + '">' + esc(T('prog.finalizar')) + '</button>' : '') + '</td></tr>';
     }).join('') + '</tbody></table></div></div>';
 }

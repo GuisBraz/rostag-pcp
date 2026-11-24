@@ -1,6 +1,7 @@
 /* ---------------------------------------------------------------------------
    Produção — começa em prodInicio (o GP escolhe; sem ela, no fim do PCP) e
-   termina em prodFim; o avanço sai das peças que o CQ aprovou.
+   termina em prodFim. O avanço sai das peças com baixa do programador (que vem
+   depois da aprovação do CQ), não mais da aprovação em si.
 --------------------------------------------------------------------------- */
 import { hoje, difDias } from '../nucleo/fmt.js';
 
@@ -34,6 +35,18 @@ export function pecasOp(o) {
   return { total: q, feitas: 0, rnc: 0 };
 }
 
+// Peças com baixa do programador. A baixa só existe depois da aprovação do CQ e
+// pode ser parcial ("baixadas"); OP encerrada = todas as boas. Encerrada antes da
+// baixa por quantidade existir (sem "baixadas") também conta todas as boas.
+export function feitasProg(o) {
+  const boas = pecasOp(o).feitas;
+  // OP morta não recebe baixa: as boas dela contam (as reprovadas seguem na OP de retrabalho)
+  if (o && (o.encerradaEm || statusOp(o) === 'morta')) return boas;
+  return Math.max(0, Math.min(boas, Math.floor(Number(o && o.baixadas) || 0)));
+}
+// Quantas ainda faltam dar baixa (das peças boas aprovadas pelo CQ)
+export function faltaBaixa(o) { return Math.max(0, pecasOp(o).feitas - feitasProg(o)); }
+
 // Avanço em % por peças: só mostra 100 quando todas estão feitas.
 export function pctPecas(feitas, total) {
   if (!total) return 0;
@@ -44,7 +57,7 @@ export function pctPecas(feitas, total) {
 // liberadas com desvio; retrabalho conta como não aprovada; peça morta sai do
 // total (a OP de retrabalho que a substitui é que conta). O campo "rnc" é o
 // mesmo que "retrabalho", mantido para as telas que já usavam o nome.
-// O avanço (pct) é por peças: pecas, pecasFeitas e pecasRnc.
+// O avanço (pct) é por peças: pecas, pecasFeitas (baixa do programador) e pecasRnc.
 export function estatisticas(ops) {
   const vazio = function () { return { total: 0, aprovadas: 0, desvio: 0, retrabalho: 0, rnc: 0, abertas: 0, mortas: 0, pct: 0, pecas: 0, pecasFeitas: 0, pecasRnc: 0 }; };
   const r = Object.assign(vazio(), { caldeiraria: vazio(), usinagem: vazio() });
@@ -53,7 +66,7 @@ export function estatisticas(ops) {
     const pc = pecasOp(o);
     [r, r[o.area]].forEach(function (alvo) {
       if (!alvo) return;
-      alvo.pecas += pc.total; alvo.pecasFeitas += pc.feitas; alvo.pecasRnc += pc.rnc;
+      alvo.pecas += pc.total; alvo.pecasFeitas += feitasProg(o); alvo.pecasRnc += pc.rnc;
       if (s === 'morta') { alvo.mortas++; return; }
       alvo.total++;
       if (s === 'aprovada' || s === 'desvio') { alvo.aprovadas++; if (s === 'desvio') alvo.desvio++; }

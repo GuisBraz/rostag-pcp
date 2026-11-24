@@ -94,6 +94,11 @@ describe('projetos: técnico', () => {
     await assertFails(como(P).doc('equipes/E1/projetos/doP').update({ nome: 'outro' }));
     await assertFails(como(P).doc('equipes/E1/projetos/doP').update({ responsavelUid: G }));
     await assertFails(como(P).doc('equipes/E1/projetos/doP').update({ checklist: [], pcpFim: '2030-01-01' }));
+    // resumo da BOM no projeto: o técnico do projeto grava; outro técnico não
+    await assertSucceeds(como(P).doc('equipes/E1/projetos/doP').update({ bom: { linhas: ['A|1~4~C~~'], em: 'x' } }));
+    await assertSucceeds(como(P).doc('equipes/E1/projetos/doP').update({ bom: null }));
+    await assertFails(como(P).doc('equipes/E1/projetos/doP').update({ bom: { linhas: 'x' } }));
+    await assertFails(como(T).doc('equipes/E1/projetos/doP').update({ bom: null }));
     await assertFails(como(P).doc('equipes/E1/projetos/doT').update({ checklist: [] }));
   });
   test('não cria nem apaga projeto', async () => {
@@ -783,9 +788,10 @@ describe('planilha de avanço completa, PDF da OP e RNC por peças', () => {
     for (const uid of [C, M, G, P, T, U, K, Q]) await assertSucceeds(como(uid).doc('equipes/E1/avanco/doP').get());
     await assertFails(como(Y).doc('equipes/E1/avanco/doP').get());
   });
-  test('lista de avanço: outro técnico, GP e programador não gravam; formato é conferido', async () => {
+  test('BOM: o GP do projeto também grava; outro técnico, programador e CQ não; formato é conferido', async () => {
+    await assertSucceeds(como(G).doc('equipes/E1/avanco/doP').set(lista({ enviadoPorUid: G })));
     await assertFails(como(T).doc('equipes/E1/avanco/doP').set(lista({ enviadoPorUid: T })));
-    for (const uid of [G, U, Q]) await assertFails(como(uid).doc('equipes/E1/avanco/doP').set(lista({ enviadoPorUid: uid })));
+    for (const uid of [U, K, Q]) await assertFails(como(uid).doc('equipes/E1/avanco/doP').set(lista({ enviadoPorUid: uid })));
     await assertFails(como(P).doc('equipes/E1/avanco/doP').set(lista({ projetoId: 'doT' })));
     await assertFails(como(P).doc('equipes/E1/avanco/doP').set(lista({ enviadoPorUid: M })));
     await assertFails(como(P).doc('equipes/E1/avanco/doP').set(lista({ campoEstranho: 1 })));
@@ -963,6 +969,18 @@ describe('programação, finalizar e destino', () => {
     await assertFails(como(U).doc('equipes/E1/ops/op1').update(fim(U)));            // de novo, não
     await aprovada('op7', { area: 'caldeiraria', numero: '777' });
     await assertSucceeds(como(M).doc('equipes/E1/ops/op7').update(fim(M)));
+  });
+  test('baixa por quantidade: parcial só sobe e fica abaixo da qtd; encerrar leva a quantidade', async () => {
+    const parcial = (uid, n) => ({ baixadas: n, baixadasEm: 'x', baixadasPorUid: uid });
+    await aprovada('op8', { area: 'usinagem', numero: '888', qtd: 10 });
+    await assertSucceeds(como(U).doc('equipes/E1/ops/op8').update(parcial(U, 3)));
+    await assertFails(como(U).doc('equipes/E1/ops/op8').update(parcial(U, 2)));        // não desce
+    await assertFails(como(U).doc('equipes/E1/ops/op8').update(parcial(U, 10)));       // total = encerrar
+    await assertFails(como(K).doc('equipes/E1/ops/op8').update(parcial(K, 5)));        // área errada
+    await assertFails(como(Q).doc('equipes/E1/ops/op8').update(parcial(Q, 5)));
+    await assertFails(como(U).doc('equipes/E1/ops/op8').update(parcial(M, 5)));        // em nome de outro
+    await assertSucceeds(como(U).doc('equipes/E1/ops/op8').update({ encerradaEm: 'x', encerradaPorUid: U, encerradaPorNome: 'U', ...parcial(U, 10) }));
+    await assertFails(como(U).doc('equipes/E1/ops/op8').update(parcial(U, 10)));       // encerrada
   });
   test('destino da peça: gerente, GP e técnico do projeto', async () => {
     const d = (uid) => ({ destino: 'expedicao', destinoEm: 'x', destinoPorUid: uid });

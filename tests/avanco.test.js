@@ -69,22 +69,23 @@ test('itens: todas as linhas, com marcas, comerciais, níveis e a OP de pintura'
 test('planilha de volta: peças feitas por linha e resumo com fórmula certa', () => {
   const m = Avanco.enxugar(matriz());
   const ops = [
-    { id: 'a', area: 'caldeiraria', numero: '09990101001', qtd: 5, status: 'aprovada' },
+    { id: 'a', area: 'caldeiraria', numero: '09990101001', qtd: 5, status: 'aprovada', encerradaEm: 'x' },
     { id: 'b', area: 'usinagem', numero: '09990201001', qtd: 5, status: 'retrabalho', qtdNc: 3 },
     { id: 'c', area: 'usinagem', numero: '09990301001', qtd: 2, status: 'morta', qtdNc: 2 },
-    { id: 'd', area: 'usinagem', numero: '09990301002', qtd: 2, status: 'aprovada', origemOpId: 'c' }
+    { id: 'd', area: 'usinagem', numero: '09990301002', qtd: 2, status: 'aprovada', origemOpId: 'c', encerradaEm: 'x' }
   ];
   const r = Avanco.preencher(m, merges, ops);
   const em = function (rr, cc) { return r.celulas.find(function (x) { return x.r === rr && x.c === cc; }); };
   const col = function (nome) { return CAB.indexOf(nome); };
-  // suporte (linha 9): cald 5 feitas em MONT/SOLD/ACAB/PINTURA; usinagem 2 de 5
+  // suporte (linha 9): cald 5 com baixa em MONT/SOLD/ACAB/PINTURA; usinagem em retrabalho: as 2 boas
+  // ainda sem baixa do programador → 0 de 5
   ['MONT', 'SOLD', 'ACAB'].forEach(function (k) { assert.equal(em(9, col(k)).v, 5); });
   assert.equal(em(9, 26).v, 5);
-  assert.equal(em(9, col('AVANÇO TOTAL')).v, 2);
-  assert.equal(em(9, col('Avanço Usi(%)')).v, 0.4);
+  assert.equal(em(9, col('AVANÇO TOTAL')).v, 0);
+  assert.equal(em(9, col('Avanço Usi(%)')).v, 0);
   // eixo: a OP morreu e a de retrabalho foi aprovada → 2 de 2
   assert.equal(em(10, col('AVANÇO TOTAL')).v, 2);
-  assert.deepEqual(r.totais, { caldeiraria: { qtd: 5, feitas: 5 }, usinagem: { qtd: 7, feitas: 4 } });
+  assert.deepEqual(r.totais, { caldeiraria: { qtd: 5, feitas: 5 }, usinagem: { qtd: 7, feitas: 2 } });
   assert.deepEqual(em(1, 5), { r: 1, c: 5, v: 7, f: 'SUMIF(S9:S12,"<>",G9:G12)' });
   assert.equal(em(2, 5).f, 'IF(F2>0,SUMIF(S9:S12,"<>",AC9:AC12)/F2,0)');
   assert.equal(em(2, 9).f, 'IF(J2>0,SUMIF(R9:R12,"<>",AA9:AA12)/J2,0)');
