@@ -14,6 +14,7 @@ import * as Producao from '../dominio/producao.js';
 import * as Papeis from '../dominio/papeis.js';
 import * as Auth from '../dados/auth.js';
 import { kpi } from './componentes.js';
+import * as BomResumo from './bomResumo.js';
 import { $, registrarAcoes } from './dom.js';
 import { abrirModal, fecharModal } from './modal.js';
 import { desenhar, destruir, cor, falhaGrafico, opcoesBase, legenda } from './graficos.js';
@@ -415,9 +416,11 @@ export function renderAreasProjeto(p) {
       c ? Projeto.progresso(p) + '<small>%</small>' : '—',
       !c ? T('sit.aguardando') : (atrasadas ? T('ar.procAtrasadas', plural(atrasadas, 'ar.ativ', 'ar.ativs')) : T('ar.procOk')),
       !c ? '--ink-faint' : (atrasadas ? '--rust' : '--teal')) +
-    cartaoArea('planejamento', T('ar.planejamento'),
-      st.total ? st.pct + '<small>%</small>' : '—',
-      st.total ? T('ar.planDetP', numeroBr(st.pecasFeitas), numeroBr(st.pecas)) : T('d.semOps'), st.total ? '--violet' : '--ink-faint') +
+    (function () {
+      const av = BomResumo.avancoDe(p, ops), tem = av.pecas > 0;
+      return cartaoArea('planejamento', T('ar.planejamento'), tem ? av.pct + '<small>%</small>' : '—',
+        tem ? T('ar.planDetP', numeroBr(av.feitas), numeroBr(av.pecas)) : T('d.semOps'), tem ? '--violet' : '--ink-faint');
+    })() +
     cartaoArea('qualidade', T('ar.qualidade'),
       String(st.rnc), T('ar.cqDet', plural(st.rnc, 'ar.rnc', 'ar.rncs'), st.abertas), st.rnc ? '--rust' : '--green');
   AREAS_PROJETO.forEach(function (a) { $('area-' + a).hidden = a !== areaAtual; });

@@ -307,6 +307,27 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   num bloco cinza no fim da lista (só consulta; o checklist abre e as tarefas
   chegam quando o cronograma é definido).
 
+## 4.1.7 BOM e Avanço (planilha viva)
+
+- "Planilha de avanço" passa a se chamar BOM: o escopo "virgem" do mesmo
+  arquivo (Rev., desenho, posição, descrição, qtd, pesos e as marcas 🛒 COM.,
+  🔨 CALD, ⚙️ USI, 🎨 PINT., 🧪 OXID., 🚚 SERV., 🔥 TTAT), sem produto, OPs,
+  solicitações nem pedidos. Planilha sem as colunas de OP também é aceita.
+- Avanço: cartão separado, montado na hora (BOM + OPs do site). Cada peça acha
+  as OPs pelo desenho + posição (ou pelo nº da OP na planilha antiga) e mostra
+  Produto, OP Cald, OP Usi (6 dígitos) e o %. Conta só Cald e Usi, pela baixa do
+  programador (que vem depois da aprovação do CQ): % da linha = média dos
+  processos da peça; % do projeto = por peça. Pintura, serviços, TTAT, oxidação
+  e comercial são só marcas por enquanto. Programador vê só a área dele (🔒 na
+  outra). O andamento do projeto (Projetos, Painel, cartões) usa esse %.
+- Baixa do programador por quantidade: o campo vem com o que falta (a OP
+  inteira); parcial só aponta e a OP continua na lista.
+- O projeto guarda um resumo da BOM (p.bom) para o andamento das listas;
+  projetos antigos ganham o resumo na primeira visita da Gerência, GP ou técnico.
+- Incluir, revisar e exportar planilhas (BOM, Avanço, comerciais, serviços e o
+  backup JSON/CSV): só Gerência, GP e técnico do projeto. Programadores e CQ
+  só consultam. Sai o botão pequeno "Lista de avanço" do quadro Produção.
+
 ## 4.2 Página do projeto do técnico e Todas as OPs
 
 - **Cartões no projeto (só técnico):** **Checklist** (abre e fecha o cronograma

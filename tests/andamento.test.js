@@ -7,7 +7,7 @@ const proj = (extra) => ({ commessa: '2026-039', entrega: '2027-01-20', prodInic
 const op = (status, qtd, extra) => ({ area: 'caldeiraria', status, qtd, ...extra });
 
 test('andamento geral: PCP 20% + Fábrica 80%', () => {
-  const ops = [op('aprovada', 5), op('aberta', 18)];
+  const ops = [op('aprovada', 5, { encerradaEm: 'x' }), op('aberta', 18)];
   const a = calcular(proj(), ops, '2026-11-05');
   assert.equal(a.pcp, 100);
   assert.equal(a.fabrica, 22);

@@ -11,7 +11,7 @@ import * as Prog from '../dominio/programacao.js';
 import * as Auth from '../dados/auth.js';
 import * as DadosProg from '../dados/programacao.js';
 import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
-import { abrirModal, fecharModal, confirmar } from './modal.js';
+import { abrirModal, fecharModal, confirmar, pedirTexto } from './modal.js';
 import { toast } from './toast.js';
 import { avisoErro } from './app.js';
 
@@ -41,11 +41,23 @@ export function textoEtapas(o) {
   return etapas.length ? etapas.map(function (k) { return T('av.marca.' + k); }).join(' → ') : '';
 }
 
+// Baixa do programador por quantidade: o campo vem com o que falta (a OP completa).
+// Parcial só aponta (a OP continua na lista); com todas, a OP é encerrada.
 export function finalizarOp(o) {
   if (!podeFinalizar(o)) return Promise.resolve(false);
-  return confirmar(T('prog.finalizarQ', o.numero, o.descricao || o.desenho), { titulo: T('prog.finalizar'), textoOk: T('prog.finalizarOk') }).then(function (ok) {
-    if (!ok) return false;
-    return DadosProg.finalizar(o, estado.maquinas).then(function () {
+  const boas = Producao.pecasOp(o).feitas, ja = Producao.feitasProg(o), falta = Math.max(0, boas - ja);
+  return pedirTexto(T('prog.baixaQ', o.numero, o.descricao || o.desenho, numeroBr(boas)) + (ja ? ' ' + T('prog.baixaJa', numeroBr(ja)) : ''),
+    { titulo: T('prog.finalizar'), textoOk: T('prog.finalizarOk'), valor: String(falta), rotuloCampo: T('prog.baixaRot', numeroBr(falta)) }).then(function (txt) {
+    if (txt == null) return false;
+    const n = Math.floor(Number(String(txt).replace(',', '.')));
+    if (!(n >= 1 && n <= falta)) { toast(T('prog.baixaInvalida', numeroBr(falta)), { tipo: 'erro' }); return false; }
+    if (ja + n < boas) {
+      return DadosProg.apontar(o, ja + n).then(function () {
+        toast(T('prog.baixaParcial', o.numero, numeroBr(ja + n), numeroBr(boas)));
+        return true;
+      }).catch(function (e) { avisoErro(e); return false; });
+    }
+    return DadosProg.finalizar(o, estado.maquinas, boas).then(function () {
       const etapas = textoEtapas(o);
       const msg = etapas ? T('notif.opFinalizadaProx', o.numero, o.commessa, o.descricao || o.desenho, etapas)
         : T('notif.opFinalizadaSem', o.numero, o.commessa, o.descricao || o.desenho);

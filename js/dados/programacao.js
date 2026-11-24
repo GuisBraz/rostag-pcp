@@ -106,10 +106,16 @@ export function salvarHorasReais(opId, horas) {
 }
 
 /* ---------------------------------------------------------------- finalizar */
-// Depois da baixa do CQ: a OP sai da programação (e das filas das máquinas).
-export function finalizar(op, maquinas) {
+// Depois da baixa do CQ: o programador dá baixa nas peças. Parcial ("baixadas" < boas)
+// só aponta; com todas, a OP sai da programação (e das filas das máquinas).
+export function apontar(op, baixadas) {
+  return refOp(op.id).update({ baixadas: baixadas, baixadasEm: agoraIso(), baixadasPorUid: Auth.uid() });
+}
+export function finalizar(op, maquinas, baixadas) {
   const lote = db().batch();
-  lote.update(refOp(op.id), { encerradaEm: agoraIso(), encerradaPorUid: Auth.uid(), encerradaPorNome: String(Auth.nomeExibicao() || '').slice(0, 60) });
+  const dados = { encerradaEm: agoraIso(), encerradaPorUid: Auth.uid(), encerradaPorNome: String(Auth.nomeExibicao() || '').slice(0, 60) };
+  if (baixadas != null) Object.assign(dados, { baixadas: baixadas, baixadasEm: dados.encerradaEm, baixadasPorUid: Auth.uid() });
+  lote.update(refOp(op.id), dados);
   if (op.area === 'usinagem') {
     (maquinas || []).forEach(function (m) {
       if (!(m.fila || []).some(function (f) { return f.opId === op.id; })) return;

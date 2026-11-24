@@ -1,7 +1,8 @@
 /* ---------------------------------------------------------------------------
    Andamento geral do projeto (aba Projetos), sem Firebase:
      - PCP: o checklist do técnico (0–100);
-     - Fábrica: peças feitas / total das OPs do projeto (null = sem OPs);
+     - Fábrica: % do Avanço (BOM + OPs, baixa do programador, por peça); projeto
+       sem BOM: peças com baixa / total das OPs (null = sem BOM e sem OPs);
      - Geral: PCP vale 20% e Fábrica 80% (sem OPs, conta só o PCP);
      - Fase: PCP → Aguardando OPs → Fabricação → Acabamento → Pronto para entrega
        (ou Entregue / Cancelado / Paralisado, pelo status);
@@ -10,6 +11,7 @@
 import { hoje, difDias } from '../nucleo/fmt.js';
 import * as Projeto from './projeto.js';
 import { estatisticas, statusOp, inicio } from './producao.js';
+import { avancoProjeto, descompactar } from './avanco.js';
 
 export const PESO_PCP = 0.2, PESO_FABRICA = 0.8;
 export const FASES = ['pcp', 'aguardandoOps', 'fabricacao', 'acabamento', 'pronto', 'paralisado', 'entregue', 'cancelado'];
@@ -29,7 +31,8 @@ export function calcular(p, ops, h) {
   const pcp = Projeto.progresso(p);
   const vivas = (ops || []).filter(function (o) { return statusOp(o) !== 'morta'; });
   const stats = estatisticas(ops || []);
-  const fabrica = vivas.length ? stats.pct : null;
+  const bom = p && p.bom && Array.isArray(p.bom.linhas) && p.bom.linhas.length ? avancoProjeto(descompactar(p.bom.linhas), ops) : null;
+  const fabrica = bom && bom.linhas ? bom.pct : (vivas.length ? stats.pct : null);
   const geral = Math.round(pcp * PESO_PCP + (fabrica == null ? 0 : fabrica * PESO_FABRICA));
   const st = Projeto.status(p);
   let fase;
@@ -51,5 +54,5 @@ export function calcular(p, ops, h) {
     if (h > fim || falta >= 30) risco = 'atraso';
     else if (falta >= 15) risco = 'atencao';
   }
-  return { pcp: pcp, fabrica: fabrica, geral: geral, fase: fase, risco: risco, esperado: esperado, stats: stats };
+  return { pcp: pcp, fabrica: fabrica, geral: geral, fase: fase, risco: risco, esperado: esperado, stats: stats, bom: bom };
 }

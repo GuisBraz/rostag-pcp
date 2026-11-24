@@ -1615,3 +1615,21 @@ span.tar-check { border: 1.5px solid var(--line); border-radius: 4px; cursor: de
 tbody tr.linha-bloco-espera:hover td { background: var(--bg-panel-alt); }
 .linha-espera td { opacity: .6; }
 .linha-espera:hover td { opacity: .85; }
+/* BOM e Avanço: símbolos dos processos, peças com baixa, % da linha */
+.pl-simb { font-size: 15px; line-height: 1; cursor: default; }
+.avv-n { font: 600 10.5px var(--mono); color: var(--ink-faint); margin-top: 2px; white-space: nowrap; }
+.avv-n.meio { color: var(--amber-ink); }
+.avv-n.ok { color: var(--green); }
+.avv-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; background: var(--ink-faint); }
+.avv-dot.op-aberta { background: var(--amber); }
+.avv-dot.op-aprovada, .avv-dot.op-desvio { background: var(--green); }
+.avv-dot.op-retrabalho { background: var(--rust); }
+.avv-dot.op-morta { background: var(--ink-faint); }
+.avv-semop { color: var(--ink-faint); cursor: help; }
+.avv-tab sup { font-size: 9px; color: var(--ink-faint); margin-left: 2px; }
+.avv-pct { min-width: 86px; white-space: nowrap; }
+.avv-pct b { font: 700 12px var(--mono); margin-left: 6px; vertical-align: middle; }
+.avv-trilho { display: inline-block; width: 48px; height: 6px; border-radius: 6px; background: var(--line-soft); overflow: hidden; vertical-align: middle; }
+.avv-trilho > div { height: 100%; background: var(--violet); border-radius: 6px; }
+.avv-trilho.ok > div { background: var(--green); }
+.avv-tranca { opacity: .45; cursor: help; font-size: 12px; }

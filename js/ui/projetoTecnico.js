@@ -26,6 +26,7 @@ import { resumoCartao as resumoComerciais } from './comerciais.js';
 import { resumoCartao as resumoPgms } from './pgms.js';
 import { resumoCartao as resumoServicos } from './servicos.js';
 import { resumoCartao as resumoTarefas } from './tarefas.js';
+import * as BomResumo from './bomResumo.js';
 import { exportarPlanilha } from './avanco.js';
 
 let checklistAberto = false;   // começa fechado toda vez que se entra num projeto (rota.js)
@@ -40,6 +41,20 @@ function cartao(acao, arg, titulo, valorHtml, detalhe, corVal, ativo) {
     '<div class="ger-area-det">' + esc(detalhe) + '</div></button>';
 }
 
+// BOM: o escopo (peças de fabricação); Avanço: % pela baixa do programador
+function cartaoBom(p) {
+  BomResumo.conferir(p);   // projeto antigo: grava o resumo da BOM na primeira visita
+  const a = BomResumo.avancoDe(p, []);
+  return cartao('abrirEspelho', p.id, T('tec.planilha'), p.bom ? numeroBr(a.pecasBom) : '—',
+    p.bom ? T('tec.bomDet', numeroBr(a.pecasBom)) : T('tec.semBom'), p.bom ? '--ink' : '--ink-faint');
+}
+function cartaoAvanco(p, ops) {
+  const a = BomResumo.avancoDe(p, ops);
+  const tem = a.pecas > 0;
+  return cartao('abrirAvanco', p.id, T('tec.avanco'), tem ? a.pct + '<small>%</small>' : '—',
+    tem ? T('tec.avancoDet', numeroBr(a.feitas), numeroBr(a.pecas)) : T('tec.semAvanco'), tem ? '--violet' : '--ink-faint');
+}
+
 // Os cartões no topo da página do projeto (só para o técnico).
 export function renderCartoesTecnico(p) {
   const c = Projeto.aguardandoCronograma(p) ? null : Cronograma.calcular(p);
@@ -50,8 +65,7 @@ export function renderCartoesTecnico(p) {
     cartao('alternarChecklist', p.id, T('tec.checklist'), c ? Projeto.progresso(p) + '<small>%</small>' : '—',
       !c ? T('sit.aguardando') : (atrasadas ? T('ar.procAtrasadas', plural(atrasadas, 'ar.ativ', 'ar.ativs')) : T('ar.procOk')),
       !c ? '--ink-faint' : (atrasadas ? '--rust' : '--teal'), checklistAberto) +
-    cartao('abrirEspelho', p.id, T('tec.planilha'), st.total ? st.pct + '<small>%</small>' : '—',
-      st.total ? T('tec.planilhaDet', numeroBr(st.pecasFeitas), numeroBr(st.pecas)) : T('tec.semPlanilha'), st.total ? '--violet' : '--ink-faint') +
+    cartaoBom(p) + cartaoAvanco(p, opsDoProjeto(p.id)) +
     cartao('abrirListaOpsProjeto', p.id, T('tec.ops'), String(st.total),
       st.total ? T('tec.opsDet', st.abertas, st.retrabalho) : T('d.semOps'), st.retrabalho ? '--rust' : '--ink') +
     cartao('abrirComerciais', p.id, T('tec.comerciais'), com ? com.valor : '—', com ? com.detalhe : T('com.abrir'), com ? com.cor : '--ink-faint') +
@@ -67,9 +81,8 @@ export function renderCartoesTecnico(p) {
 export function renderCartoesConsulta(p) {
   const area = Auth.areaProgramador();
   const ops = opsDoProjeto(p.id).filter(function (o) { return !area || o.area === area; });
-  const st = Producao.estatisticas(ops), tudo = Producao.estatisticas(opsDoProjeto(p.id));
-  let html = cartao('abrirEspelho', p.id, T('tec.planilha'), tudo.total ? tudo.pct + '<small>%</small>' : '—',
-      tudo.total ? T('tec.planilhaDet', numeroBr(tudo.pecasFeitas), numeroBr(tudo.pecas)) : T('tec.semPlanilha'), tudo.total ? '--violet' : '--ink-faint') +
+  const st = Producao.estatisticas(ops);
+  let html = cartaoBom(p) + cartaoAvanco(p, opsDoProjeto(p.id)) +
     cartao('abrirListaOpsProjeto', p.id, area ? T('tec.opsArea', T('area.' + area)).toUpperCase() : T('tec.ops'), String(st.total),
       st.total ? T('tec.opsDet', st.abertas, st.retrabalho) : T('d.semOps'), st.retrabalho ? '--rust' : '--ink');
   if (area) {
@@ -82,7 +95,7 @@ export function renderCartoesConsulta(p) {
 }
 
 /* --------------------------------------------- planilha de avanço (espelho) */
-function podeMexer(p) { return !!p && Projeto.aberto(p) && (Auth.souGerente() || p.responsavelUid === Auth.uid()); }
+function podeMexer(p) { return !!p && Projeto.aberto(p) && BomResumo.podeMexer(p); }
 
 function abrirEspelho(projetoId) {
   projetoId = projetoId || estado.idDetalhe;
@@ -98,9 +111,15 @@ function abrirEspelho(projetoId) {
 }
 
 // Colunas da planilha personalizada: [rótulo, campo do item ou função]
-const MARCA = function (v) { return v ? '<span class="pl-marca" aria-label="✓">●</span>' : ''; };
-// OP: só os 6 primeiros dígitos (o final 01001 é padrão); o número inteiro vai na dica
-const OP = function (n) { const s = String(n || ''); return /^\d{6}01001$/.test(s) ? '<span title="' + esc(s) + '">' + esc(s.slice(0, 6)) + '</span>' : esc(s); };
+// Símbolo de cada processo (BOM e Avanço); o nome inteiro vai na dica
+export const SIMBOLOS = { comercial: '🛒', cald: '🔨', usin: '⚙️', pintura: '🎨', oxidacao: '🧪', servicoExterno: '🚚', ttat: '🔥' };
+const MARCA = function (k) {
+  return function (i) {
+    const v = k === 'comercial' ? i.comercial : k === 'cald' ? i.cald : k === 'usin' ? i.usin : i.marcas && i.marcas[k];
+    return v ? '<span class="pl-simb" role="img" aria-label="' + esc(T('pl.marca.' + k)) + '" title="' + esc(T('pl.marca.' + k)) + '">' + SIMBOLOS[k] + '</span>' : '';
+  };
+};
+// BOM: o escopo "virgem" — sem produto, OPs, solicitações ou pedidos.
 // [rótulo, valor, classe, filtro, rótulo curto do cabeçalho (o nome inteiro vai na dica)]
 const COLUNAS = [
   ['pl.rev', function (i) { return esc(i.rev); }, 'pl-c'],
@@ -113,16 +132,13 @@ const COLUNAS = [
   ['pl.qtd', function (i) { return i.qtd == null ? '' : numeroBr(i.qtd); }, 'num', null, 'pl.qtdC'],
   ['pl.pesoUnit', function (i) { return i.pesoUnit == null ? '' : numeroBr(i.pesoUnit); }, 'num', null, 'pl.pesoUnitC'],
   ['pl.pesoTotal', function (i) { return i.pesoTotal == null ? '' : numeroBr(i.pesoTotal); }, 'num', null, 'pl.pesoTotalC'],
-  ['pl.comercial', function (i) { return MARCA(i.comercial); }, 'pl-c', 'comercial', 'pl.comercialC'],
-  ['pl.cald', function (i) { return MARCA(i.cald); }, 'pl-c', 'cald'],
-  ['pl.usinagem', function (i) { return MARCA(i.usin); }, 'pl-c', 'usin', 'pl.usinagemC'],
-  ['pl.pintura', function (i) { return MARCA(i.marcas && i.marcas.pintura); }, 'pl-c', 'pintura', 'pl.pinturaC'],
-  ['pl.oxidacao', function (i) { return MARCA(i.marcas && i.marcas.oxidacao); }, 'pl-c', 'oxidacao', 'pl.oxidacaoC'],
-  ['pl.servicos', function (i) { return MARCA(i.marcas && i.marcas.servicoExterno); }, 'pl-c', 'servicoExterno', 'pl.servicosC'],
-  ['pl.ttat', function (i) { return MARCA(i.marcas && i.marcas.ttat); }, 'pl-c', 'ttat'],
-  ['pl.produto', function (i) { return esc(i.produto); }, 'mono pl-cod'],
-  ['pl.opCald', function (i) { return OP(i.opCald); }, 'mono'],
-  ['pl.opUsin', function (i) { return OP(i.opUsin); }, 'mono']
+  ['pl.comercial', MARCA('comercial'), 'pl-c', 'comercial', 'pl.comercialC'],
+  ['pl.cald', MARCA('cald'), 'pl-c', 'cald', 'pl.caldC'],
+  ['pl.usinagem', MARCA('usin'), 'pl-c', 'usin', 'pl.usinagemC'],
+  ['pl.pintura', MARCA('pintura'), 'pl-c', 'pintura', 'pl.pinturaC'],
+  ['pl.oxidacao', MARCA('oxidacao'), 'pl-c', 'oxidacao', 'pl.oxidacaoC'],
+  ['pl.servicos', MARCA('servicoExterno'), 'pl-c', 'servicoExterno', 'pl.servicosC'],
+  ['pl.ttat', MARCA('ttat'), 'pl-c', 'ttat', 'pl.ttatC']
 ];
 
 // A lista do projeto do jeito do site: as peças (os comerciais só com o filtro
@@ -159,7 +175,7 @@ export function renderEspelho() {
   const mexe = podeMexer(p), doc = espelho.doc;
   $('esp-acoes').innerHTML =
     (mexe ? '<button type="button" class="btn btn-outline" data-acao="abrirPlanilha" data-arg="' + esc(espelho.projetoId) + '">' + esc(T('esp.subir')) + '</button>' : '') +
-    (doc ? '<button type="button" class="btn btn-outline" data-acao="baixarEspelho">' + esc(T('av.baixar')) + '</button>' : '') +
+    (doc && BomResumo.podeMexer(p) ? '<button type="button" class="btn btn-outline" data-acao="baixarEspelho">' + esc(T('bom.baixar')) + '</button>' : '') +
     (mexe && (doc || ops.length) ? '<button type="button" class="btn btn-danger" data-acao="apagarListaOps">' + esc(T('esp.apagar')) + '</button>' : '');
   $('esp-resumo').innerHTML = '';
   if (doc === undefined) { $('esp-corpo').innerHTML = '<div class="hint-txt">' + esc(T('av.carregando')) + '</div>'; return; }
@@ -193,6 +209,7 @@ function apagarListaOps(_a, _b, btn) {
     if (!ok) return;
     comBotaoOcupado(btn, Ops.apagarVarias(apagaveis.map(function (o) { return o.id; }))
       .then(function () { return DadosAvanco.apagar(p.id); })
+      .then(function () { return BomResumo.limpar(p); })
       .then(function () {
         if (espelho) espelho.doc = null;
         toast(T('esp.apagado', apagaveis.length));
@@ -220,7 +237,7 @@ registrarAcoes({
     renderEspelho();
   },
   limparFiltroPlanilha: function () { if (espelho) { espelho.filtros = {}; renderEspelho(); } },
-  baixarEspelho: function (_a, _b, btn) { if (espelho && espelho.doc) comBotaoOcupado(btn, exportarPlanilha(espelho.doc, espelho.projetoId)); },
+  baixarEspelho: function (_a, _b, btn) { if (espelho && espelho.doc && BomResumo.podeMexer(buscarProjeto(espelho.projetoId))) comBotaoOcupado(btn, exportarPlanilha(espelho.doc, espelho.projetoId, { bom: true })); },
   apagarListaOps: apagarListaOps
 });
 

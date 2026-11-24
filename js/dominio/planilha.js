@@ -91,11 +91,16 @@ export function acharCabecalho(linhas) {
       if (!k) return;
       Object.keys(COLUNAS).forEach(function (campo) { if (cols[campo] == null && COLUNAS[campo](k)) cols[campo] = j; });
     });
-    if (cols.desenho != null && (cols.opCald != null || cols.opUsin != null)) {
+    // planilha com as colunas de OP, ou a BOM "virgem" (só o escopo: desenho, descrição,
+    // quantidade e as marcas Cald/Usi), sem as colunas de OP
+    const bomVirgem = cols.descricao != null && cols.qtd != null && (cols.fCald != null || cols.fUsin != null);
+    if (cols.desenho != null && (cols.opCald != null || cols.opUsin != null || bomVirgem)) {
       // a 2ª coluna "PINTURA" (depois das OPs) é o avanço de pintura, não a marca
       const depois = Math.max(cols.opCald == null ? -1 : cols.opCald, cols.opUsin == null ? -1 : cols.opUsin);
-      (linhas[i] || []).forEach(function (cel, j) { if (j > depois && chave(cel) === 'PINTURA') cols.pinturaAv = j; });
-      if (cols.fPintura != null && cols.fPintura > depois) delete cols.fPintura;
+      if (depois >= 0) {
+        (linhas[i] || []).forEach(function (cel, j) { if (j > depois && chave(cel) === 'PINTURA') cols.pinturaAv = j; });
+        if (cols.fPintura != null && cols.fPintura > depois) delete cols.fPintura;
+      }
       return { linha: i, cols: cols };
     }
   }

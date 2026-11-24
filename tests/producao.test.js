@@ -4,8 +4,8 @@ import * as Producao from '../js/dominio/producao.js';
 import * as Papeis from '../js/dominio/papeis.js';
 
 const ops = [
-  { area: 'caldeiraria', status: 'aprovada' }, { area: 'caldeiraria', status: 'rnc' },
-  { area: 'usinagem', status: 'aprovada' }, { area: 'usinagem', status: 'aberta' }, { area: 'usinagem', status: 'aprovada' }
+  { area: 'caldeiraria', status: 'aprovada', encerradaEm: 'x' }, { area: 'caldeiraria', status: 'rnc' },
+  { area: 'usinagem', status: 'aprovada', encerradaEm: 'x' }, { area: 'usinagem', status: 'aberta' }, { area: 'usinagem', status: 'aprovada', encerradaEm: 'x' }
 ];
 
 test('avanço em 3 números: geral, caldeiraria e usinagem (RNC conta como não aprovada)', () => {
@@ -29,13 +29,13 @@ test('avanço por peças: RNC de 3 em 5 deixa 2 feitas; peça morta passa as rep
     { area: 'caldeiraria', qtd: 5, status: 'aberta' }
   ]);
   assert.equal(s.pecas, 10);
-  assert.equal(s.pecasFeitas, 2);
+  assert.equal(s.pecasFeitas, 0);     // as boas do retrabalho só contam depois da baixa do programador
   assert.equal(s.pecasRnc, 3);
-  assert.equal(s.usinagem.pct, 40);
-  assert.equal(s.pct, 20);
+  assert.equal(s.usinagem.pct, 0);
+  assert.equal(s.pct, 0);
   assert.equal(Producao.pctPecas(199, 200), 99);
   // morta + OP de retrabalho aprovada = 100%
-  const fim = Producao.estatisticas([Object.assign({}, op, { status: 'morta', qtdNc: 3 }), { area: 'usinagem', qtd: 3, status: 'aprovada' }]);
+  const fim = Producao.estatisticas([Object.assign({}, op, { status: 'morta', qtdNc: 3 }), { area: 'usinagem', qtd: 3, status: 'aprovada', encerradaEm: 'x' }]);
   assert.equal(fim.pct, 100);
 });
 

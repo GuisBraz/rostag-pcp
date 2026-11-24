@@ -83,7 +83,7 @@ test('indicadores do mês: finalizadas, RNCs, em aberto, retrabalho e mortas', (
 
 test('estatísticas: retrabalho abre, desvio conta como aprovada, morta sai do total', () => {
   const s = Producao.estatisticas([
-    { area: 'usinagem', status: 'aprovada' }, { area: 'usinagem', status: 'desvio' },
+    { area: 'usinagem', status: 'aprovada', encerradaEm: 'x' }, { area: 'usinagem', status: 'desvio', encerradaEm: 'x' },
     { area: 'caldeiraria', status: 'rnc' }, { area: 'caldeiraria', status: 'aberta' }, { area: 'caldeiraria', status: 'morta' }
   ]);
   assert.equal(s.total, 4);

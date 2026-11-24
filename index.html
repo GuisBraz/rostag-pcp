@@ -330,7 +330,8 @@
           <div class="panel-title" data-i18n="ac.titulo">Acompanhamento das atividades</div>
           <div class="panel-note" data-i18n="ac.nota">Andamento do cronograma do PCP feito pelo técnico de processo.</div>
           <div class="esp-acoes ac-atalhos">
-            <button type="button" class="btn btn-outline" data-acao="abrirEspelho" data-i18n="ac.planilha">Planilha de avanço</button>
+            <button type="button" class="btn btn-outline" data-acao="abrirEspelho" data-i18n="ac.planilha">📋 BOM</button>
+            <button type="button" class="btn btn-outline" data-acao="abrirAvanco" data-i18n="ac.avanco">📈 Avanço</button>
             <button type="button" class="btn btn-outline" data-acao="abrirComerciais" data-i18n="ac.comerciais">Itens comerciais</button>
             <button type="button" class="btn btn-outline" data-acao="abrirServicos" data-i18n="ac.servicos">Serviços</button>
             <button type="button" class="btn btn-outline" data-acao="abrirTarefas" data-i18n="ac.tarefas">Tarefas</button>
@@ -898,10 +899,10 @@
 </div>
 
 <!-- ==================== LISTA DE AVANÇO ==================== -->
-<div class="modal-overlay" id="modal-avanco" role="dialog" aria-modal="true" aria-labelledby="av-titulo">
+<div class="modal-overlay tela-cheia" id="modal-avanco" role="dialog" aria-modal="true" aria-labelledby="av-titulo">
   <div class="modal-box modal-largo modal-avanco">
     <div class="modal-header">
-      <div><h2 id="av-titulo">Lista de avanço</h2><div class="hint-txt" id="av-sub"></div></div>
+      <div><h2 id="av-titulo">Avanço</h2><div class="hint-txt" id="av-sub"></div></div>
       <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-avanco" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
@@ -914,7 +915,7 @@
     </div>
     <div class="modal-footer av-footer">
       <span class="hint-txt" id="av-rodape"></span>
-      <button type="button" class="btn btn-primary" id="av-baixar" data-acao="baixarAvanco" disabled data-i18n="av.baixar">⭳ Baixar planilha de avanço</button>
+      <button type="button" class="btn btn-primary" id="av-baixar" data-acao="baixarAvanco" disabled data-i18n="av.baixar">⭳ Baixar Avanço (Excel)</button>
     </div>
   </div>
 </div>
@@ -923,7 +924,7 @@
 <div class="modal-overlay tela-cheia" id="modal-espelho" role="dialog" aria-modal="true" aria-labelledby="esp-titulo">
   <div class="modal-box">
     <div class="modal-header">
-      <div><h2 id="esp-titulo">Planilha de avanço</h2><div class="hint-txt" id="esp-sub"></div></div>
+      <div><h2 id="esp-titulo">BOM</h2><div class="hint-txt" id="esp-sub"></div></div>
       <div class="esp-topo-acoes"><div id="esp-acoes" class="esp-acoes"></div>
         <button type="button" class="modal-close" data-acao="fecharModal" data-arg="modal-espelho" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button></div>
     </div>

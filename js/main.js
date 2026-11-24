@@ -18,6 +18,7 @@ import * as Ops from './dados/ops.js';
 import * as DadosRncs from './dados/rncs.js';
 import * as DadosChecklist from './dados/checklist.js';
 import './ui/vigiaLargura.js';
+import * as BomResumo from './ui/bomResumo.js';
 import * as UiContratos from './ui/contratos.js';
 import * as Despertador from './ui/despertador.js';
 import * as DadosPgms from './dados/pgms.js';
@@ -63,6 +64,8 @@ function aoReceberProjetos(lista) {
   estado.carregado = true;
   Cronograma.invalidar();
   migrarChecklistsUmaVez();
+  // Gerência: projetos com a planilha subida antes do resumo da BOM ganham o resumo
+  if (primeira) setTimeout(BomResumo.conferirTodos, 4000);
   if (primeira) {
     aplicarRota();
     if (estado.rotaPendente) {

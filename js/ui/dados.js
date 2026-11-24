@@ -31,13 +31,22 @@ function nomeArquivo(ext) {
   return 'rostag-pcp-' + equipe + '-' + hoje() + '.' + ext;
 }
 
+// Exportar: só Gerência, GP e técnico de processos (quem inclui as planilhas)
+export function podeExportar() { return Auth.souGPouCoordenador() || Auth.papel() === 'tecnico'; }
+
+export function renderBotoesExportar() {
+  document.querySelectorAll('[data-acao="exportarJSON"], [data-acao="exportarCSV"]').forEach(function (b) { b.hidden = !podeExportar(); });
+}
+
 export function exportarJSON() {
+  if (!podeExportar()) { toast(T('t.semPermissao'), { tipo: 'erro' }); return; }
   baixar(JSON.stringify({ schema: 4, app: 'ROSTAG PCP', versao: VERSAO, equipe: Auth.equipeAtualNome(),
     salvoEm: new Date().toISOString(), projetos: estado.projetos }, null, 2), nomeArquivo('json'), 'application/json');
   toast(T('t.backupExportado'));
 }
 
 function exportarCSV() {
+  if (!podeExportar()) { toast(T('t.semPermissao'), { tipo: 'erro' }); return; }
   const cab = T('csv.cab');
   const linhas = estado.projetos.map(function (p) {
     const c = Cronograma.calcular(p);
