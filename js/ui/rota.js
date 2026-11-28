@@ -79,6 +79,8 @@ export function aplicarRota() {
   // o Painel Geral não tem subtítulo (a saudação ocupa o topo)
   // o Painel Geral e a Carga não têm subtítulo (a Carga usa o espaço para a programação)
   $('page-sub').textContent = aba === 'painel' || aba === 'carga' ? '' : T('sub.' + aba);
+  // no Painel com a saudação, o título some (a saudação já diz tudo)
+  $('page-title').parentElement.hidden = aba === 'painel' && document.body.classList.contains('painel-novo');
   fecharPopups();
   document.title = (modulo ? T('nav.painel') + ' — ' + T('modulo.' + modulo) + ' · ' : '') + 'ROSTAG PCP';   // o detalhe troca pelo nome do projeto
 

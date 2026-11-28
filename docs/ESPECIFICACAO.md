@@ -362,7 +362,7 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
 - Fundo branco gelo liso, azul royal e celeste (tema escuro azul-marinho),
   barra lateral clara, títulos e números centralizados, cartões com faixa no
   topo, commessa em azul royal (contratos com OM em verde) e rodapé fixo.
-- Painel: "Boa noite Guilherme", data – hora, Semana N, cargo · equipe.
+- Painel: "Boa noite Guilherme", data – hora e Semana N (sem o título da página nem o cargo).
 - Entrada: logo, "Rostag PCP", saudação com data e semana, e o cartão no centro.
 
 ## 4.2 Página do projeto do técnico e Todas as OPs

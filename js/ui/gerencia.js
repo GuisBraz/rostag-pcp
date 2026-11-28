@@ -67,8 +67,6 @@ export function desenharOla() {
   $('ger-ola-nome').textContent = (T(periodo) + ' ' + primeiroNome()).trim();
   $('ger-ola-quando').textContent = p2(agora.getDate()) + '/' + p2(agora.getMonth() + 1) + '/' + String(agora.getFullYear()).slice(2) + ' – ' + p2(h) + ':' + p2(agora.getMinutes());
   $('ger-ola-semana').textContent = T('ger.semana', semanaIso(agora));
-  const papel = Auth.papel();
-  $('ger-ola-quem').textContent = [papel ? T('papel.' + papel) : '', Auth.equipeAtualNome()].filter(Boolean).join(' · ');
 }
 export function ligarRelogio() {
   if (relogio) return;
