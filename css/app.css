@@ -1770,7 +1770,6 @@ th button { justify-content: center; }
 .ger-ola h2 { font-size: 34px; font-weight: 800; padding-bottom: 6px; border-bottom: 2px solid var(--celeste); }
 .ger-ola-quando { font-size: 19px; color: var(--ink); margin-top: 10px; }
 .ger-ola-semana { font-size: 19px; color: var(--royal); font-weight: 500; }
-.ger-ola-quem { font-size: 14px; color: var(--ink-dim); margin-top: 14px; }
 @media (max-width: 720px) { .ger-ola h2 { font-size: 26px; } .ger-ola-quando, .ger-ola-semana { font-size: 16px; } }
 /* commessa em azul royal (contratos com OM continuam verdes) */
 .col-commessa, .gt-com, .tl-commessa, .cmk-com, .cf-com, .tl-sidebar-item .cm, #detail-commessa { color: var(--royal); }
