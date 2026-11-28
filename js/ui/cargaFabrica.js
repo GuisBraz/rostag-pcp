@@ -22,7 +22,7 @@ import { toast } from './toast.js';
 import { avisoErro } from './app.js';
 import { opPorId } from './opDetalhe.js';
 
-const ABAS = ['aguardando', 'lista', 'mapa', 'baixa', 'recursos'];
+const ABAS = ['aguardando', 'lista', 'mapa', 'recursos'];
 const COR = { atraso: 'var(--rust)', vence: 'var(--amber)', prazo: 'var(--violet)' };
 const PALETA = ['var(--teal)', 'var(--terracotta)', 'var(--violet)', 'var(--green)', 'var(--amber)', 'var(--rust)'];
 const DIAS_MAPA = 35, SEMANAS = 6;
@@ -68,7 +68,7 @@ export function renderCargaFabrica(alvoId) {
   const alvo = $(alvoId);
   if (!alvo) return;
   const h = hoje(), todas = opsCald(), c = cfg();
-  const por = { emAberto: [], programada: [], baixaCq: [] };
+  const por = { emAberto: [], programada: [] };
   todas.forEach(function (o) { const s = Prog.situacao(o); if (por[s]) por[s].push(o); });
   const soma = function (l) { return l.reduce(function (t, o) { return t + (Number(o.pesoTotal) || 0); }, 0); };
   const atr = por.programada.filter(function (o) { return Prog.prazoCald(o, h).k === 'atraso'; });
@@ -78,7 +78,7 @@ export function renderCargaFabrica(alvoId) {
     return '<button type="button" class="cf-kpi" data-acao="abaCargaFab" data-arg="' + aba + '"><span class="cf-kpi-val" style="color:' + cor + '">' + val + '</span>' +
       '<span><span class="cf-kpi-rot">' + esc(rot) + '</span><span class="cf-kpi-det">' + esc(det) + '</span></span></button>';
   };
-  const abas = { aguardando: por.emAberto.length, lista: por.programada.length, mapa: c.empresas.length, baixa: por.baixaCq.length, recursos: c.tipos.length };
+  const abas = { aguardando: por.emAberto.length, lista: por.programada.length, mapa: c.empresas.length, recursos: c.tipos.length };
   // filtros da lista: empresa, commessa, mês de término
   const coms = {}, mesesDe = {};
   por.programada.forEach(function (o) { coms[o.projetoId] = o.commessa; mesesDe[String(o.programacao.previsaoFim).slice(0, 7)] = 1; });
@@ -101,7 +101,7 @@ export function renderCargaFabrica(alvoId) {
     '<div class="cf-topo"><div class="fab-visoes cf-abas" role="tablist">' + ABAS.map(function (a) {
       return '<button type="button" role="tab" aria-selected="' + (ui.aba === a) + '" class="' + (ui.aba === a ? 'ativa' : '') + '" data-acao="abaCargaFab" data-arg="' + a + '">' + esc(T('cf.aba.' + a)) + '<b>' + abas[a] + '</b></button>';
     }).join('') + '</div>' + filtros + '</div>' +
-    '<div id="cf-conteudo">' + ({ aguardando: aguardando, lista: listaHtml, mapa: mapaHtml, baixa: baixaHtml, recursos: recursosHtml }[ui.aba])(por, h, semRec) + '</div>';
+    '<div id="cf-conteudo">' + ({ aguardando: aguardando, lista: listaHtml, mapa: mapaHtml, recursos: recursosHtml }[ui.aba])(por, h, semRec) + '</div>';
 }
 
 // Carga por semana (peças e kg) de cada empresa
@@ -220,19 +220,6 @@ function mapaHtml(por, h) {
   });
   return '<div class="card"><div class="cf-mapa-topo"><div class="panel-title" style="margin:0">' + esc(T('cf.mapaTit')) + '</div><div class="hint-txt">' + esc(T('cf.mapaNota')) + '</div></div>' +
     '<div class="table-wrap cf-mapa-wrap"><table class="cf-mapa">' + cab + corpo + '</table></div></div>';
-}
-
-/* --------------------------------------------------- baixa do CQ */
-function baixaHtml(por) {
-  if (!por.baixaCq.length) return '<div class="card panel-pad empty-state">' + esc(T('cf.semBaixa')) + '</div>';
-  const editar = podeEditar();
-  return '<div class="card"><div class="table-wrap"><table class="ord-tab"><thead><tr><th>OP</th><th>' + esc(T('fab.cCommessa')) + '</th><th>' + esc(T('fab.cDescricao')) + '</th><th class="num">' + esc(T('fab.cQtd')) +
-    '</th><th>' + esc(T('cf.empresa')) + '</th><th>' + esc(T('passo.pergunta')) + '</th><th></th></tr></thead><tbody>' +
-    por.baixaCq.sort(function (a, b) { return compararNatural(a.commessa, b.commessa) || compararNatural(a.numero, b.numero); }).map(function (o) {
-      return '<tr><td class="mono">' + esc(o.numero) + '</td><td class="mono cf-com">' + esc(nomeDaOp(o)) + '</td><td>' + esc(o.descricao || '—') + '</td><td class="num">' + numeroBr(o.qtd) + (o.baixadas ? '<div class="hint-txt">' + esc(T('prog.baixadasN', numeroBr(o.baixadas))) + '</div>' : '') + '</td>' +
-        '<td>' + esc((o.programacao && o.programacao.terceirizada) || '—') + '</td><td>' + esc(o.proximoPasso ? T('passo.' + o.proximoPasso) : '—') + '</td>' +
-        '<td>' + (editar ? '<button type="button" class="btn btn-success btn-mini" data-acao="finalizarOp" data-arg="' + esc(o.id) + '">' + esc(T('prog.finalizar')) + '</button>' : '') + '</td></tr>';
-    }).join('') + '</tbody></table></div></div>';
 }
 
 /* ------------------------------------------------- recursos (cadastros) */

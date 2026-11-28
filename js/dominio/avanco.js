@@ -9,7 +9,7 @@
        que o CQ já deu baixa (por peças)
 --------------------------------------------------------------------------- */
 import { acharCabecalho, chave, chaveOp, texto, numero, marcado, marcasDa } from './planilha.js';
-import { pecasOp, statusOp, feitasProg, pctPecas } from './producao.js';
+import { pecasOp, statusOp, pctPecas } from './producao.js';
 
 export const MAX_LINHAS = 1500;
 export const MAX_COLUNAS = 60;
@@ -162,7 +162,7 @@ export function pecasDaCadeia(op, idx) {
   const visitar = function (o, prof) {
     if (!o || prof > 10) return;
     const p = pecasOp(o);
-    soma.total += p.total; soma.feitas += feitasProg(o); soma.rnc += p.rnc; soma.ops.push(o);
+    soma.total += p.total; soma.feitas += p.feitas; soma.rnc += p.rnc; soma.ops.push(o);
     (idx.filhas[o.id] || []).forEach(function (f) { visitar(f, prof + 1); });
   };
   visitar(op, 0);
@@ -280,8 +280,7 @@ export function preencher(matriz, merges, ops) {
 /* ------------------------------------------------ Avanço vivo (BOM + OPs)
    A BOM é o escopo (a planilha "virgem"). O Avanço é montado na hora: cada
    linha da BOM com Cald e/ou Usi acha as OPs dela pelo desenho + posição (ou
-   pelo nº da OP, se a planilha antiga trouxer) e conta as peças com baixa do
-   programador. % da linha = média dos processos (Cald, Usi) que a peça tem;
+   pelo nº da OP, se a planilha antiga trouxer) e conta as peças aprovadas pelo CQ. % da linha = média dos processos (Cald, Usi) que a peça tem;
    % do projeto = por peça (cada unidade vale igual). Pintura, oxidação, TTAT,
    serviços e comercial aparecem só como marca (não contam no %, por enquanto). */
 function k(s) { return String(s == null ? '' : s).toUpperCase().replace(/[^A-Z0-9]/g, ''); }
@@ -309,7 +308,7 @@ function areaDaLinha(row, area, idx) {
   if (!ops.length && !marcada) return null;
   const totalOps = ops.reduce(function (a, o) { return a + pecasOp(o).total; }, 0);
   const total = row.q > 0 ? row.q : (totalOps || 1);
-  const feitas = Math.min(total, ops.reduce(function (a, o) { return a + feitasProg(o); }, 0));
+  const feitas = Math.min(total, ops.reduce(function (a, o) { return a + pecasOp(o).feitas; }, 0));
   const rnc = ops.reduce(function (a, o) { return a + pecasOp(o).rnc; }, 0);
   const principal = ops.filter(function (o) { return !o.origemOpId; })[0] || ops[0] || null;
   return { ops: ops, total: total, feitas: feitas, rnc: rnc, frac: total ? feitas / total : 0,

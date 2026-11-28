@@ -22,8 +22,9 @@ import { toast } from './toast.js';
 import { confirmar, abrirModal, fecharModal, modalAberto } from './modal.js';
 import { avisoErro } from './app.js';
 import { agendasAtuais } from './programacao.js';
+import { abrirOpDetalhe } from './opDetalhe.js';
 
-const ABAS = ['plan', 'mapa', 'baixa', 'config'];
+const ABAS = ['plan', 'mapa', 'config'];
 const ui = { mapaVisao: lerVisaoMapa(), geralSel: null, aba: 'plan', maq: null, recolhido: lerRecolhido(), listaRecolhida: lerLista(), busca: '', zoom: lerZoom(), tlChave: null, tlScroll: null, tlScrollY: 0, tlDias: [], tlHoje: 0 };
 // cabeçalho (abas e números) recolhido ou não: lembrado neste navegador
 function lerRecolhido() { try { return localStorage.getItem('rostag.cm.recolhido') === '1'; } catch (e) { return false; } }
@@ -42,7 +43,7 @@ export function areaMaquina(m) { return m && m.area === 'caldeiraria' ? 'caldeir
 function podeEditar() { return Auth.souGerente() || Auth.areaProgramador() === AREA; }
 function ativas() { return (estado.maquinas || []).filter(function (m) { return m.ativa !== false && areaMaquina(m) === AREA; }); }
 // a baixa do CQ da caldeiraria fica na Carga Fábrica
-function abas() { return AREA === 'caldeiraria' ? ABAS.filter(function (a) { return a !== 'baixa'; }) : ABAS; }
+function abas() { return ABAS; }
 function tipoDe(m) { return String(m.tipo || '').trim() || T('cm.semTipo'); }
 function corOp(id) { let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0; return PALETA[h % PALETA.length]; }
 function grupos() {
@@ -244,8 +245,7 @@ export function renderCargaMaquina(alvoId, area) {
     ag[k].forEach(function (it) { if (it.op && !it.concluida && !it.ausente) { prog++; if (it.atraso) atrasadas[it.opId] = 1; if (it.reprogramar) reprog++; } });
   });
   const atraso = Object.keys(atrasadas).length;
-  const baixa = estado.ops.filter(function (o) { return o.area === 'usinagem' && opVisivel(o) && Prog.situacao(o, true) === 'baixaCq'; });
-  const nAba = { plan: prog, mapa: maqs.length, baixa: baixa.length, config: (estado.maquinas || []).filter(function (m) { return areaMaquina(m) === AREA; }).length };
+  const nAba = { plan: prog, mapa: maqs.length, config: (estado.maquinas || []).filter(function (m) { return areaMaquina(m) === AREA; }).length };
   const kpis = '<span class="cm-kpi"><b>' + aguard + '</b> ' + esc(T(corte() ? 'cm.kAguardandoPgm' : 'cm.kAguardando')) + '</span><span class="cm-kpi"><b>' + prog + '</b> ' + esc(T('cm.kProgramadas')) + '</span>' +
     '<span class="cm-kpi"><b style="color:var(' + (atraso ? '--rust' : '--green') + ')">' + atraso + '</b> ' + esc(T('cm.kAtraso')) + '</span>' +
     (reprog ? '<span class="cm-kpi cm-kpi-reprog"><b>⟳ ' + reprog + '</b> ' + esc(T('cm.kReprog')) + '</span>' : '');
@@ -253,10 +253,10 @@ export function renderCargaMaquina(alvoId, area) {
   if (ui.recolhido) {
     // recolhido: uma linha só com a aba atual e os números
     alvo.innerHTML = '<div class="card cm-topo-mini">' + botao + '<b>' + esc(T('cm.aba.' + ui.aba)) + '</b><span class="cm-mini-kpis">' + kpis + '</span></div>' +
-      '<div id="cm-conteudo">' + (ui.aba === 'plan' ? planilha(ag, h) : ui.aba === 'mapa' ? mapa(ag, h) : ui.aba === 'baixa' ? baixaHtml(baixa) : '') + '</div>';
+      '<div id="cm-conteudo">' + (ui.aba === 'plan' ? planilha(ag, h) : ui.aba === 'mapa' ? mapa(ag, h) : '') + '</div>';
     const cfg0 = $('cu-config');
     if (cfg0) cfg0.hidden = ui.aba !== 'config';
-    if (ui.aba === 'mapa') ajustarMapa();
+    if (ui.aba === 'mapa' || (ui.aba === 'plan' && !corte())) ajustarMapa();
     return;
   }
   alvo.innerHTML =
@@ -264,12 +264,188 @@ export function renderCargaMaquina(alvoId, area) {
       return '<button type="button" role="tab" aria-selected="' + (ui.aba === a) + '" class="' + (ui.aba === a ? 'ativa' : '') + '" data-acao="abaCargaMaq" data-arg="' + a + '" title="' + esc(T('cm.dicaAtalho')) + '">' + esc(T('cm.aba.' + a)) + '<b>' + nAba[a] + '</b></button>';
     }).join('') + '</div>' +
     '<div class="cm-kpis">' + kpis + '</div></div>' +
-    '<div id="cm-conteudo">' + (ui.aba === 'plan' ? planilha(ag, h) : ui.aba === 'mapa' ? mapa(ag, h) : ui.aba === 'baixa' ? baixaHtml(baixa) : '') + '</div>';
+    '<div id="cm-conteudo">' + (ui.aba === 'plan' ? planilha(ag, h) : ui.aba === 'mapa' ? mapa(ag, h) : '') + '</div>';
   // a aba "Máquinas e setores" mostra o bloco que já existe na página
   const cfg = $('cu-config');
   if (cfg) cfg.hidden = ui.aba !== 'config';
-  if (ui.aba === 'mapa') ajustarMapa();
+  if (ui.aba === 'mapa' || (ui.aba === 'plan' && !corte())) ajustarMapa();
 }
+
+
+/* ------------------------------------------ quadro da máquina (usinagem)
+   Aguardando programação | Programadas | Finalizadas, com o Gantt da máquina
+   ao lado. Cartão pequeno (commessa, OP, descrição); clicar abre o detalhe.
+   Arrastar: Aguardando → Programadas (na posição que soltar; as de baixo se
+   reprogramam), dentro de Programadas (muda a ordem), Programadas →
+   Finalizadas (finaliza só esta operação), Programadas → Aguardando (tira). */
+const DIAS_FINALIZADAS = 7;
+function cartaoK(o, origem, mid, chave, extra) {
+  extra = extra || {};
+  const cls = ['cmk-card'];
+  if (extra.vermelho) cls.push('cmk-vermelho');
+  if (extra.gelo) cls.push('cmk-gelo');
+  if (extra.maquina) cls.push('cmk-em-maquina');
+  const arrasta = podeEditar() && origem !== 'fin';
+  return '<div class="' + cls.join(' ') + '" style="--cor:' + corOp(o.id) + '"' + (arrasta ? ' draggable="true"' : '') + ' data-origem="' + origem + '" data-mid="' + esc(mid) + '" data-chave="' + esc(chave) + '"' +
+    ' data-acao="cartaoCargaMaq" data-arg="' + esc(mid) + '" data-arg2="' + esc(origem + '|' + chave) + '" role="button" tabindex="0"' + (extra.dica ? ' title="' + esc(extra.dica) + '"' : '') + '>' +
+    '<div class="cmk-topo"><span class="mono cmk-com">' + esc(nomeDaOp(o)) + '</span><span class="mono cmk-op">' + esc(opCurta(o.numero)) + '</span></div>' +
+    '<div class="cmk-desc">' + esc(o.descricao || o.desenho || '') + '</div>' +
+    (extra.sinal ? '<div class="cmk-sinal">' + extra.sinal + '</div>' : '') + '</div>';
+}
+function colunaK(chave, titulo, n, corpo, vazio) {
+  return '<div class="cmk-col" data-drop="' + chave + '"><div class="cmk-col-tit">' + esc(titulo) + ' <span class="cmk-n">' + n + '</span></div>' +
+    '<div class="cmk-lista">' + (corpo || '<div class="cmk-vazio">' + esc(vazio) + '</div>') + '</div></div>';
+}
+function quadro(ag, h) {
+  const m = ativas().find(function (x) { return x.id === ui.maq; });
+  const editar = podeEditar(), agora = agoraLocal();
+  const vivos = (ag[m.id] || []).filter(function (it) { return !it.ausente && it.op; });
+  const pend = vivos.filter(function (it) { return !it.concluida; });
+  const limite = addDias(h, -DIAS_FINALIZADAS);
+  const fins = vivos.filter(function (it) { return it.concluida; }).map(function (it) {
+    return { it: it, quando: String(it.feita || it.op.finalizadoEm || it.op.encerradaEm || '').slice(0, 16) };
+  }).sort(function (a, b) { return b.quando.localeCompare(a.quando); });
+  const finVis = ui.finTodas ? fins : fins.filter(function (x) { return !x.quando || x.quando.slice(0, 10) >= limite; });
+  const esp = editar || true ? Prog.aguardandoNaMaquina(m, estado.ops.filter(opVisivel), estado.maquinas, estado.setores, AREA).sort(function (a, b) {
+    const pa = buscarProjeto(a.op.projetoId), pb = buscarProjeto(b.op.projetoId);
+    return String((pa && pa.prodFim) || '9').localeCompare(String((pb && pb.prodFim) || '9')) || compararNatural(a.op.numero, b.op.numero);
+  }) : [];
+  const primeira = pend[0] ? Prog.chaveItem(pend[0].opId, pend[0].n) : null;
+  const cAg = esp.map(function (x) {
+    return cartaoK(x.op, 'ag', m.id, x.chave, { dica: x.operacao.n == null ? T('cm.opInteira') : (x.operacao.n + 1) + '/' + (x.op.operacoes || []).length + ' ' + (x.operacao.texto || x.operacao.setor || '') });
+  }).join('');
+  const cPr = pend.map(function (it) {
+    const chave = Prog.chaveItem(it.opId, it.n);
+    const semH = !(it.horas > 0), passou = !!(it.fimDt && (it.fimAjustado || it.fimDt) < agora);
+    const sinais = [];
+    if (semH) sinais.push('<span class="cmk-alerta">⚠ ' + esc(T('cm.semHorasCurto')) + '</span>');
+    else sinais.push('<span class="mono">' + esc(brDt(it.inicioDt)) + ' → ' + esc(brDt(it.fimAjustado || it.fimDt)) + '</span>');
+    if (passou && !semH) sinais.push('<span class="cmk-alerta">⚠ ' + esc(T('cm.passouFim')) + '</span>');
+    if (it.congelada) sinais.push('❄');
+    if (it.reprogramar) sinais.push('⟳');
+    return cartaoK(it.op, 'pr', m.id, chave, { vermelho: semH || passou, gelo: !!it.congelada, maquina: chave === primeira,
+      sinal: sinais.join(' '), dica: nomeOperacao(it) + (it.atraso ? ' · ' + T('cm.passaPrazo', br(it.prazo)) : '') });
+  }).join('');
+  const cFi = finVis.map(function (x) {
+    const it = x.it;
+    return cartaoK(it.op, 'fin', m.id, Prog.chaveItem(it.opId, it.n), { sinal: '<span class="mono">✔ ' + esc(x.quando ? brDt(x.quando.length > 10 ? x.quando : x.quando + 'T00:00') : '') + '</span>', dica: nomeOperacao(it) });
+  }).join('');
+  const mais = fins.length > finVis.length ? '<button type="button" class="link-btn cmk-mais" data-acao="finTodasCargaMaq">' + esc(T('cm.verMais', fins.length - finVis.length)) + '</button>'
+    : (ui.finTodas && fins.length ? '<button type="button" class="link-btn cmk-mais" data-acao="finTodasCargaMaq">' + esc(T('cm.verMenos')) + '</button>' : '');
+  const horas = pend.reduce(function (t, it) { return t + (it.horas || 0); }, 0);
+  const livre = pend.map(function (it) { return it.fimDt; }).filter(Boolean).sort().pop();
+  return seletor(ag) + '<div class="card cm-plan cmk"><div class="cm-plan-topo"><div><div class="panel-title" style="margin:0">' + esc(m.nome) + '</div><div class="hint-txt">' +
+    esc(T('cm.maqDet', tipoDe(m), pend.length, horasHM(horas), livre ? brDt(livre) : '—')) + '</div></div>' +
+    '<div class="hint-txt cm-cal">' + esc(textoTurno(m)) + (editar ? ' · ' + esc(T('cm.dicaArrastar')) : '') + '</div></div>' +
+    '<div class="cmk-grade"><div class="cmk-cols">' +
+      colunaK('ag', T('cm.colAguardando'), esp.length, cAg, T('cm.nadaAguardando', tipoDe(m))) +
+      colunaK('pr', T('cm.colProgramadas'), pend.length, cPr, T('cm.filaVazia')) +
+      colunaK('fin', T('cm.colFinalizadas'), fins.length, cFi + mais, T('cm.nadaFinalizado')) +
+    '</div><div class="cmk-gantt">' + mapa(ag, h, true) + '</div></div></div>';
+}
+
+// Arrastar e soltar os cartões
+let arrastando = null;
+document.addEventListener('dragstart', function (e) {
+  const c = e.target && e.target.closest && e.target.closest('.cmk-card[draggable="true"]');
+  if (!c) return;
+  arrastando = { origem: c.dataset.origem, mid: c.dataset.mid, chave: c.dataset.chave };
+  c.classList.add('cmk-arrastando');
+  try { e.dataTransfer.setData('text/plain', c.dataset.chave); e.dataTransfer.effectAllowed = 'move'; } catch (x) { /* navegador antigo */ }
+});
+document.addEventListener('dragend', function () {
+  arrastando = null;
+  document.querySelectorAll('.cmk-arrastando, .cmk-alvo, .cmk-antes').forEach(function (el) { el.classList.remove('cmk-arrastando', 'cmk-alvo', 'cmk-antes'); });
+});
+function cartaoAbaixo(col, y) {
+  const cards = Array.prototype.slice.call(col.querySelectorAll('.cmk-card:not(.cmk-arrastando)'));
+  return cards.find(function (c) { const r = c.getBoundingClientRect(); return y < r.top + r.height / 2; }) || null;
+}
+document.addEventListener('dragover', function (e) {
+  if (!arrastando) return;
+  const col = e.target && e.target.closest && e.target.closest('.cmk-col');
+  if (!col) return;
+  const destino = col.dataset.drop;
+  if (destino === arrastando.origem && destino !== 'pr') return;
+  if (arrastando.origem === 'ag' && destino === 'fin') return;
+  e.preventDefault();
+  document.querySelectorAll('.cmk-alvo, .cmk-antes').forEach(function (el) { el.classList.remove('cmk-alvo', 'cmk-antes'); });
+  col.classList.add('cmk-alvo');
+  if (destino === 'pr') { const ab = cartaoAbaixo(col, e.clientY); if (ab) ab.classList.add('cmk-antes'); }
+});
+document.addEventListener('drop', function (e) {
+  if (!arrastando) return;
+  const col = e.target && e.target.closest && e.target.closest('.cmk-col');
+  if (!col) return;
+  e.preventDefault();
+  const a = arrastando, destino = col.dataset.drop;
+  const ab = destino === 'pr' ? cartaoAbaixo(col, e.clientY) : null;
+  arrastando = null;
+  const m = maquina(a.mid);
+  if (!m || !podeEditar()) return;
+  if (destino === 'pr' && (a.origem === 'ag' || a.origem === 'pr')) soltarNaFila(m, a, ab ? ab.dataset.chave : null);
+  else if (destino === 'fin' && a.origem === 'pr') finalizarOperacao(m, a.chave);
+  else if (destino === 'ag' && a.origem === 'pr') tirarDaFila(m.id, a.chave);
+  else redesenhar();
+});
+
+// Põe (ou move) o cartão na fila antes do cartão "antesDe" (null = no fim). Sem início
+// fixo: a máquina reprograma tudo dali para baixo.
+function soltarNaFila(m, a, antesDe) {
+  if (a.chave === antesDe) { redesenhar(); return; }
+  const novo = a.origem === 'ag';
+  if (novo && (m.fila || []).length >= Prog.MAX_FILA) { toast(T('prog.erro.filaCheia'), { tipo: 'erro' }); return; }
+  let fila = (m.fila || []).map(function (f) { return Object.assign({}, f); });
+  let item;
+  if (novo) {
+    const p = String(a.chave).split('#');
+    item = { opId: p[0], n: p[1] === '*' || p[1] == null ? null : Number(p[1]), horas: null, inicio: null, fimAjustado: null };
+  } else {
+    const i = idx(fila, a.chave);
+    if (i < 0) { redesenhar(); return; }
+    item = fila.splice(i, 1)[0];
+    item.inicio = null;                     // a posição manda: o início recalcula
+  }
+  const j = antesDe ? idx(fila, antesDe) : -1;
+  if (j >= 0) fila.splice(j, 0, item); else fila.push(item);
+  // quem estava fixado no horário depois da posição nova volta a seguir a fila
+  const pos = fila.indexOf(item);
+  fila = fila.map(function (f, k) { return k > pos && f.inicio && !f.feita ? Object.assign({}, f, { inicio: null }) : f; });
+  gravarFila(m, fila, novo ? item : null, T(novo ? 'cm.incluida' : 'cm.reordenada', m.nome));
+}
+// Grava a fila; inclusão de operação de roteiro encadeia as seguintes da OP nas máquinas delas.
+function gravarFila(m, nova, itemNovo, texto) {
+  const opsId = opsPorId(), proj = {};
+  estado.projetos.forEach(function (p) { proj[p.id] = p; });
+  nova = Prog.enxugarFila(nova, opsId, addDias(hoje(), -30));
+  if (!itemNovo || itemNovo.n == null) { salvar(m, nova, texto); return; }
+  let ms = (estado.maquinas || []).map(function (x) { return x.id === m.id ? Object.assign({}, m, { fila: nova }) : x; });
+  const lib = Prog.liberarReprogramar(ms, itemNovo.opId);
+  const enc = Prog.encadear(lib.maquinas, opsId, proj, estado.setores, agoraLocal(), itemNovo.opId, itemNovo.n);
+  ms = enc.maquinas;
+  const ids = [m.id].concat(lib.mudadas, enc.mudadas).filter(function (x, i, l) { return l.indexOf(x) === i; });
+  const o = opsId[itemNovo.opId];
+  DadosProg.salvarFilas(ms.filter(function (x) { return ids.indexOf(x.id) >= 0; }).map(function (x) { return { id: x.id, fila: x.fila }; }))
+    .then(function () { if (texto) toast(texto); avisarOcupadas(o ? o.numero : '', enc.avisos); }).catch(function (e) { avisoErro(e); });
+}
+// ✔ finaliza só esta operação nesta máquina (a OP segue; a baixa real é do CQ)
+function finalizarOperacao(m, chave) {
+  const fila = (m.fila || []).map(function (f) { return Object.assign({}, f); }), i = idx(fila, chave);
+  if (i < 0) { redesenhar(); return; }
+  const o = opsPorId()[fila[i].opId];
+  fila[i].feita = agoraLocal();
+  fila[i].congelada = null; fila[i].reprogramar = null;
+  DadosProg.salvarFila(m.id, Prog.enxugarFila(fila, opsPorId(), addDias(hoje(), -30))).then(function () {
+    toast(T('cm.opFinalizada', o ? opCurta(o.numero) : '', m.nome), { acao: { label: T('btn.desfazer'), fn: function () {
+      const atual = maquina(m.id); if (!atual) return;
+      const f2 = (atual.fila || []).map(function (f) { return Object.assign({}, f); }), k = idx(f2, chave);
+      if (k < 0) return;
+      delete f2[k].feita;
+      salvar(atual, f2);
+    } } });
+  }).catch(function (e) { avisoErro(e); });
+}
+function tirarDaFila(mid, chave) { tirarItem(mid, chave); }
 
 /* ---------------------------------------------- 1. programação por máquina */
 function seletor(ag) {
@@ -285,6 +461,7 @@ function seletor(ag) {
 function planilha(ag, h) {
   const maqs = ativas();
   if (!maqs.length) return semMaquinas();
+  if (!corte()) return quadro(ag, h);
   const m = maqs.find(function (x) { return x.id === ui.maq; });
   const editar = podeEditar();
   const vivos = (ag[m.id] || []).filter(function (it) { return !it.ausente; });
@@ -454,10 +631,10 @@ function visaoMapa() {
     return '<button type="button" class="' + (ui.mapaVisao === v ? 'ativa' : '') + '" data-acao="visaoMapaCargaMaq" data-arg="' + v + '">' + esc(T('cm.visao.' + v)) + '</button>';
   }).join('') + '</div>';
 }
-function mapa(ag, h) {
+function mapa(ag, h, semSeletor) {
   const maqs = ativas();
   if (!maqs.length) return semMaquinas();
-  if (ui.mapaVisao === 'geral' && !corte()) return mapaGeral(ag, h);
+  if (ui.mapaVisao === 'geral' && !corte() && !semSeletor) return mapaGeral(ag, h);
   const m = maqs.find(function (x) { return x.id === ui.maq; });
   const itens = (ag[m.id] || []).filter(function (it) { return it.op && !it.ausente && !it.concluida && it.inicioDt; })
     .sort(function (a, b) { return String(a.inicioDt).localeCompare(String(b.inicioDt)); });
@@ -466,7 +643,7 @@ function mapa(ag, h) {
     return '<button type="button" class="' + (ui.zoom === z ? 'ativa' : '') + '" data-acao="zoomCargaMaq" data-arg="' + z + '">' + esc(T('cm.z.' + z)) + '</button>';
   }).join('');
   const barra = '<div class="cm-tl-barra"><div class="cm-tl-tit"><b>' + esc(T('cm.mapaTit')) + ' — ' + esc(m.nome) + '</b><span class="hint-txt">' + esc(T('cm.mapaNota')) + '</span></div>' +
-    '<div class="cm-tl-ctrl">' + visaoMapa() + '<div class="fab-visoes cm-tl-zoom">' + zoomBt + '</div>' +
+    '<div class="cm-tl-ctrl">' + (semSeletor ? '' : visaoMapa()) + '<div class="fab-visoes cm-tl-zoom">' + zoomBt + '</div>' +
     '<div class="cm-tl-nav"><button type="button" class="cm-ic" data-acao="navMapaCargaMaq" data-arg="-1" title="' + esc(T('cm.ant')) + '" aria-label="' + esc(T('cm.ant')) + '">◀</button>' +
     '<button type="button" class="btn btn-outline btn-mini" data-acao="navMapaCargaMaq" data-arg="0">' + esc(T('cm.hoje')) + '</button>' +
     '<button type="button" class="cm-ic" data-acao="navMapaCargaMaq" data-arg="1" title="' + esc(T('cm.prox')) + '" aria-label="' + esc(T('cm.prox')) + '">▶</button></div></div></div>';
@@ -552,7 +729,7 @@ function mapa(ag, h) {
   ui.tlDias = dias.map(function (dd) { return { dia: dd.dia, x: dd.x }; });
   ui.tlHoje = dh ? dh.x : 0;
   const agoraEl = agoraX == null ? '' : '<div class="cm-tl-agora" style="left:' + Math.round(agoraX) + 'px" title="' + esc(T('cm.agora')) + '"></div>';
-  return seletor(ag) + '<div class="card cm-tl-card">' + barra +
+  return (semSeletor ? '' : seletor(ag)) + '<div class="card cm-tl-card">' + barra +
     '<div class="cm-tl" id="cm-tl" data-chave="' + esc(m.id + '|' + ui.zoom) + '"><div class="cm-tl-in" style="width:' + total + 'px">' +
     '<div class="cm-tl-cab" style="height:' + CAB + 'px">' + cab + '</div>' +
     '<div class="cm-tl-corpo" style="height:' + altura + 'px">' + fundo + agoraEl +
@@ -726,6 +903,19 @@ function popupPgm(m, it) {
   $('cm-dia-abrir').hidden = true;
   abrirModal('modal-cm-dia');
 }
+function acoesPopup(m, it) {
+  if (!podeEditar() || corte()) return '';
+  const arg = esc(m.id) + '" data-arg2="' + esc(Prog.chaveItem(it.opId, it.n));
+  const gelo = !!it.congelada;
+  return '<div class="cm-dia-sec">' + esc(T('cm.secAcoes')) + '</div><div class="cmk-acoes">' +
+    '<label class="cmk-horas">' + esc(T('cm.horas')) + ' <input type="text" inputmode="numeric" class="cm-horas' + (it.horas > 0 ? '' : ' cm-horas-falta') + '" value="' + esc(it.horas > 0 ? horasHM(it.horas) : '') + '" placeholder="hh:mm" data-change="horasCargaMaq" data-arg="' + arg + '" aria-label="' + esc(T('cm.horas')) + '"></label>' +
+    '<button type="button" class="btn btn-success btn-mini" data-acao="finalizarOpCargaMaq" data-arg="' + arg + '">✔ ' + esc(T('cm.finalizarOp')) + '</button>' +
+    (gelo ? '<button type="button" class="btn btn-outline btn-mini" data-acao="retomarCargaMaq" data-arg="' + arg + '">▶ ' + esc(T('cm.retomar')) + '</button>'
+      : '<button type="button" class="btn btn-outline btn-mini" data-acao="congelarCargaMaq" data-arg="' + arg + '">❄ ' + esc(T('cm.congelar')) + '</button>') +
+    '<button type="button" class="btn btn-outline btn-mini" data-acao="urgenciaCargaMaq" data-arg="' + arg + '">🚨 ' + esc(T('cm.urgente')) + '</button>' +
+    ((it.op.operacoes || []).length ? '<button type="button" class="btn btn-outline btn-mini" data-acao="abrirProgEspecial" data-arg="' + esc(it.op.id) + '">⚙ ' + esc(T('pe.botao')) + '</button>' : '') +
+    '<button type="button" class="btn btn-outline btn-mini cmk-tirar" data-acao="tirarCargaMaq" data-arg="' + arg + '">' + esc(T('cm.tirar')) + '</button></div>';
+}
 function popupOp(mid, chave) {
   const m = maquina(mid); if (!m) return;
   $('cm-dia-abrir').hidden = false;
@@ -759,7 +949,8 @@ function popupOp(mid, chave) {
       dado(T('fab.cPeso'), o.pesoTotal ? numeroBr(o.pesoTotal) + ' kg' : '', 'mono') +
       dado(T('opd.roteiro'), (o.operacoes || []).length ? esc((o.operacoes || []).map(function (x) { return x.setor + (x.horas > 0 ? ' ' + horasHM(Number(x.horas)) : ''); }).join(' → ')) : '') +
       dado(T('av.cObs'), o.obs ? esc(o.obs) : '') +
-    '</dl>' + (it.atraso ? '<div class="cm-dia-aviso">⚠ ' + esc(T('cm.passaPrazo', br(it.prazo))) + '</div>' : '') + '</div>';
+    '</dl>' + (it.atraso ? '<div class="cm-dia-aviso">⚠ ' + esc(T('cm.passaPrazo', br(it.prazo))) + '</div>' : '') +
+    (semH ? '<div class="cm-dia-aviso">⚠ ' + esc(T('cm.semHoras')) + '</div>' : '') + acoesPopup(m, it) + '</div>';
   $('cm-dia-ver').dataset.arg = m.id;
   $('cm-dia-abrir').dataset.arg = o.id;
   abrirModal('modal-cm-dia');
@@ -791,18 +982,6 @@ document.addEventListener('keydown', function (e) {
     toast(T('cm.aba.' + ui.aba));
   }
 });
-
-/* ----------------------------------------------------- 3. baixa do CQ */
-function baixaHtml(baixa) {
-  if (!baixa.length) return '<div class="card panel-pad empty-state">' + esc(T('cf.semBaixa')) + '</div>';
-  const editar = podeEditar();
-  return '<div class="card"><div class="table-wrap"><table class="ord-tab"><thead><tr><th>OP</th><th>' + esc(T('fab.cCommessa')) + '</th><th>' + esc(T('fab.cDescricao')) + '</th><th class="num">' +
-    esc(T('fab.cQtd')) + '</th><th>' + esc(T('passo.pergunta')) + '</th><th></th></tr></thead><tbody>' +
-    baixa.sort(function (a, b) { return compararNatural(a.commessa, b.commessa) || compararNatural(a.numero, b.numero); }).map(function (o) {
-      return '<tr><td class="mono">' + esc(o.numero) + '</td><td class="mono cf-com">' + esc(nomeDaOp(o)) + '</td><td>' + esc(o.descricao || '—') + '</td><td class="num">' + numeroBr(o.qtd) + (o.baixadas ? '<div class="hint-txt">' + esc(T('prog.baixadasN', numeroBr(o.baixadas))) + '</div>' : '') + '</td>' +
-        '<td>' + esc(o.proximoPasso ? T('passo.' + o.proximoPasso) : '—') + '</td><td>' + (editar ? '<button type="button" class="btn btn-success btn-mini" data-acao="finalizarOp" data-arg="' + esc(o.id) + '">' + esc(T('prog.finalizar')) + '</button>' : '') + '</td></tr>';
-    }).join('') + '</tbody></table></div></div>';
-}
 
 /* --------------------------------------------------------------- ações */
 function maquina(id) { return (estado.maquinas || []).find(function (m) { return m.id === id; }); }
@@ -870,7 +1049,46 @@ function agoraLocal() {
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
+function tirarItem(mid, chave) {
+    const m = maquina(mid); if (!m) return;
+    const o = opsPorId()[String(chave).split('#')[0]];
+    confirmar(T('cm.tirarQ', o ? o.numero : '', m.nome), { titulo: T('cm.tirar'), textoOk: T('cm.tirarOk'), perigo: true }).then(function (ok) {
+      if (!ok) return;
+      if (Pgm.ehPgm(String(chave).split('#')[0]) && o && o.pgm && o.pgm.situacao === 'cortando') DadosPgms.mudarSituacao(o.pgmId, null).catch(function () {});
+      const item = (m.fila || []).find(function (f) { return Prog.chaveItem(f.opId, f.n == null ? null : Number(f.n)) === chave; });
+      const n = item && item.n != null ? Number(item.n) : null;
+      let ms = (estado.maquinas || []).map(function (x) { return x.id === m.id ? Object.assign({}, x, { fila: semChave(x.fila || [], chave) }) : x; });
+      let ids = [m.id], itens = [];
+      const outras = n == null ? [] : ms.filter(function (x) { return x.id !== m.id && (x.fila || []).some(function (f) { return f.opId === item.opId && Number(f.n) === n; }); });
+      if (item && item.parte && outras.length) {
+        // operação dividida: as peças e horas desta parte voltam para outra parte
+        const alvo = outras[0];
+        alvo.fila = alvo.fila.map(function (f) {
+          if (f.opId !== item.opId || Number(f.n) !== n) return f;
+          const g = Object.assign({}, f, { parte: { pecas: (f.parte ? f.parte.pecas : 0) + item.parte.pecas, total: item.parte.total } });
+          if (Number(f.horas) > 0 && Number(item.horas) > 0) g.horas = Math.round((Number(f.horas) + Number(item.horas)) * 100) / 100;
+          if (outras.length === 1 && g.parte.pecas >= g.parte.total) delete g.parte;
+          return g;
+        });
+        ids.push(alvo.id);
+      } else if (n != null && !corte()) {
+        const rep = Prog.mandarReprogramar(ms, item.opId, n, 'tirada');
+        ms = rep.maquinas; ids = ids.concat(rep.mudadas); itens = rep.itens;
+      }
+      DadosProg.salvarFilas(ms.filter(function (x) { return ids.indexOf(x.id) >= 0; }).map(function (x) { return { id: x.id, fila: x.fila }; }))
+        .then(function () { toast(T('cm.tirada')); avisoReprogramar(o ? o.numero : '', itens); }).catch(function (e) { avisoErro(e); });
+    });
+  }
+
 registrarAcoes({
+  cartaoCargaMaq: function (mid, v) {
+    const p = String(v).split('|'), origem = p[0], chave = p.slice(1).join('|');
+    if (origem === 'pr') { popupOp(mid, chave); return; }
+    const o = opsPorId()[chave.split('#')[0]];
+    if (o) abrirOpDetalhe(o.id);
+  },
+  finalizarOpCargaMaq: function (mid, chave) { const m = maquina(mid); if (!m) return; fecharModal('modal-cm-dia'); finalizarOperacao(m, chave); },
+  finTodasCargaMaq: function () { ui.finTodas = !ui.finTodas; redesenhar(); },
   abaCargaMaq: function (a) { if (abas().indexOf(a) >= 0) { ui.aba = a; redesenhar(); } },
   maqCargaMaq: function (id) { ui.maq = id; redesenhar(); },
   mapaOpCargaMaq: function (mid, chave) { popupOp(mid, chave); },
@@ -932,36 +1150,7 @@ registrarAcoes({
       DadosPgms.mudarSituacao(id, 'cortado').then(function () { return salvar(m, semChave(m.fila || [], chave), T('cm.cortadoFeito', p ? p.numero : '')); }).catch(function (e) { avisoErro(e); });
     });
   },
-  tirarCargaMaq: function (mid, chave) {
-    const m = maquina(mid); if (!m) return;
-    const o = opsPorId()[String(chave).split('#')[0]];
-    confirmar(T('cm.tirarQ', o ? o.numero : '', m.nome), { titulo: T('cm.tirar'), textoOk: T('cm.tirarOk'), perigo: true }).then(function (ok) {
-      if (!ok) return;
-      if (Pgm.ehPgm(String(chave).split('#')[0]) && o && o.pgm && o.pgm.situacao === 'cortando') DadosPgms.mudarSituacao(o.pgmId, null).catch(function () {});
-      const item = (m.fila || []).find(function (f) { return Prog.chaveItem(f.opId, f.n == null ? null : Number(f.n)) === chave; });
-      const n = item && item.n != null ? Number(item.n) : null;
-      let ms = (estado.maquinas || []).map(function (x) { return x.id === m.id ? Object.assign({}, x, { fila: semChave(x.fila || [], chave) }) : x; });
-      let ids = [m.id], itens = [];
-      const outras = n == null ? [] : ms.filter(function (x) { return x.id !== m.id && (x.fila || []).some(function (f) { return f.opId === item.opId && Number(f.n) === n; }); });
-      if (item && item.parte && outras.length) {
-        // operação dividida: as peças e horas desta parte voltam para outra parte
-        const alvo = outras[0];
-        alvo.fila = alvo.fila.map(function (f) {
-          if (f.opId !== item.opId || Number(f.n) !== n) return f;
-          const g = Object.assign({}, f, { parte: { pecas: (f.parte ? f.parte.pecas : 0) + item.parte.pecas, total: item.parte.total } });
-          if (Number(f.horas) > 0 && Number(item.horas) > 0) g.horas = Math.round((Number(f.horas) + Number(item.horas)) * 100) / 100;
-          if (outras.length === 1 && g.parte.pecas >= g.parte.total) delete g.parte;
-          return g;
-        });
-        ids.push(alvo.id);
-      } else if (n != null && !corte()) {
-        const rep = Prog.mandarReprogramar(ms, item.opId, n, 'tirada');
-        ms = rep.maquinas; ids = ids.concat(rep.mudadas); itens = rep.itens;
-      }
-      DadosProg.salvarFilas(ms.filter(function (x) { return ids.indexOf(x.id) >= 0; }).map(function (x) { return { id: x.id, fila: x.fila }; }))
-        .then(function () { toast(T('cm.tirada')); avisoReprogramar(o ? o.numero : '', itens); }).catch(function (e) { avisoErro(e); });
-    });
-  },
+  tirarCargaMaq: tirarItem,
   horasCargaMaq: function (v, chave, el) {
     const m = maquina(el.dataset.arg); if (!m) return;
     const fila = (m.fila || []).map(function (f) { return Object.assign({}, f); }), i = idx(fila, chave);

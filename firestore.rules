@@ -270,7 +270,8 @@ service cloud.firestore {
             && request.resource.data.get('gpUid', null) == request.auth.uid
             && statusDoGpOk() && pedidoDoGpOk())
           || (souTecnicoDe(equipeId) && resource.data.get('responsavelUid', null) == request.auth.uid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checklist', 'bom'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checklist', 'bom', 'checklistLog'])
+            && request.resource.data.get('checklistLog', []) is list && request.resource.data.get('checklistLog', []).size() <= 200
             && (request.resource.data.get('bom', null) == null
               || (request.resource.data.bom is map && request.resource.data.bom.get('linhas', []) is list
                 && request.resource.data.bom.get('linhas', []).size() <= 1500)));

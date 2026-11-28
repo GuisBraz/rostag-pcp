@@ -37,6 +37,7 @@ export function mostrarViewAcesso(ver) {
 
 export function mostrarTelaAcesso(visivel) {
   $('tela-acesso').style.display = visivel ? 'grid' : 'none';
+  if (visivel) desenharQuando();
 }
 
 // Consome o convite pendente depois de um login/cadastro bem-sucedido.
@@ -149,3 +150,14 @@ registrarAcoes({
   abrirEncerrarConta: abrirEncerrarConta, confirmarEncerrarConta: confirmarEncerrarConta,
   mostrarViewAcesso: function (v) { if (VIEWS.indexOf(v) >= 0) mostrarViewAcesso(v); }
 });
+
+// Tela de entrada como no Rostag Systems: "Boa noite · 27/11/26 – 18:17 · Semana 48"
+function desenharQuando() {
+  const el = $('acesso-quando'); if (!el) return;
+  const d = new Date(), h = d.getHours(), p2 = function (n) { return String(n).padStart(2, '0'); };
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())), dia = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - dia);
+  const sem = Math.ceil(((t - new Date(Date.UTC(t.getUTCFullYear(), 0, 1))) / 86400000 + 1) / 7);
+  el.textContent = T(h >= 5 && h < 12 ? 'ger.bomDia' : (h >= 12 && h < 18 ? 'ger.boaTarde' : 'ger.boaNoite')) + ' · ' +
+    p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + String(d.getFullYear()).slice(2) + ' – ' + p2(h) + ':' + p2(d.getMinutes()) + ' · ' + T('ger.semana', sem);
+}

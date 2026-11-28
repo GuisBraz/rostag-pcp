@@ -48,26 +48,16 @@ function cartaoBom(p) {
   return cartao('abrirEspelho', p.id, T('tec.planilha'), p.bom ? numeroBr(a.pecasBom) : '—',
     p.bom ? T('tec.bomDet', numeroBr(a.pecasBom)) : T('tec.semBom'), p.bom ? '--ink' : '--ink-faint');
 }
-function cartaoAvanco(p, ops) {
-  const a = BomResumo.avancoDe(p, ops);
-  const tem = a.pecas > 0;
-  return cartao('abrirAvanco', p.id, T('tec.avanco'), tem ? a.pct + '<small>%</small>' : '—',
-    tem ? T('tec.avancoDet', numeroBr(a.feitas), numeroBr(a.pecas)) : T('tec.semAvanco'), tem ? '--violet' : '--ink-faint');
-}
-
 // Os cartões no topo da página do projeto (só para o técnico).
 export function renderCartoesTecnico(p) {
   const c = Projeto.aguardandoCronograma(p) ? null : Cronograma.calcular(p);
   const atrasadas = c ? c.itens.filter(function (i) { return i.situacao === 'atrasada'; }).length : 0;
-  const st = Producao.estatisticas(opsDoProjeto(p.id));
   const com = resumoComerciais(p.id), serv = resumoServicos(p.id), tar = resumoTarefas(p.id), pgm = resumoPgms(p.id);
   $('tec-areas').innerHTML =
     cartao('alternarChecklist', p.id, T('tec.checklist'), c ? Projeto.progresso(p) + '<small>%</small>' : '—',
       !c ? T('sit.aguardando') : (atrasadas ? T('ar.procAtrasadas', plural(atrasadas, 'ar.ativ', 'ar.ativs')) : T('ar.procOk')),
       !c ? '--ink-faint' : (atrasadas ? '--rust' : '--teal'), checklistAberto) +
-    cartaoBom(p) + cartaoAvanco(p, opsDoProjeto(p.id)) +
-    cartao('abrirListaOpsProjeto', p.id, T('tec.ops'), String(st.total),
-      st.total ? T('tec.opsDet', st.abertas, st.retrabalho) : T('d.semOps'), st.retrabalho ? '--rust' : '--ink') +
+    cartaoBom(p) +
     cartao('abrirComerciais', p.id, T('tec.comerciais'), com ? com.valor : '—', com ? com.detalhe : T('com.abrir'), com ? com.cor : '--ink-faint') +
     cartao('abrirServicos', p.id, T('tec.servicos'), serv ? serv.valor : '—', serv ? serv.detalhe : T('serv.abrir'), serv ? serv.cor : '--ink-faint') +
     cartao('abrirTarefas', p.id, T('tec.tarefas'), tar.valor, tar.detalhe, tar.cor) +
@@ -80,11 +70,7 @@ export function renderCartoesTecnico(p) {
 // baixa e abre RNC). Nada aqui grava.
 export function renderCartoesConsulta(p) {
   const area = Auth.areaProgramador();
-  const ops = opsDoProjeto(p.id).filter(function (o) { return !area || o.area === area; });
-  const st = Producao.estatisticas(ops);
-  let html = cartaoBom(p) + cartaoAvanco(p, opsDoProjeto(p.id)) +
-    cartao('abrirListaOpsProjeto', p.id, area ? T('tec.opsArea', T('area.' + area)).toUpperCase() : T('tec.ops'), String(st.total),
-      st.total ? T('tec.opsDet', st.abertas, st.retrabalho) : T('d.semOps'), st.retrabalho ? '--rust' : '--ink');
+  let html = cartaoBom(p);
   if (area) {
     const com = resumoComerciais(p.id), serv = resumoServicos(p.id);
     html += cartao('abrirComerciais', p.id, T('tec.comerciais'), com ? com.valor : '—', com ? com.detalhe : T('com.abrir'), com ? com.cor : '--ink-faint') +

@@ -307,26 +307,63 @@ aprovada; peça morta sai do total (a OP de retrabalho que nasce dela entra).
   num bloco cinza no fim da lista (só consulta; o checklist abre e as tarefas
   chegam quando o cronograma é definido).
 
-## 4.1.7 BOM e Avanço (planilha viva)
+## 4.1.7 BOM (escopo do projeto)
 
-- "Planilha de avanço" passa a se chamar BOM: o escopo "virgem" do mesmo
-  arquivo (Rev., desenho, posição, descrição, qtd, pesos e as marcas 🛒 COM.,
-  🔨 CALD, ⚙️ USI, 🎨 PINT., 🧪 OXID., 🚚 SERV., 🔥 TTAT), sem produto, OPs,
-  solicitações nem pedidos. Planilha sem as colunas de OP também é aceita.
-- Avanço: cartão separado, montado na hora (BOM + OPs do site). Cada peça acha
-  as OPs pelo desenho + posição (ou pelo nº da OP na planilha antiga) e mostra
-  Produto, OP Cald, OP Usi (6 dígitos) e o %. Conta só Cald e Usi, pela baixa do
-  programador (que vem depois da aprovação do CQ): % da linha = média dos
-  processos da peça; % do projeto = por peça. Pintura, serviços, TTAT, oxidação
-  e comercial são só marcas por enquanto. Programador vê só a área dele (🔒 na
-  outra). O andamento do projeto (Projetos, Painel, cartões) usa esse %.
-- Baixa do programador por quantidade: o campo vem com o que falta (a OP
-  inteira); parcial só aponta e a OP continua na lista.
-- O projeto guarda um resumo da BOM (p.bom) para o andamento das listas;
-  projetos antigos ganham o resumo na primeira visita da Gerência, GP ou técnico.
-- Incluir, revisar e exportar planilhas (BOM, Avanço, comerciais, serviços e o
-  backup JSON/CSV): só Gerência, GP e técnico do projeto. Programadores e CQ
-  só consultam. Sai o botão pequeno "Lista de avanço" do quadro Produção.
+- "Planilha de avanço" virou BOM: o escopo "virgem" (Rev., desenho, posição,
+  descrição, qtd, pesos e as marcas 🛒 COM., 🔨 CALD, ⚙️ USI, 🎨 PINT., 🧪 OXID.,
+  🚚 SERV., 🔥 TTAT). Subir a planilha grava só a BOM: as colunas de OP são
+  ignoradas (OPs novas virão do Protheus, depois).
+- Inclusão de OPs pelo site (PDF, manual, planilha) foi retirada. As OPs que já
+  existem continuam (Ordens de Produção, Carga Máquina/Fábrica, CQ, RNC).
+- O andamento por peça (BOM + OPs) conta Cald e Usi pelas peças **aprovadas
+  pelo CQ** — a aprovação do CQ é a baixa real e encerra a OP. Não há mais a
+  "baixa do programador" nem a aba "Baixa do CQ — finalizar".
+- Incluir, revisar e exportar planilhas: só Gerência, GP e técnico do projeto.
+
+## 4.1.8 Novo projeto em tela cheia e cronograma por processo
+
+- Etapa 1: commessa, OM (quando aplicável), cliente, descrição, PM e técnico
+  de processos, e as chaves dos processos: 🔨 Caldeiraria, ⚙️ Usinagem,
+  🎨 Pintura, 🔧 Montagem mecânica.
+- Etapa 2: cronograma — PCP e cada processo ligado com início e fim, e a
+  entrega. A janela de produção (prodInicio → prodFim) sai dos processos (do
+  1º início ao último fim). Avisos: processo depois da entrega; pintura antes
+  do fim da caldeiraria. Projeto antigo: Cald + Usi com a produção de antes.
+- A Linha do tempo virou Gantt: cada commessa numa linha, uma barra por
+  processo e o losango da entrega; a escala cabe na largura da tela.
+
+## 4.1.9 Página do projeto e checklist do técnico
+
+- Saem os cartões Avanço e Ordens de Produção e o quadro Informações gerais;
+  o quadro Produção virou "Avanço" (com os processos e as janelas); as ações
+  (paralisar, reagendar) ficam numa barra; o histórico fica no Checklist (e no
+  Acompanhamento do GP).
+- O técnico inclui (escolhendo a posição), apaga e remarca tarefas (data
+  prevista). As não feitas se reajustam na proporção para terminar no fim do
+  PCP; se não couber, o site não deixa. Tarefa concluída não muda nem é
+  apagada. Mudar a janela do PCP também reajusta. Tudo vai para o histórico.
+
+## 4.1.10 Carga Máquina (usinagem) em quadro
+
+- Por máquina: Aguardando programação | Programadas | Finalizadas (últimos 7
+  dias, "ver mais"), com o Gantt da máquina ao lado. Cartão: commessa, OP
+  (6 dígitos) e descrição; clicar abre o detalhe com as ações (horas,
+  finalizar, ❄, 🚨, programação especial, tirar).
+- Arrastar: Aguardando → Programadas na posição desejada (as de baixo se
+  reprogramam; as operações seguintes da OP entram nas máquinas delas);
+  dentro de Programadas muda a ordem; Programadas → Finalizadas encerra só
+  aquela operação (fica registrada na fila; a próxima da OP aparece na máquina
+  seguinte); Programadas → Aguardando tira da fila.
+- Cartão vermelho: sem horas (até o programador informar) ou passou do fim
+  previsto sem ser finalizado — este também gera aviso no sino, um por dia.
+
+## 4.1.11 Visual (estilo do Rostag Systems)
+
+- Fundo branco gelo liso, azul royal e celeste (tema escuro azul-marinho),
+  barra lateral clara, títulos e números centralizados, cartões com faixa no
+  topo, commessa em azul royal (contratos com OM em verde) e rodapé fixo.
+- Painel: "Boa noite Guilherme", data – hora, Semana N, cargo · equipe.
+- Entrada: logo, "Rostag PCP", saudação com data e semana, e o cartão no centro.
 
 ## 4.2 Página do projeto do técnico e Todas as OPs
 

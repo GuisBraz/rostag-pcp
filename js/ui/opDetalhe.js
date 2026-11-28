@@ -9,11 +9,8 @@ import { T } from '../i18n/index.js';
 import * as Producao from '../dominio/producao.js';
 import * as Prog from '../dominio/programacao.js';
 import * as Auth from '../dados/auth.js';
-import * as DadosProg from '../dados/programacao.js';
-import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
-import { abrirModal, fecharModal, confirmar, pedirTexto } from './modal.js';
-import { toast } from './toast.js';
-import { avisoErro } from './app.js';
+import { $, registrarAcoes } from './dom.js';
+import { abrirModal, fecharModal } from './modal.js';
 
 let aberta = null;   // id da OP na janela
 
@@ -23,10 +20,6 @@ export function opPorId(id) { return estado.ops.find(function (o) { return o.id 
 export function naFila() { return Prog.opsNaFila(estado.maquinas); }
 export function situacaoDe(o) { return Prog.situacao(o, o.area === 'usinagem' && naFila().has(o.id)); }
 
-// Quem finaliza: o programador da área (ou a Gerência).
-export function podeFinalizar(o) {
-  return !!o && (Auth.souGerente() || Auth.areaProgramador() === o.area) && situacaoDe(o) === 'baixaCq';
-}
 
 export function pillSituacao(o) {
   const s = situacaoDe(o);
@@ -39,34 +32,6 @@ export function classeAtraso(o) { return Prog.projetoAtrasado(buscarProjeto(o.pr
 export function textoEtapas(o) {
   const etapas = Prog.proximasEtapas(o);
   return etapas.length ? etapas.map(function (k) { return T('av.marca.' + k); }).join(' → ') : '';
-}
-
-// Baixa do programador por quantidade: o campo vem com o que falta (a OP completa).
-// Parcial só aponta (a OP continua na lista); com todas, a OP é encerrada.
-export function finalizarOp(o) {
-  if (!podeFinalizar(o)) return Promise.resolve(false);
-  const boas = Producao.pecasOp(o).feitas, ja = Producao.feitasProg(o), falta = Math.max(0, boas - ja);
-  return pedirTexto(T('prog.baixaQ', o.numero, o.descricao || o.desenho, numeroBr(boas)) + (ja ? ' ' + T('prog.baixaJa', numeroBr(ja)) : ''),
-    { titulo: T('prog.finalizar'), textoOk: T('prog.finalizarOk'), valor: String(falta), rotuloCampo: T('prog.baixaRot', numeroBr(falta)) }).then(function (txt) {
-    if (txt == null) return false;
-    const n = Math.floor(Number(String(txt).replace(',', '.')));
-    if (!(n >= 1 && n <= falta)) { toast(T('prog.baixaInvalida', numeroBr(falta)), { tipo: 'erro' }); return false; }
-    if (ja + n < boas) {
-      return DadosProg.apontar(o, ja + n).then(function () {
-        toast(T('prog.baixaParcial', o.numero, numeroBr(ja + n), numeroBr(boas)));
-        return true;
-      }).catch(function (e) { avisoErro(e); return false; });
-    }
-    return DadosProg.finalizar(o, estado.maquinas, boas).then(function () {
-      const etapas = textoEtapas(o);
-      const msg = etapas ? T('notif.opFinalizadaProx', o.numero, o.commessa, o.descricao || o.desenho, etapas)
-        : T('notif.opFinalizadaSem', o.numero, o.commessa, o.descricao || o.desenho);
-      Auth.notificarVarios([o.gpUid, o.tecnicoUid], 'opFinalizada', msg, o.projetoId);
-      toast(T('prog.finalizada', o.numero));
-      if (aberta === o.id) fecharModal('modal-op-detalhe');
-      return true;
-    }).catch(function (e) { avisoErro(e); return false; });
-  });
 }
 
 function linha(rot, valor) { return '<div class="opd-linha"><span>' + esc(rot) + '</span><b>' + valor + '</b></div>'; }
@@ -134,7 +99,6 @@ export function render() {
     }).join('');
   }
   $('opd-corpo').innerHTML = html;
-  $('opd-finalizar').hidden = !podeFinalizar(o);
   // CQ: aprovar ou abrir RNC (em retrabalho: ver a RNC atual)
   const st = Producao.statusOp(o);
   // usinagem: dividir operações entre máquinas (programador de usinagem e Gerência)
@@ -149,6 +113,4 @@ export function render() {
 
 registrarAcoes({
   abrirOpDetalhe: abrirOpDetalhe,
-  finalizarOpDetalhe: function (_a, _b, btn) { const o = opPorId(aberta); if (o) comBotaoOcupado(btn, finalizarOp(o)); },
-  finalizarOp: function (id, _b, btn) { const o = opPorId(id); if (o) comBotaoOcupado(btn, finalizarOp(o)); }
 });

@@ -21,7 +21,8 @@ export const DIAS_OP_VENCENDO = 2;
 export const DIAS_PROJETO_VENCENDO = 7;
 export const MAX_FILA = 300;
 
-export function encerrada(o) { return !!(o && o.encerradaEm); }
+// A aprovação do CQ é a baixa real da OP: aprovada (ou liberada com desvio) já é encerrada.
+export function encerrada(o) { const s = statusOp(o); return !!(o && (o.encerradaEm || s === 'aprovada' || s === 'desvio')); }
 
 // Onde a OP está na programação. naFila: a OP de usinagem está em alguma fila.
 //   emAberto · programada · baixaCq · rnc · encerrada · morta
@@ -345,6 +346,8 @@ export function agendarTudo(maquinas, opsPorId, projetosPorId, mapa, agora) {
         const comum = { opId: item.opId, n: n, op: o, operacao: operacao || null, horas: horas, prazo: prazo, inicioFixo: inicioFixo, fimAjustado: item.fimAjustado || null,
           parte: item.parte || null, congelada: item.congelada || null, pausas: item.pausas || [], feitas: Number(item.feitas) || 0, reprogramar: item.reprogramar || null, maquinaId: m.id };
         const s = situacao(o, true);
+        // ✔ finalizada nesta máquina pelo programador: não ocupa mais a máquina
+        if (item.feita) return Object.assign(comum, { concluida: true, feita: item.feita });
         if (s === 'baixaCq' || s === 'encerrada' || s === 'morta') return Object.assign(comum, { concluida: true });
         let depois = null;
         if (n != null) for (let k = n - 1; k >= 0; k--) { const f = fins[chaveItem(o.id, k)]; if (f != null) { depois = f; break; } }
@@ -496,4 +499,18 @@ export function aguardandoNaMaquina(maquina, ops, maquinas, mapa, area) {
     });
   });
   return r;
+}
+
+// Fila sem os registros velhos: operação finalizada (ou de OP já encerrada pelo CQ)
+// há mais de "dias" sai da fila; a de OP ainda aberta fica (é ela que diz que a
+// operação já foi feita).
+export function enxugarFila(fila, opsPorId, limite) {
+  return (fila || []).filter(function (f) {
+    const o = opsPorId[f.opId];
+    if (!o) return true;
+    const fechada = encerrada(o) || statusOp(o) === 'morta';
+    if (!fechada) return true;
+    const quando = String(f.feita || o.finalizadoEm || o.encerradaEm || '').slice(0, 10);
+    return !quando || quando >= limite;
+  });
 }

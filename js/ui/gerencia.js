@@ -51,12 +51,24 @@ export function grupo(p, h) {
 
 /* -------------------------------------------------------------- saudação */
 function primeiroNome() { return (Auth.nomeExibicao() || '').trim().split(/\s+/)[0] || ''; }
+// Semana do ano (ISO 8601: a semana começa na segunda; a 1ª tem a primeira quinta)
+function semanaIso(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dia = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - dia);
+  const ini = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - ini) / 86400000 + 1) / 7);
+}
+// Saudação como no Rostag Systems: "Boa noite Guilherme", data – hora, Semana N, cargo · equipe
 export function desenharOla() {
-  const agora = new Date();
-  const dia = agora.toLocaleDateString(codigoIdioma(), { weekday: 'long' });
-  const hora = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
-  $('ger-ola-nome').textContent = T('ger.ola', primeiroNome());
-  $('ger-ola-quando').textContent = dia.charAt(0).toUpperCase() + dia.slice(1) + ', ' + br(hoje()) + ' · ' + hora;
+  const agora = new Date(), h = agora.getHours();
+  const p2 = function (n) { return String(n).padStart(2, '0'); };
+  const periodo = h >= 5 && h < 12 ? 'ger.bomDia' : (h >= 12 && h < 18 ? 'ger.boaTarde' : 'ger.boaNoite');
+  $('ger-ola-nome').textContent = (T(periodo) + ' ' + primeiroNome()).trim();
+  $('ger-ola-quando').textContent = p2(agora.getDate()) + '/' + p2(agora.getMonth() + 1) + '/' + String(agora.getFullYear()).slice(2) + ' – ' + p2(h) + ':' + p2(agora.getMinutes());
+  $('ger-ola-semana').textContent = T('ger.semana', semanaIso(agora));
+  const papel = Auth.papel();
+  $('ger-ola-quem').textContent = [papel ? T('papel.' + papel) : '', Auth.equipeAtualNome()].filter(Boolean).join(' · ');
 }
 export function ligarRelogio() {
   if (relogio) return;
@@ -446,7 +458,6 @@ function renderPlanejamento(p, st) {
     '</div>' +
     (st.total ? barraArea(T('fab.geral'), st) + barraArea(T('area.caldeiraria'), st.caldeiraria) + barraArea(T('area.usinagem'), st.usinagem)
       : '<div class="empty-state">' + esc(T('d.semOps')) + '</div>') +
-    '<div class="plan-lista"><button type="button" class="btn btn-outline" data-acao="abrirAvanco" data-arg="' + esc(p.id) + '">' + esc(T('av.abrir')) + '</button></div>' +
     '<div class="plan-embreve">' +
       '<div class="plan-embreve-item"><b>' + esc(T('ar.cargaMaquina')) + '</b><span>' + esc(T('ar.emBreve')) + '</span></div>' +
       '<div class="plan-embreve-item"><b>' + esc(T('ar.cargaFabrica')) + '</b><span>' + esc(T('ar.emBreve')) + '</span></div>' +
