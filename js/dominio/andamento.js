@@ -22,7 +22,7 @@ function aprovada(o) { const s = statusOp(o); return s === 'aprovada' || s === '
 function faltaAcabamento(o) {
   const precisa = ACABAMENTO.some(function (k) { return o.marcas && o.marcas[k]; });
   if (!precisa) return false;
-  return !o.encerradaEm || (o.destino && o.destino !== 'expedicao');
+  return o.destino !== 'expedicao';
 }
 
 /** p, ops (do projeto), h → { pcp, fabrica, geral, fase, risco: null|'atencao'|'atraso', esperado, stats } */

@@ -16,7 +16,7 @@ import * as Auth from '../dados/auth.js';
 import { $, registrarAcoes } from './dom.js';
 import { naFila } from './opDetalhe.js';
 
-const FILTROS = ['todas', 'emAberto', 'programada', 'baixaCq', 'rnc'];
+const FILTROS = ['todas', 'emAberto', 'programada', 'rnc'];
 const filtro = { sit: 'todas', area: '', busca: '' };
 
 function areaAtual() { return Auth.areaProgramador() || filtro.area; }

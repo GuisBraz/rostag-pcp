@@ -17,11 +17,63 @@ import { abrirModal, fecharModal } from './modal.js';
 import { toast } from './toast.js';
 import { persistir, redesenhar } from './app.js';
 
-const CAMPOS_FORM = ['commessa', 'cliente', 'descricao', 'om', 'dataSolicitacao', 'pcpInicio', 'pcpFim', 'prodInicio', 'prodFim', 'entrega'];
+const CAMPOS_FORM = ['commessa', 'cliente', 'descricao', 'om', 'dataSolicitacao', 'pcpInicio', 'pcpFim', 'entrega'];
+const CAMPOS_PROC = [];
+Projeto.PROCESSOS.forEach(function (k) { CAMPOS_PROC.push('proc-' + k + '-ini', 'proc-' + k + '-fim'); });
+
+// Tela cheia em duas etapas: 1) dados e processos · 2) cronograma
+let passo = 1;
+function irPasso(n) {
+  passo = n;
+  $('fm-passo1').hidden = n !== 1; $('fm-passo2').hidden = n !== 2;
+  $('fm-voltar').hidden = n !== 2; $('fm-proximo').hidden = n !== 1; $('f-submit').hidden = n !== 2;
+  $('fm-etapa').textContent = T(n === 1 ? 'fm.etapa1' : 'fm.etapa2');
+  mostrarLinhasProcesso();
+  const foco = n === 1 ? $('f-commessa') : $('f-pcpInicio');
+  if (foco) setTimeout(function () { foco.focus(); }, 30);
+}
+function mostrarLinhasProcesso() {
+  let algum = false;
+  Projeto.PROCESSOS.forEach(function (k) { const on = $('f-proc-' + k).checked; $('fm-linha-' + k).hidden = !on; if (on) algum = true; });
+  $('fm-sem-processos').hidden = algum;
+}
+function preencherProcessos(proc) {
+  Projeto.PROCESSOS.forEach(function (k) {
+    const x = proc[k] || {};
+    $('f-proc-' + k).checked = !!x.on;
+    $('f-proc-' + k + '-ini').value = x.ini || '';
+    $('f-proc-' + k + '-fim').value = x.fim || '';
+  });
+}
+function lerProcessos() {
+  const r = {};
+  Projeto.PROCESSOS.forEach(function (k) {
+    r[k] = { on: $('f-proc-' + k).checked, ini: $('f-proc-' + k + '-ini').value || null, fim: $('f-proc-' + k + '-fim').value || null };
+    if (!r[k].on) { r[k].ini = null; r[k].fim = null; }
+  });
+  return r;
+}
+// Etapa 1 → 2: confere o que é obrigatório antes de seguir
+function proximoPasso() {
+  const faltam = [];
+  if (!$('f-commessa').value.trim()) faltam.push('commessa');
+  if (!$('f-descricao').value.trim()) faltam.push('descricao');
+  ['commessa', 'descricao', 'om'].forEach(function (c) { const el = $('f-' + c); el.classList.remove('invalid'); el.removeAttribute('aria-invalid'); });
+  if (!faltam.length && !editandoId && Contratos.ehContrato($('f-commessa').value) && !$('f-om').value.trim()) faltam.push('om');
+  if (faltam.length) {
+    faltam.forEach(function (c) { $('f-' + c).classList.add('invalid'); $('f-' + c).setAttribute('aria-invalid', 'true'); });
+    $('f-erro').textContent = faltam[0] === 'om' ? T('fm.errOmFalta', Contratos.base($('f-commessa').value)) : T('fm.faltou', faltam.map(function (c) { return T('fm.' + c + 'N'); }).join(', '));
+    $('f-' + faltam[0]).focus();
+    return;
+  }
+  $('f-erro').textContent = '';
+  irPasso(2);
+}
 let editandoId = null;
 
 function limparForm() {
-  CAMPOS_FORM.forEach(function (c) { const el = $('f-' + c); el.value = ''; el.classList.remove('invalid'); el.removeAttribute('aria-invalid'); });
+  CAMPOS_FORM.concat(CAMPOS_PROC).forEach(function (c) { const el = $('f-' + c); el.value = ''; el.classList.remove('invalid'); el.removeAttribute('aria-invalid'); });
+  Projeto.PROCESSOS.forEach(function (k) { $('f-proc-' + k).checked = false; });
   $('f-erro').textContent = '';
 }
 
@@ -92,6 +144,7 @@ export function abrirNovoProjeto(pre) {
   }
   const gpPre = pre && pre.gpUid && !souGp ? pre.gpUid : null;
   preencherOpcoesMembros(souGp ? Auth.uid() : gpPre, souGp ? Auth.nomeExibicao() : (pre && pre.gp), pre ? pre.tecUid : null, pre ? pre.tec : null);
+  irPasso(1);
   abrirModal('modal-projeto', { foco: pre ? 'f-om' : 'f-commessa', aoFechar: function () { editandoId = null; } });
 }
 
@@ -102,14 +155,15 @@ export function abrirEditarProjeto(campoFoco) {
   limparForm();
   editandoId = p.id;
   CAMPOS_FORM.forEach(function (c) { $('f-' + c).value = (p[c] === '—' ? '' : (p[c] || '')); });
-  // projeto antigo sem o início da produção: mostra o que vale hoje (o fim do PCP)
-  if (!p.prodInicio && p.prodFim && p.pcpFim) $('f-prodInicio').value = p.pcpFim;
+  preencherProcessos(Projeto.processosDe(p));
   $('modal-projeto-title').textContent = T('fm.editar');
   $('f-submit').textContent = T('fm.salvarAlt');
   $('fm-checklist-nota').textContent = '';
   atualizarPreviews();
   preencherOpcoesMembros(p.gpUid, p.gp, p.responsavelUid, p.tecnico);
-  abrirModal('modal-projeto', { foco: typeof campoFoco === 'string' && $(campoFoco) ? campoFoco : 'f-commessa', aoFechar: function () { editandoId = null; } });
+  // abrir direto no cronograma quando pedem uma data (ex.: "Definir cronograma")
+  irPasso(typeof campoFoco === 'string' && /pcp|entrega|proc/.test(campoFoco) ? 2 : 1);
+  abrirModal('modal-projeto', { foco: typeof campoFoco === 'string' && $(campoFoco) ? campoFoco : (passo === 2 ? 'f-pcpInicio' : 'f-commessa'), aoFechar: function () { editandoId = null; } });
 }
 
 function nomeSelecionado(sel) {
@@ -124,7 +178,18 @@ function salvarProjeto() {
     el.classList.remove('invalid'); el.removeAttribute('aria-invalid');
     d[c] = el.value.trim();
   });
-  ['dataSolicitacao', 'pcpInicio', 'pcpFim', 'prodInicio', 'prodFim'].forEach(function (c) { d[c] = d[c] || null; });
+  ['dataSolicitacao', 'pcpInicio', 'pcpFim'].forEach(function (c) { d[c] = d[c] || null; });
+  CAMPOS_PROC.forEach(function (c) { const el = $('f-' + c); el.classList.remove('invalid'); el.removeAttribute('aria-invalid'); });
+  // processos: a janela de produção sai deles (do 1º início ao último fim)
+  d.processos = lerProcessos();
+  const vp = Projeto.validarProcessos(d.processos, d.entrega);
+  if (!vp.ok) {
+    (vp.campos || []).forEach(function (c) { const el = $('f-' + c); if (el) { el.classList.add('invalid'); el.setAttribute('aria-invalid', 'true'); } });
+    $('f-erro').textContent = vp.msg;
+    irPasso(2);
+    return;
+  }
+  d.prodInicio = vp.prodInicio; d.prodFim = vp.prodFim;
   d.responsavelUid = $('f-responsavel').value || null;
   d.tecnico = nomeSelecionado($('f-responsavel')) || '';
   d.gpUid = $('f-gp').value || null;
@@ -138,6 +203,8 @@ function salvarProjeto() {
       if (el) { el.classList.add('invalid'); el.setAttribute('aria-invalid', 'true'); }
     });
     $('f-erro').textContent = v.msg;
+    // o erro pode estar na etapa 1 (commessa, descrição, OM)
+    if ((v.campos || []).some(function (c) { return ['commessa', 'descricao', 'om', 'cliente', 'dataSolicitacao'].indexOf(c) >= 0; })) irPasso(1);
     const primeiro = v.campos && $('f-' + v.campos[0]);
     if (primeiro) primeiro.focus();
     return;
@@ -153,8 +220,11 @@ function salvarProjeto() {
     if (!p) { fecharModal('modal-projeto'); toast(T('t.projetoSumiu'), { tipo: 'erro' }); return; }
     antes = { gpUid: p.gpUid || null, responsavelUid: p.responsavelUid || null, definido: !Projeto.aguardandoCronograma(p),
       datas: Projeto.CAMPOS_DATA.map(function (c) { return p[c] || null; }).join('|') };
+    const pcpMudou = (p.pcpInicio || null) !== (d.pcpInicio || null) || (p.pcpFim || null) !== (d.pcpFim || null);
     Projeto.registrarReprogramacao(p, d, Auth.nomeExibicao(), 'edição');
     Object.assign(p, d);
+    // janela do PCP mudou: as tarefas não feitas se reajustam para caber nela
+    if (pcpMudou && antes.definido && d.pcpInicio && d.pcpFim) Projeto.redistribuir(p);
   } else {
     p = Object.assign({ id: Projeto.novoId(), status: 'ativo', concluidoEm: null, canceladoEm: null,
       reagendamentos: [], paralisacoes: [], checklist: Projeto.checklistNovo(itensPadrao()), criadoPor: Auth.nomeExibicao() }, d);
@@ -180,7 +250,7 @@ function salvarProjeto() {
   fecharModal('modal-projeto');
   redesenhar();
   toast(eraEdicao ? T('t.atualizado', nomeProjeto(p)) : T('t.incluido', nomeProjeto(p), p.checklist.length));
-  (v.avisos || []).forEach(function (a) { toast(a, { tipo: 'erro' }); });
+  (v.avisos || []).concat(vp.avisos || []).forEach(function (a) { toast(a, { tipo: 'erro' }); });
   if (irmaosGp.length) toast(T('om.gpTodas', p.gp || '—', p.tecnico || '—', irmaosGp.length));
   persistir().then(function () {
     avisarEnvolvidos(p, antes, definiuAgora);
@@ -223,6 +293,8 @@ function avisarEnvolvidos(p, antes, definiuAgora) {
 
 registrarAcoes({
   abrirNovoProjeto: function () { abrirNovoProjeto(); },
+  passoProjeto: function (n) { if (String(n) === '2') proximoPasso(); else irPasso(1); },
+  alternarProcesso: function () { mostrarLinhasProcesso(); },
   novaOm: abrirNovaOm,
   abrirEditarProjeto: function (campo) { abrirEditarProjeto(campo); },
   salvarProjeto: salvarProjeto

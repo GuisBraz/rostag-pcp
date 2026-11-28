@@ -152,6 +152,17 @@ function avisosCargaMaquina() {
         titulo: T('n.cm-gelo', o.commessa, o.numero), meta: T('n.cm-geloM', m.nome, f.congelada.ate.slice(11, 16)) });
     });
   });
+  // passou do fim previsto e não foi finalizada: aviso novo a cada dia (o id leva a data)
+  const ag = agendasAtuais(), hj = hoje();
+  (estado.maquinas || []).forEach(function (m) {
+    if (m.area === 'caldeiraria') return;
+    (ag[m.id] || []).forEach(function (it) {
+      const fim = it.fimAjustado || it.fimDt;
+      if (!it.op || it.concluida || it.ausente || !fim || fim >= agora) return;
+      l.push({ id: 'cm-atrasada:' + m.id + ':' + it.opId + ':' + it.n + ':' + hj, tipo: 'cm-atrasada', nivel: 'alerta', projetoId: it.op.projetoId, origem: 'sistema', quando: hj,
+        titulo: T('n.cm-atrasada', it.op.commessa, it.op.numero), meta: T('n.cm-atrasadaM', m.nome, fim.slice(8, 10) + '/' + fim.slice(5, 7) + ' ' + fim.slice(11, 16)) });
+    });
+  });
   Object.keys(rep).forEach(function (id) {
     const o = ops[id];
     l.push({ id: 'cm-reprog:' + id, tipo: 'cm-reprog', nivel: 'alerta', projetoId: o.projetoId, origem: 'sistema', quando: hoje(),

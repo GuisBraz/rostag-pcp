@@ -343,3 +343,83 @@ export function migrar(bruto) {
   if (bruto && Array.isArray(bruto.projetos)) return bruto.projetos.map(migrarProjeto);
   throw new Error('formato desconhecido');
 }
+
+/* ---------------------------------------- checklist editável pelo técnico
+   Incluir, apagar ou remarcar uma tarefa reajusta as durações das tarefas
+   ainda não feitas para o cronograma continuar terminando no fim do PCP.
+   Tarefa concluída não muda. "fixo": a tarefa que acabou de ser mexida
+   (mantém a duração nova; as outras se ajustam em volta). */
+export function redistribuir(p, fixo) {
+  if (!p || !p.pcpInicio || !p.pcpFim || !(p.checklist || []).length) return { ok: true };
+  const lista = p.checklist, pausas = p.paralisacoes || [];
+  const c = Cronograma.recalcular(p);
+  const primeiro = lista.findIndex(function (i) { return !i.done; });
+  if (primeiro < 0) return { ok: true };
+  // dias úteis do início da 1ª tarefa não feita até o fim do PCP
+  const inicio = c.itens[primeiro].inicio;
+  const livre = inicio > p.pcpFim ? 0 : Cronograma.duracaoUtil(inicio, p.pcpFim, pausas);
+  const ajustaveis = [];
+  let ocupado = 0;
+  lista.forEach(function (it, k) {
+    if (k < primeiro) return;
+    if (it.done || k === fixo) { ocupado += Math.max(0, Number(it.dias) || 0); return; }
+    ajustaveis.push(k);
+  });
+  const resta = livre - ocupado;
+  if (!ajustaveis.length) return resta >= 0 ? { ok: true } : { ok: false, motivo: 'naoCabe', falta: -resta };
+  if (resta < ajustaveis.length) return { ok: false, motivo: 'naoCabe', falta: ajustaveis.length - resta };
+  // reparte na proporção das durações atuais (cada uma com pelo menos 1 dia)
+  const pesos = ajustaveis.map(function (k) { return Math.max(1, Number(lista[k].dias) || 0); });
+  const soma = pesos.reduce(function (a, b) { return a + b; }, 0);
+  const extra = resta - ajustaveis.length;
+  const exato = pesos.map(function (w) { return extra * w / soma; });
+  const dias = exato.map(function (x) { return 1 + Math.floor(x); });
+  let falta = resta - dias.reduce(function (a, b) { return a + b; }, 0);
+  exato.map(function (x, i) { return { i: i, f: x - Math.floor(x) }; }).sort(function (a, b) { return b.f - a.f; })
+    .forEach(function (o) { if (falta > 0) { dias[o.i]++; falta--; } });
+  ajustaveis.forEach(function (k, i) { lista[k].dias = Math.min(DIAS_MAX_TAREFA, dias[i]); });
+  return { ok: true };
+}
+
+// Histórico das mudanças do técnico no checklist (só deste projeto).
+export const MAX_LOG = 200;
+export function registrarChecklist(p, acao, tarefa, quem, de, para) {
+  const r = { em: hoje(), acao: acao, t: String(tarefa || '').slice(0, 160), por: String(quem || '').slice(0, 60) };
+  if (de) r.de = de;
+  if (para) r.para = para;
+  p.checklistLog = (p.checklistLog || []).concat([r]).slice(-MAX_LOG);
+}
+
+/* ------------------------------------------- processos do projeto
+   O PM liga o que o projeto tem (Caldeiraria, Usinagem, Pintura, Montagem
+   mecânica) e dá início e fim a cada um. A janela de produção (prodInicio →
+   prodFim) que o resto do site usa sai deles: do primeiro início ao último fim. */
+export const PROCESSOS = ['cald', 'usi', 'pint', 'mont'];
+export const SIMBOLO_PROCESSO = { cald: '🔨', usi: '⚙️', pint: '🎨', mont: '🔧' };
+// Processos do projeto; projeto antigo (sem a escolha): Cald + Usi com a janela de produção
+export function processosDe(p) {
+  const r = {};
+  const tem = p && p.processos && typeof p.processos === 'object';
+  PROCESSOS.forEach(function (k) {
+    const x = tem ? (p.processos[k] || {}) : null;
+    r[k] = tem ? { on: !!x.on, ini: dataValida(x.ini) ? x.ini : null, fim: dataValida(x.fim) ? x.fim : null }
+      : { on: k === 'cald' || k === 'usi', ini: p && p.prodInicio || null, fim: p && p.prodFim || null };
+  });
+  return r;
+}
+// Confere os processos ligados e devolve a janela de produção (do 1º início ao último fim)
+export function validarProcessos(proc, entrega) {
+  let ini = null, fim = null;
+  const avisos = [];
+  for (let n = 0; n < PROCESSOS.length; n++) {
+    const k = PROCESSOS[n], x = proc[k];
+    if (!x || !x.on) continue;
+    if (!!x.ini !== !!x.fim) return { ok: false, campos: ['proc-' + k + '-' + (x.ini ? 'fim' : 'ini')], msg: T('fm.errProcPar', T('proc.' + k)) };
+    if (x.ini && x.fim < x.ini) return { ok: false, campos: ['proc-' + k + '-fim'], msg: T('fm.errProcOrdem', T('proc.' + k)) };
+    if (x.ini && (!ini || x.ini < ini)) ini = x.ini;
+    if (x.fim && (!fim || x.fim > fim)) fim = x.fim;
+    if (x.fim && entrega && x.fim > entrega) avisos.push(T('fm.avisoProcEntrega', T('proc.' + k), br(x.fim), br(entrega)));
+  }
+  if (proc.pint && proc.pint.on && proc.pint.ini && proc.cald && proc.cald.on && proc.cald.fim && proc.pint.ini < proc.cald.fim) avisos.push(T('fm.avisoPintCald'));
+  return { ok: true, prodInicio: ini, prodFim: fim, avisos: avisos };
+}

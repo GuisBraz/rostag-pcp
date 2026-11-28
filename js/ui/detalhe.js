@@ -32,7 +32,6 @@ function janela(rot, corpo, obs, corObs) {
   return '<div class="rot">' + rot + '</div><div class="datas">' + corpo + '</div>' +
     (obs ? '<div class="obs" style="color:' + (corObs || 'var(--ink-dim)') + '">' + esc(obs) + '</div>' : '');
 }
-function linha(k, vHtml) { return '<div class="info-row"><span class="k">' + esc(k) + '</span><span class="v">' + vHtml + '</span></div>'; }
 
 export function renderDetalhe() {
   const p = projetoAtual();
@@ -82,7 +81,7 @@ export function renderDetalhe() {
     }).join('') + (stOps.pecasRnc ? '<span class="prod-rnc">' + esc(T('fab.pecasRnc', numeroBr(stOps.pecasRnc))) + '</span>' : '') + '</div>'
     : '<div class="hint-inline">' + esc(T('d.semOps')) + '</div>';
   $('janela-producao').innerHTML = janela(esc(T('d.janelaProd')) + ' <span class="pill-prod prod-' + sitProd + '">' + esc(T('prod.' + sitProd)) + '</span>',
-    Producao.inicio(p) ? br(Producao.inicio(p)) + ' → ' + br(p.prodFim) : '—', obsProd, corProd) + avanco;
+    Producao.inicio(p) ? br(Producao.inicio(p)) + ' → ' + br(p.prodFim) : '—', obsProd, corProd) + processosHtml(p) + avanco;
 
   // --- entrega ---
   const dEnt = difDias(h, p.entrega);
@@ -99,18 +98,6 @@ export function renderDetalhe() {
     corEnt = dEnt <= prefs.alerta ? 'var(--amber-ink)' : 'var(--ink-dim)';
   }
   $('janela-entrega').innerHTML = janela(esc(T('d.entregaProjeto')), br(p.entrega), obsEnt, corEnt);
-
-  // --- informações gerais ---
-  let info = linha(T('d.solicitacao'), br(p.dataSolicitacao)) +
-    linha(T('d.om'), esc(p.om || '—')) +
-    linha(T('d.tarefasConcluidas'), esc(T('d.deN', p.checklist.filter(function (i) { return i.done; }).length, p.checklist.length)));
-  if (c.proxima && !parado) info += linha(T('d.proximaTarefa'), esc(c.proxima.t) + ' <span class="hint-inline">(' + br(c.proxima.fim) + ')</span>');
-  const pausa = Projeto.pausaAtual(p);
-  if (pausa) info += linha(T('d.paradoAgora'), br(pausa.inicio) + ' <span style="color:var(--amber-ink)">(' + esc(plural(Projeto.diasParadoAtual(p), 'x.dia', 'x.dias')) + ')</span>');
-  const totalParado = Projeto.diasParadoTotal(p);
-  if (totalParado > 0) info += linha(T('d.paradoTotal'), esc(plural(totalParado, 'x.dia', 'x.dias')));
-  if (p.concluidoEm) info += linha(T('d.cicloTotal'), esc(plural(Projeto.ciclo(p), 'x.dia', 'x.dias')));
-  $('detail-info').innerHTML = info;
 
   // --- ações: cancelar só existe depois de paralisar; planejador só cuida do checklist.
   // Paralisar e cancelar são da Gerência: o GP pede (Pedidos) e espera a resposta. ---
@@ -150,11 +137,15 @@ export function renderDetalhe() {
     if (x.fim) evs.push({ d: x.fim, t: T('h.retomado', plural(difDias(x.inicio, x.fim), 'x.dia', 'x.dias')) });
   });
   p.checklist.forEach(function (it) { if (it.obs && it.obsEm) evs.push({ d: it.obsEm, t: T('h.obs', it.t) }); });
+  (p.checklistLog || []).forEach(function (r) {
+    evs.push({ d: r.em, t: T('h.ck.' + r.acao, r.t, r.de ? br(r.de) : '', r.para ? br(r.para) : '') + (r.por ? ' — ' + r.por : '') });
+  });
   if (p.concluidoEm) evs.push({ d: p.concluidoEm, t: T('h.entregue') });
   if (p.canceladoEm) evs.push({ d: p.canceladoEm, t: T('h.cancelado') });
   evs.sort(function (a, b) { return a.d.localeCompare(b.d); });
-  $('detail-hist').innerHTML = '<h4>' + esc(T('d.historico')) + '</h4>' +
-    evs.map(function (e) { return '<div class="ev"><b>' + br(e.d) + '</b> · ' + esc(e.t) + '</div>'; }).join('');
+  const hist = evs.slice().reverse().map(function (e) { return '<div class="ev"><b>' + br(e.d) + '</b> · ' + esc(e.t) + '</div>'; }).join('');
+  $('detail-hist').innerHTML = hist;
+  $('detail-hist-ger').innerHTML = hist;
 
   // --- cronograma: Gerência e GP acompanham (só leitura); o técnico edita o checklist ---
   if (Auth.areaProgramador() || Auth.souCQ()) { renderCartoesConsulta(p); return; }
@@ -174,14 +165,22 @@ export function renderDetalhe() {
           '<span title="' + esc(it.t) + '">' + esc(it.t) + '</span></span>' +
         '<input class="dias" type="number" min="0" max="' + DIAS_MAX_TAREFA + '" value="' + it.dias + '" data-change="mudarDias" data-arg="' + it.idx + '" ' +
           (it.done ? 'disabled' : '') + ' aria-label="' + esc(T('cr.duracao') + ' — ' + it.t) + '">' +
-        '<span class="data' + classePrev + '" title="' + esc(T('cr.deAte', br(it.inicio), br(it.fim))) + '">' + br(it.fim) + '</span>' +
+        (it.done ? '<span class="data' + classePrev + '" title="' + esc(T('cr.deAte', br(it.inicio), br(it.fim))) + '">' + br(it.fim) + '</span>'
+          : '<input type="date" class="data data-ed' + classePrev + '" value="' + esc(it.fim || '') + '" min="' + esc(it.inicio || '') + '" max="' + esc(p.pcpFim || '') + '" data-change="mudarFimTarefa" data-arg="' + it.idx + '" title="' + esc(T('cr.deAte', br(it.inicio), br(it.fim))) + '" aria-label="' + esc(T('cr.previstoDe', it.t)) + '">') +
         '<span class="data real">' + (it.done ? br(it.doneAt) : '—') + '</span>' +
         '<button type="button" class="obs-btn' + (temObs ? ' tem' : '') + '" data-acao="abrirObs" data-arg="' + it.idx + '" title="' +
           esc(temObs ? T('cr.obsVer') : T('cr.obsAdd')) + '" aria-label="' + esc(T('cr.obs') + ' — ' + it.t) + '">' + (temObs ? '📝' : '＋') + '</button>' +
-        '<button type="button" class="rm" data-acao="removerItem" data-arg="' + it.idx + '" title="' + esc(T('cr.remover')) + '" aria-label="' + esc(T('cr.remover') + ' — ' + it.t) + '">✕</button></div>';
+        (it.done ? '<span></span>' : '<button type="button" class="rm" data-acao="removerItem" data-arg="' + it.idx + '" title="' + esc(T('cr.remover')) + '" aria-label="' + esc(T('cr.remover') + ' — ' + it.t) + '">✕</button>') + '</div>';
     }).join('');
   }
 
+  const selPos = $('detail-checklist-pos');
+  if (selPos && document.activeElement !== selPos) {
+    const atualPos = selPos.value;
+    selPos.innerHTML = '<option value="">' + esc(T('cr.posFim')) + '</option>' +
+      p.checklist.map(function (it, k) { return '<option value="' + (k + 1) + '">' + esc(T('cr.posDepois', it.t)) + '</option>'; }).join('');
+    selPos.value = atualPos && Number(atualPos) <= p.checklist.length ? atualPos : '';
+  }
   const cont = { atrasada: 0, chegando: 0 };
   c.itens.forEach(function (i) { if (cont[i.situacao] != null) cont[i.situacao]++; });
   $('crono-resumo').innerHTML =
@@ -191,6 +190,18 @@ export function renderDetalhe() {
     (cont.chegando ? '<span style="color:var(--amber-ink)">' + esc(T('cr.vencendo')) + ': <b>' + cont.chegando + '</b></span>' : '');
   $('crono-alerta').innerHTML = (c.estouro > 0 && !parado)
     ? '<div class="crono-alerta">' + esc(T('cr.alertaEstouro', plural(c.estouro, 'x.dia', 'x.dias'), br(p.pcpFim))) + '</div>' : '';
+}
+
+// Processos ligados do projeto, cada um com a sua janela
+function processosHtml(p) {
+  const proc = Projeto.processosDe(p);
+  const on = Projeto.PROCESSOS.filter(function (k) { return proc[k].on; });
+  if (!on.length) return '';
+  return '<div class="proc-janelas">' + on.map(function (k) {
+    const x = proc[k];
+    return '<span class="proc-jan" title="' + esc(T('proc.' + k)) + '">' + Projeto.SIMBOLO_PROCESSO[k] + ' <b>' + esc(T('proc.' + k)) + '</b> ' +
+      (x.ini ? br(x.ini) + ' → ' + br(x.fim) : '<span class="hint-inline">—</span>') + '</span>';
+  }).join('') + '</div>';
 }
 
 // Toda mudança feita no detalhe passa por aqui.
@@ -321,11 +332,38 @@ function marcarItem(_valor, _b, el) {
   el.blur();
   aplicar();
 }
+// Reajuste dentro do prazo: se não couber no fim do PCP, desfaz e avisa.
+function reajustar(p, fixo, desfazer) {
+  const r = Projeto.redistribuir(p, fixo);
+  if (r.ok) return true;
+  desfazer();
+  toast(T('cr.naoCabe', br(p.pcpFim)), { tipo: 'erro' });
+  renderDetalhe();
+  return false;
+}
+function fimDa(p, i) { const c = Cronograma.calcular(Object.assign({}, p, { checklist: p.checklist.slice() })); return c.itens[i] ? c.itens[i].fim : null; }
 function mudarDias(valor, _b, el) {
-  const p = projetoAtual(), i = Number(el.dataset.arg);
-  if (!p || !p.checklist[i]) return;
-  p.checklist[i].dias = Math.min(DIAS_MAX_TAREFA, Math.max(0, Math.round(Number(valor)) || 0));
+  const p = projetoAtual(), i = Number(el.dataset.arg), it = p && p.checklist[i];
+  if (!it || it.done) return;
+  const antes = it.dias, deFim = fimDa(p, i);
+  it.dias = Math.min(DIAS_MAX_TAREFA, Math.max(0, Math.round(Number(valor)) || 0));
   el.blur();
+  if (!reajustar(p, i, function () { it.dias = antes; })) return;
+  Projeto.registrarChecklist(p, 'remarcou', it.t, Auth.nomeExibicao(), deFim, fimDa(p, i));
+  aplicar();
+}
+// O técnico muda a data prevista (fim) de uma tarefa: vira a duração dela.
+function mudarFimTarefa(valor, _b, el) {
+  const p = projetoAtual(), i = Number(el.dataset.arg), it = p && p.checklist[i];
+  if (!it || it.done || !valor) return;
+  const c = Cronograma.calcular(p), ini = c.itens[i] && c.itens[i].inicio;
+  el.blur();
+  if (!ini || valor < ini) { toast(T('cr.antesDoInicio', br(ini)), { tipo: 'erro' }); renderDetalhe(); return; }
+  if (p.pcpFim && valor > p.pcpFim) { toast(T('cr.naoCabe', br(p.pcpFim)), { tipo: 'erro' }); renderDetalhe(); return; }
+  const antes = it.dias, deFim = c.itens[i].fim;
+  it.dias = Math.min(DIAS_MAX_TAREFA, Math.max(1, Cronograma.duracaoUtil(ini, valor, p.paralisacoes)));
+  if (!reajustar(p, i, function () { it.dias = antes; })) return;
+  Projeto.registrarChecklist(p, 'remarcou', it.t, Auth.nomeExibicao(), deFim, fimDa(p, i));
   aplicar();
 }
 function addItemChecklist() {
@@ -333,23 +371,30 @@ function addItemChecklist() {
   const p = projetoAtual();
   if (!t || !p) { input.focus(); return; }
   const dias = Math.min(DIAS_MAX_TAREFA, Math.max(0, Number($('detail-checklist-dias').value) || 0));
-  p.checklist.push({ t: t, dias: dias, done: false, doneAt: null, obs: '', obsEm: null });
+  const pos = $('detail-checklist-pos').value === '' ? p.checklist.length : Math.min(p.checklist.length, Number($('detail-checklist-pos').value));
+  // sem duração: entra com a média das não feitas (o reajuste divide o tempo)
+  const naoFeitas = p.checklist.filter(function (i) { return !i.done; });
+  const media = naoFeitas.length ? Math.max(1, Math.round(naoFeitas.reduce(function (a, i) { return a + (Number(i.dias) || 0); }, 0) / naoFeitas.length)) : 1;
+  p.checklist.splice(pos, 0, { t: t, dias: dias || media, done: false, doneAt: null, obs: '', obsEm: null });
+  if (!reajustar(p, dias ? pos : undefined, function () { p.checklist.splice(pos, 1); })) return;
+  Projeto.registrarChecklist(p, 'incluiu', t, Auth.nomeExibicao());
   input.value = '';
+  $('detail-checklist-dias').value = '0';
   aplicar();
   input.focus();
 }
 function removerItem(idx) {
   const p = projetoAtual(), i = Number(idx), it = p && p.checklist[i];
   if (!it) return;
+  if (it.done) { toast(T('cr.naoApagaFeita'), { tipo: 'erro' }); return; }
   const id = p.id, copia = JSON.parse(JSON.stringify(it));
-  p.checklist.splice(i, 1);
-  aplicar();
-  toast(T('t.tarefaRemovida'), { acao: { label: T('btn.desfazer'), fn: function () {
-    const atual = buscarProjeto(id);
-    if (!atual) return;
-    atual.checklist.splice(Math.min(i, atual.checklist.length), 0, copia);
-    if (estado.idDetalhe === id) aplicar(); else persistir().catch(function () {});
-  } } });
+  confirmar(T('cr.apagarQ', it.t), { titulo: T('cr.remover'), textoOk: T('btn.excluir'), perigo: true }).then(function (ok) {
+    if (!ok || !buscarProjeto(id)) return;
+    p.checklist.splice(i, 1);
+    Projeto.redistribuir(p);
+    Projeto.registrarChecklist(p, 'apagou', copia.t, Auth.nomeExibicao());
+    aplicar(T('t.tarefaRemovida'));
+  });
 }
 
 /* -------------------------------------------------------- observação */
@@ -435,7 +480,7 @@ registrarAcoes({
   pedirParalisar: function () { Pedidos.pedir(projetoAtual(), 'paralisar'); },
   pedirCancelar: function () { Pedidos.pedir(projetoAtual(), 'cancelar'); },
   abrirReagendar: abrirReagendar, fecharReagendar: fecharReagendar, confirmarReagendar: confirmarReagendar,
-  marcarItem: marcarItem, mudarDias: mudarDias, addItemChecklist: addItemChecklist, removerItem: removerItem,
+  marcarItem: marcarItem, mudarDias: mudarDias, mudarFimTarefa: mudarFimTarefa, addItemChecklist: addItemChecklist, removerItem: removerItem,
   abrirObs: abrirObs, salvarObs: function () { salvarObs(false); }, apagarObs: function () { salvarObs(true); },
   fecharObs: function () { fecharModal('modal-obs'); },
   enviarChat: enviarChat

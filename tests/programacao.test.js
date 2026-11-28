@@ -6,12 +6,12 @@ import * as Fin from '../js/dominio/finalizadas.js';
 // 09/11/2026 é segunda-feira
 const H = '2026-11-09';
 
-test('situação na programação: em aberto, programada, baixa do CQ, RNC, finalizada', () => {
+test('situação na programação: em aberto, programada, RNC; a aprovação do CQ encerra', () => {
   const cald = { area: 'caldeiraria', status: 'aberta' };
   assert.equal(Prog.situacao(cald), 'emAberto');
   assert.equal(Prog.situacao({ ...cald, programacao: { terceirizadaId: 't1', previsaoFim: '2026-11-20' } }), 'programada');
   assert.equal(Prog.situacao({ ...cald, status: 'retrabalho' }), 'rnc');
-  assert.equal(Prog.situacao({ ...cald, status: 'aprovada' }), 'baixaCq');
+  assert.equal(Prog.situacao({ ...cald, status: 'aprovada' }), 'encerrada');
   assert.equal(Prog.situacao({ ...cald, status: 'aprovada', encerradaEm: 'x' }), 'encerrada');
   assert.equal(Prog.situacao({ area: 'usinagem', status: 'aberta' }, true), 'programada');
   assert.equal(Prog.situacao({ area: 'usinagem', status: 'aberta' }, false), 'emAberto');

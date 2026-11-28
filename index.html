@@ -97,6 +97,8 @@
   <div class="so-painel-novo ger-ola">
     <h2 id="ger-ola-nome">Bem-vindo</h2>
     <div class="ger-ola-quando" id="ger-ola-quando">—</div>
+    <div class="ger-ola-semana" id="ger-ola-semana"></div>
+    <div class="ger-ola-quem" id="ger-ola-quem"></div>
   </div>
   <div class="actionbar so-nao-cq">
     <div class="hint" id="dash-scope">—</div>
@@ -303,26 +305,21 @@
       <div class="janela" id="janela-entrega"></div>
     </div>
 
-    <div class="detail-grid">
-      <div class="card panel-pad">
-        <div class="panel-title" data-i18n="d.infoTitulo">Informações gerais</div>
-        <div id="detail-info"></div>
-        <div class="action-row detail-actions-print-hide" id="detail-actions"></div>
-        <div class="reagendar-box" id="reagendar-box" style="display:none;">
+    <div class="detail-acoes-barra detail-actions-print-hide">
+      <div class="action-row" id="detail-actions"></div>
+      <div class="reagendar-box" id="reagendar-box" style="display:none;">
           <select id="reagendar-campo" style="max-width:180px;">
             <option value="pcpInicio" data-i18n="d.inicioPcp">Início do PCP</option>
             <option value="pcpFim" data-i18n="d.fimPcp">Fim do PCP</option>
-            <option value="prodInicio" data-i18n="d.inicioProd">Início da produção</option>
-            <option value="prodFim" data-i18n="d.fimProd">Fim da produção</option>
             <option value="entrega" data-i18n="d.entregaCampo">Entrega do projeto</option>
           </select>
           <input type="date" id="reagendar-data" style="max-width:170px;">
           <button type="button" class="btn btn-primary" data-acao="confirmarReagendar" data-i18n="d.confirmar">Confirmar</button>
           <button type="button" class="btn btn-outline" data-acao="fecharReagendar" data-i18n="btn.cancelar">Cancelar</button>
         </div>
-        <div class="hist" id="detail-hist"></div>
-      </div>
+    </div>
 
+    <div class="detail-grid">
       <!-- Gerência e GP: as três áreas do projeto; o cartão escolhido abre a área embaixo -->
       <div class="so-areas ger-areas-col">
         <div class="ger-areas" id="ger-areas" role="tablist"></div>
@@ -331,13 +328,13 @@
           <div class="panel-note" data-i18n="ac.nota">Andamento do cronograma do PCP feito pelo técnico de processo.</div>
           <div class="esp-acoes ac-atalhos">
             <button type="button" class="btn btn-outline" data-acao="abrirEspelho" data-i18n="ac.planilha">📋 BOM</button>
-            <button type="button" class="btn btn-outline" data-acao="abrirAvanco" data-i18n="ac.avanco">📈 Avanço</button>
             <button type="button" class="btn btn-outline" data-acao="abrirComerciais" data-i18n="ac.comerciais">Itens comerciais</button>
             <button type="button" class="btn btn-outline" data-acao="abrirServicos" data-i18n="ac.servicos">Serviços</button>
             <button type="button" class="btn btn-outline" data-acao="abrirTarefas" data-i18n="ac.tarefas">Tarefas</button>
           </div>
           <div id="ac-resumo"></div>
           <div id="ac-gantt"></div>
+          <details class="hist-box"><summary data-i18n="d.historicoTit">Histórico</summary><div class="hist" id="detail-hist-ger"></div></details>
         </div>
         <div class="card panel-pad area-painel" id="area-planejamento" role="tabpanel" hidden>
           <div class="panel-title" data-i18n="ar.planTitulo">Engenharia de Planejamento</div>
@@ -367,11 +364,14 @@
         <div id="detail-checklist"></div>
         <div class="crono-resumo" id="crono-resumo"></div>
         <div id="crono-alerta"></div>
-        <div class="detail-actions-print-hide" style="display:flex; gap:8px; margin-top:12px;">
+        <div class="detail-actions-print-hide crono-nova">
           <input id="detail-checklist-new" data-i18n-ph="cr.novaTarefa" placeholder="Nova tarefa..." data-enter="addItemChecklist">
-          <input id="detail-checklist-dias" type="number" min="0" max="90" value="0" style="max-width:74px; text-align:center;" data-i18n-title="cr.duracao" title="Duração em dias">
+          <select id="detail-checklist-pos" data-i18n-title="cr.posicao" title="Onde entra"></select>
+          <input id="detail-checklist-dias" type="number" min="0" max="90" value="0" data-i18n-title="cr.duracaoNova" title="Duração em dias (0 = o site divide)">
           <button type="button" class="btn btn-outline" data-acao="addItemChecklist" data-i18n="cr.adicionar">+ Adicionar</button>
         </div>
+        <div class="hint-txt crono-dica" data-i18n="cr.dicaReajuste">Incluir, apagar ou remarcar uma tarefa reajusta as não feitas para terminar no fim do PCP.</div>
+        <details class="hist-box"><summary data-i18n="d.historicoTit">Histórico</summary><div class="hist" id="detail-hist"></div></details>
       </div>
       </div>
     </div>
@@ -398,11 +398,13 @@
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:12px; flex-wrap:wrap;">
         <span class="panel-title" style="margin-bottom:0;" data-i18n="x.linhaTitulo">Linha do tempo das entregas</span>
         <div class="fab-visoes tl-visao" id="tl-visao" role="tablist"></div>
-        <div class="legend">
-          <span><span class="dot-lg" style="background:var(--rust)"></span><span data-i18n="x.legAtrasado">Atrasado</span></span>
-          <span><span class="dot-lg" style="background:var(--amber)"></span><span data-i18n="x.legParalisado">Paralisado</span></span>
-          <span><span class="dot-lg" style="background:var(--ink-faint)"></span><span data-i18n="x.legFinalizado">Finalizado / Cancelado</span></span>
-          <span><span class="dot-lg" style="background:var(--violet)"></span><span data-i18n="x.legAndamento">Em andamento</span></span>
+        <div class="legend gt-legenda">
+          <span><span class="gt-leg gt-pcp"></span><span data-i18n="proc.pcp">PCP</span></span>
+          <span><span class="gt-leg gt-cald"></span><span data-i18n="proc.cald">Caldeiraria</span></span>
+          <span><span class="gt-leg gt-usi"></span><span data-i18n="proc.usi">Usinagem</span></span>
+          <span><span class="gt-leg gt-pint"></span><span data-i18n="proc.pint">Pintura</span></span>
+          <span><span class="gt-leg gt-mont"></span><span data-i18n="proc.mont">Montagem mecânica</span></span>
+          <span><span class="gt-losango-leg">◆</span><span data-i18n="tl.entrega">Entrega</span></span>
         </div>
       </div>
       <div id="timeline-track"></div>
@@ -449,13 +451,8 @@
   <div class="actionbar">
     <div class="hint" id="fab-count">—</div>
     <div class="btns">
-      <div id="btn-subir-planilha" class="menu-add">
-        <button type="button" class="btn btn-primary" data-acao="toggleAddOps" aria-haspopup="menu" aria-expanded="false"><span data-i18n="opm.adicionar">＋ Adicionar OPs</span> ▾</button>
-        <div class="filter-panel menu-add-painel" id="addops-panel" role="menu">
-          <button type="button" class="menu-add-item" role="menuitem" data-acao="abrirOpManual"><b data-i18n="opm.mManual">✎ Manual</b><span data-i18n="opm.mManualNota">Cadastrar uma OP por vez</span></button>
-          <button type="button" class="menu-add-item" role="menuitem" data-acao="abrirPlanilha"><b data-i18n="opm.mPlanilha">⭱ Planilha</b><span data-i18n="opm.mPlanilhaNota">Várias OPs de um projeto (.xls, .xlsx, .csv)</span></button>
-          <button type="button" class="menu-add-item" role="menuitem" data-acao="addOpsPdf"><b data-i18n="opm.mPdf">⭱ PDF da OP</b><span data-i18n="opm.mPdfNota">Operações e horas de cada OP (PDF do sistema)</span></button>
-        </div>
+      <div id="btn-subir-planilha">
+        <button type="button" class="btn btn-primary" data-acao="abrirPlanilha" data-i18n="opm.subirBom">⭱ Subir BOM (planilha)</button>
       </div>
     </div>
   </div>
@@ -742,50 +739,66 @@
 </div>
 
 <!-- ==================== MODAL NOVO / EDITAR ==================== -->
-<div class="modal-overlay" id="modal-projeto" role="dialog" aria-modal="true" aria-labelledby="modal-projeto-title">
-  <div class="modal-box">
+<div class="modal-overlay tela-cheia" id="modal-projeto" role="dialog" aria-modal="true" aria-labelledby="modal-projeto-title">
+  <div class="modal-box fm-tela">
     <div class="modal-header">
-      <h2 id="modal-projeto-title">Novo projeto</h2>
+      <div><h2 id="modal-projeto-title">Novo projeto</h2><div class="hint-txt" id="fm-etapa">Etapa 1 de 2 · Dados do projeto</div></div>
       <button type="button" class="modal-close" data-acao="fecharModal" data-i18n-title="btn.fechar" aria-label="Fechar">✕</button>
     </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="field"><label data-i18n="fm.commessa">COMMESSA / CÓDIGO *</label><input id="f-commessa" placeholder="ex: 2026-024"></div>
-        <div class="field"><label data-i18n="fm.cliente">CLIENTE</label><input id="f-cliente" list="dl-cliente" placeholder="ex: Stellantis"><datalist id="dl-cliente"></datalist></div>
-        <div class="field span2"><label data-i18n="fm.descricao">DESCRIÇÃO *</label><input id="f-descricao" placeholder="ex: Estrutura gôndola linha 3"></div>
-        <div class="field"><label data-i18n="fm.gp">GP (GERENTE DE PROJETOS)</label><select id="f-gp"><option value="" data-i18n="fm.semGp">— selecione —</option></select></div>
-        <div class="field"><label data-i18n="fm.responsavel">TÉCNICO DE PROCESSO</label><select id="f-responsavel"><option value="" data-i18n="fm.semResponsavel">— ninguém designado —</option></select></div>
-        <div class="field"><label><span data-i18n="fm.om">ORDEM DE MANUTENÇÃO</span> <span style="font-weight:400; color:var(--ink-faint);" data-i18n="fm.opcional">(opcional)</span></label><input id="f-om" placeholder="ex: OM-4482"></div>
-        <div class="field"><label data-i18n="fm.dataSolic">DATA DE SOLICITAÇÃO</label><input id="f-dataSolicitacao" type="date"></div>
-      </div>
-
-      <div style="border-top:1px solid var(--line); margin:16px 0 14px; padding-top:14px;">
-        <div style="font-weight:700; font-size:12.5px; margin-bottom:2px;" data-i18n="fm.janelaPcp">Cronograma macro</div>
-        <div class="hint-txt" style="margin-bottom:10px;" data-i18n="fm.janelaPcpNota">Pode ficar em branco: o projeto fica "aguardando cronograma" até o GP definir. O técnico só recebe o projeto depois disso.</div>
-        <div class="form-grid">
-          <div class="field"><label data-i18n="fm.pcpInicio">INÍCIO DO PCP</label><input id="f-pcpInicio" type="date"></div>
-          <div class="field"><label data-i18n="fm.pcpFim">FIM DO PCP</label><input id="f-pcpFim" type="date"></div>
-          <div class="field"><label data-i18n="fm.prodInicio">INÍCIO DA PRODUÇÃO</label><input id="f-prodInicio" type="date"></div>
-          <div class="field"><label data-i18n="fm.prodFim">FIM DA PRODUÇÃO</label><input id="f-prodFim" type="date"></div>
+    <div class="modal-body fm-corpo">
+      <div id="fm-passo1">
+        <div class="fm-secao">
+          <div class="fm-secao-tit" data-i18n="fm.secDados">Dados do projeto</div>
+          <div class="form-grid">
+            <div class="field"><label data-i18n="fm.commessa">COMMESSA / CÓDIGO *</label><input id="f-commessa" placeholder="ex: 2026-024"></div>
+            <div class="field"><label><span data-i18n="fm.om">ORDEM DE MANUTENÇÃO</span> <span class="fm-opc" data-i18n="fm.quandoAplicavel">(quando aplicável)</span></label><input id="f-om" placeholder="ex: P.3785"></div>
+            <div class="field"><label data-i18n="fm.cliente">CLIENTE</label><input id="f-cliente" list="dl-cliente" placeholder="ex: Stellantis"><datalist id="dl-cliente"></datalist></div>
+            <div class="field"><label data-i18n="fm.dataSolic">DATA DE SOLICITAÇÃO</label><input id="f-dataSolicitacao" type="date"></div>
+            <div class="field span2"><label data-i18n="fm.descricao">DESCRIÇÃO *</label><input id="f-descricao" placeholder="ex: Estrutura gôndola linha 3"></div>
+            <div class="field"><label data-i18n="fm.pm">PM RESPONSÁVEL</label><select id="f-gp"><option value="" data-i18n="fm.semGp">— selecione —</option></select></div>
+            <div class="field"><label data-i18n="fm.responsavel">TÉCNICO DE PROCESSOS</label><select id="f-responsavel"><option value="" data-i18n="fm.semResponsavel">— ninguém designado —</option></select></div>
+          </div>
+        </div>
+        <div class="fm-secao">
+          <div class="fm-secao-tit" data-i18n="fm.secProcessos">O que o projeto tem</div>
+          <div class="hint-txt" data-i18n="fm.processosNota">Ligue os processos deste projeto. Cada um ganha início e fim no cronograma.</div>
+          <div class="proc-chaves">
+          <label class="proc-chave"><input type="checkbox" id="f-proc-cald" data-change="alternarProcesso"><span class="proc-sw" aria-hidden="true"></span><span class="proc-ico">🔨</span><span data-i18n="proc.cald">Caldeiraria</span></label>
+          <label class="proc-chave"><input type="checkbox" id="f-proc-usi" data-change="alternarProcesso"><span class="proc-sw" aria-hidden="true"></span><span class="proc-ico">⚙️</span><span data-i18n="proc.usi">Usinagem</span></label>
+          <label class="proc-chave"><input type="checkbox" id="f-proc-pint" data-change="alternarProcesso"><span class="proc-sw" aria-hidden="true"></span><span class="proc-ico">🎨</span><span data-i18n="proc.pint">Pintura</span></label>
+          <label class="proc-chave"><input type="checkbox" id="f-proc-mont" data-change="alternarProcesso"><span class="proc-sw" aria-hidden="true"></span><span class="proc-ico">🔧</span><span data-i18n="proc.mont">Montagem mecânica</span></label>
+          </div>
         </div>
       </div>
-
-      <div style="border-top:1px solid var(--line); padding-top:14px;">
-        <div style="font-weight:700; font-size:12.5px; margin-bottom:2px;" data-i18n="fm.entregaTit">Entrega do projeto</div>
-        <div class="hint-txt" style="margin-bottom:10px;" data-i18n="fm.entregaNota">Quando a peça precisa estar pronta.</div>
-        <div class="form-grid">
-          <div class="field"><label data-i18n="fm.entrega">DATA DE ENTREGA *</label><input id="f-entrega" type="date"></div>
-          <div class="field"><label data-i18n="fm.statusAuto">STATUS (AUTOMÁTICO)</label><input id="f-status-preview" value="—" disabled></div>
+      <div id="fm-passo2" hidden>
+        <div class="fm-secao">
+          <div class="fm-secao-tit" data-i18n="fm.secCronograma">Cronograma</div>
+          <div class="hint-txt" data-i18n="fm.janelaPcpNota2">Pode ficar em branco: o projeto fica "aguardando cronograma" até o PM definir.</div>
+          <div class="fm-proc-linha"><div class="fm-proc-nome"><span class="proc-ico">📋</span><span data-i18n="proc.pcp">PCP</span></div>
+            <div class="field"><label data-i18n="fm.inicio">INÍCIO</label><input id="f-pcpInicio" type="date"></div>
+            <div class="field"><label data-i18n="fm.fim">FIM</label><input id="f-pcpFim" type="date"></div></div>
+          <div class="fm-proc-linha" id="fm-linha-cald" hidden><div class="fm-proc-nome"><span class="proc-ico">🔨</span><span data-i18n="proc.cald">Caldeiraria</span></div><div class="field"><label data-i18n="fm.inicio">INÍCIO</label><input id="f-proc-cald-ini" type="date"></div><div class="field"><label data-i18n="fm.fim">FIM</label><input id="f-proc-cald-fim" type="date"></div></div>
+          <div class="fm-proc-linha" id="fm-linha-usi" hidden><div class="fm-proc-nome"><span class="proc-ico">⚙️</span><span data-i18n="proc.usi">Usinagem</span></div><div class="field"><label data-i18n="fm.inicio">INÍCIO</label><input id="f-proc-usi-ini" type="date"></div><div class="field"><label data-i18n="fm.fim">FIM</label><input id="f-proc-usi-fim" type="date"></div></div>
+          <div class="fm-proc-linha" id="fm-linha-pint" hidden><div class="fm-proc-nome"><span class="proc-ico">🎨</span><span data-i18n="proc.pint">Pintura</span></div><div class="field"><label data-i18n="fm.inicio">INÍCIO</label><input id="f-proc-pint-ini" type="date"></div><div class="field"><label data-i18n="fm.fim">FIM</label><input id="f-proc-pint-fim" type="date"></div></div>
+          <div class="fm-proc-linha" id="fm-linha-mont" hidden><div class="fm-proc-nome"><span class="proc-ico">🔧</span><span data-i18n="proc.mont">Montagem mecânica</span></div><div class="field"><label data-i18n="fm.inicio">INÍCIO</label><input id="f-proc-mont-ini" type="date"></div><div class="field"><label data-i18n="fm.fim">FIM</label><input id="f-proc-mont-fim" type="date"></div></div>
+          <div class="hint-txt" id="fm-sem-processos" data-i18n="fm.semProcessos">Nenhum processo ligado na etapa 1.</div>
+        </div>
+        <div class="fm-secao">
+          <div class="fm-secao-tit" data-i18n="fm.entregaTit">Entrega do projeto</div>
+          <div class="form-grid">
+            <div class="field"><label data-i18n="fm.entrega">DATA DE ENTREGA *</label><input id="f-entrega" type="date"></div>
+            <div class="field"><label data-i18n="fm.statusAuto">STATUS (AUTOMÁTICO)</label><input id="f-status-preview" value="—" disabled></div>
+          </div>
+          <div class="hint-txt" style="margin-top:4px;" id="fm-checklist-nota">—</div>
         </div>
       </div>
-
-      <div class="hint-txt" style="margin-top:6px;" data-i18n="fm.rodape">O status vem da entrega.</div>
-      <div class="hint-txt" style="margin-top:4px;" id="fm-checklist-nota">—</div>
       <div class="form-error" id="f-erro"></div>
     </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-outline" data-acao="fecharModal" data-i18n="btn.cancelar">Cancelar</button>
-      <button type="button" class="btn btn-primary" id="f-submit" data-acao="salvarProjeto">+ Incluir projeto</button>
+    <div class="modal-footer fm-rodape">
+      <button type="button" class="btn btn-outline" id="fm-voltar" data-acao="passoProjeto" data-arg="1" hidden data-i18n="fm.voltar">← Voltar</button>
+      <button type="button" class="btn btn-outline" id="fm-cancelar" data-acao="fecharModal" data-i18n="btn.cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="fm-proximo" data-acao="passoProjeto" data-arg="2" data-i18n="fm.proximo">Próximo: cronograma →</button>
+      <button type="button" class="btn btn-primary" id="f-submit" data-acao="salvarProjeto" hidden>+ Incluir projeto</button>
     </div>
   </div>
 </div>
@@ -1170,7 +1183,6 @@
       <button type="button" class="btn btn-outline" data-acao="fecharModal" data-arg="modal-op-detalhe" data-i18n="btn.fechar">Fechar</button>
       <span id="opd-cq" class="opd-cq"></span>
       <span id="opd-especial"></span>
-      <button type="button" class="btn btn-success" id="opd-finalizar" data-acao="finalizarOpDetalhe" hidden data-i18n="prog.finalizar">✔ Finalizar OP</button>
     </div>
   </div>
 </div>
@@ -1564,6 +1576,11 @@
   <aside class="acesso-arte" role="img" aria-label="ROSTAG PCP — Planejamento, Controle, Produção"></aside>
 
   <main class="acesso-lado">
+    <div class="acesso-marca">
+      <img src="img/logo.png" alt="" width="64" height="64" class="acesso-logo">
+      <div class="acesso-nome"><span class="acesso-nome-1">Rostag</span> <span class="acesso-nome-2">PCP</span></div>
+      <div class="acesso-quando" id="acesso-quando"></div>
+    </div>
     <div class="acesso-cartao">
 
       <!-- entrar -->

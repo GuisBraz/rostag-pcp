@@ -24,10 +24,10 @@ import { avisoErro } from './app.js';
 import * as Ops from '../dados/ops.js';
 import { naFila, pillSituacao, classeAtraso } from './opDetalhe.js';
 
-const SITUACOES = ['todas', 'emAberto', 'programada', 'baixaCq', 'rnc', 'encerrada'];
+const SITUACOES = ['todas', 'emAberto', 'programada', 'rnc', 'encerrada'];
 const ORDEM_SIT = { emAberto: 0, programada: 1, baixaCq: 2, rnc: 3, encerrada: 4, morta: 5 };
 const ALERTAS = ['semRoteiro', 'foraPlanilha'];
-const GRUPOS = { andamento: ['emAberto', 'programada', 'baixaCq'], rnc: ['rnc'] };
+const GRUPOS = { andamento: ['emAberto', 'programada'], rnc: ['rnc'] };
 const ICONES = { pintura: '🎨', servicoExterno: '🚚', ttat: '🔥', oxidacao: '⚫' };
 let aberta = null;   // { projetoId, grupo, sit, alerta, area, projeto, busca, planilha }
 let ordem = { campo: 'numero', dir: 1 };   // vale entre aberturas, como no Explorer
@@ -77,7 +77,6 @@ function programacaoDe(o) {
   return f.length ? f.join(', ') : '';
 }
 
-function podeAdicionar(p) { return !!p && (Auth.souGerente() || p.responsavelUid === Auth.uid()); }
 // Apagar OPs: Gerência, GP do projeto e técnico responsável (o técnico só as em aberto).
 function podeApagar(p) { return !!p && (Auth.souGerente() || p.responsavelUid === Auth.uid() || (Auth.papel() === 'gp' && p.gpUid === Auth.uid())); }
 function soAberta() { return !Auth.souGerente() && Auth.papel() !== 'gp'; }
@@ -119,12 +118,9 @@ export function render() {
   const op0 = aberta.projetoId && !p ? estado.ops.find(function (o) { return o.projetoId === aberta.projetoId; }) : null;
   $('lops-titulo').textContent = p ? T('lops.tituloProjeto', nomeProjeto(p)) : (op0 ? T('lops.tituloProjeto', op0.commessa) : T('lops.titulo.' + aberta.grupo));
   $('lops-sub').textContent = p ? (p.descricao || '') : (op0 ? (op0.descricaoProjeto || '') : T('lops.sub'));
-  const adicionar = podeAdicionar(p), apaga = podeApagar(p);
+  const apaga = podeApagar(p);
   const nMarc = Object.keys(marcadas).filter(function (id) { return marcadas[id]; }).length;
-  $('lops-acoes').innerHTML = (adicionar
-    ? '<button type="button" class="btn btn-outline" data-acao="addOpsPdf" data-arg="' + esc(p.id) + '">' + esc(T('lops.pdf')) + '</button>' +
-      '<button type="button" class="btn btn-outline" data-acao="novaOpProjeto" data-arg="' + esc(p.id) + '">' + esc(T('lops.manual')) + '</button>'
-    : '') + (apaga
+  $('lops-acoes').innerHTML = (apaga
     ? '<button type="button" class="btn btn-danger" data-acao="apagarMarcadasOps"' + (nMarc ? '' : ' disabled') + '>' + esc(T('lops.apagarSel', nMarc)) + '</button>' +
       '<button type="button" class="btn btn-outline lops-apagar-todas" data-acao="apagarTodasOps">' + esc(T('lops.apagarTodas')) + '</button>'
     : '');

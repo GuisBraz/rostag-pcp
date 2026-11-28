@@ -334,7 +334,7 @@ export default {
   'x.entregaAtrasada':'entrega atrasada em {0}', 'x.entregaHoje':'entrega é hoje', 'x.entregaEm':'entrega em {0}',
   'x.tarefaAtraso':'{0} na tarefa “{1}”', 'x.tarefaVence':'tarefa “{0}” vence em {1}',
 'x.todosProjetos':'Todos os projetos',
-  'x.linhaTitulo':'Linha do tempo das entregas',
+  'x.linhaTitulo':'Linha do tempo (Gantt)',
   'x.legAtrasado':'Atrasado', 'x.legFinalizado':'Finalizado / Cancelado', 'x.legAndamento':'Em andamento',
   'x.legParalisado':'Paralisado',
 
@@ -439,7 +439,7 @@ export default {
   'nav.fabrica':'Fábrica', 'nav.rnc':'RNC', 'a.fabrica':'Fábrica', 'a.rnc':'RNC',
   'sub.fabrica':'Ordens de produção, avanço e controle de qualidade', 'sub.rnc':'Registros de não conformidade (R02) das OPs',
 
-  'fm.gp':'GP (GERENTE DE PROJETOS)', 'fm.responsavel':'TÉCNICO DE PROCESSO', 'fm.semResponsavel':'— ninguém designado —',
+  'fm.gp':'GP (GERENTE DE PROJETOS)', 'fm.responsavel':'TÉCNICO DE PROCESSOS', 'fm.semResponsavel':'— ninguém designado —',
   'fm.janelaPcp':'Cronograma macro',
   'fm.janelaPcpNota':'Pode ficar em branco: o projeto fica "aguardando cronograma" até o GP definir. O técnico só recebe o projeto depois disso.',
   'fm.pcpInicio':'INÍCIO DO PCP', 'fm.pcpFim':'FIM DO PCP', 'fm.prodInicio':'INÍCIO DA PRODUÇÃO', 'fm.prodFim':'FIM DA PRODUÇÃO',
@@ -450,7 +450,7 @@ export default {
   'fm.checklistZero':'O projeto nasce com as {0} tarefas do PCP. Quando o cronograma for definido, os dias úteis do PCP são distribuídos entre elas (dá para ajustar tarefa a tarefa).',
 
   'sit.aguardando':'Aguardando cronograma', 'f.pcpAguardando':'Aguardando cronograma',
-  'd.tecnico':'Técnico', 'd.janelaPcp':'PCP', 'd.janelaProd':'PRODUÇÃO', 'd.inicioPcp':'Início do PCP', 'd.inicioProd':'Início da produção', 'd.fimProd':'Fim da produção',
+  'd.tecnico':'Técnico', 'd.janelaPcp':'PCP', 'd.janelaProd':'AVANÇO', 'd.inicioPcp':'Início do PCP', 'd.inicioProd':'Início da produção', 'd.fimProd':'Fim da produção',
   'd.aguardandoGestor':'Defina o início e o fim do PCP para liberar o projeto ao técnico.',
   'd.aguardandoNota':'O GP ainda não definiu as datas.', 'd.definirCronograma':'Definir cronograma',
   'd.pcpAtrasado':'PCP atrasado há {0} — reprograme se precisar.',
@@ -460,9 +460,9 @@ export default {
   'area.caldeiraria':'Caldeiraria', 'area.usinagem':'Usinagem',
   'op.aberta':'Aberta', 'op.aprovada':'Aprovada', 'op.rnc':'Em retrabalho', 'op.retrabalho':'Em retrabalho', 'op.desvio':'Aprovada c/ desvio', 'op.morta':'Peça morta',
 
-'fab.subirTit':'Subir planilha de avanço',
-  'fab.subirNota':'Suba a planilha de avanço pronta (.xls, .xlsx ou .csv). A lista inteira fica no projeto para todos verem; cada linha com "N° OP CALD" vira uma OP de caldeiraria e cada linha com "N° OP USINAGEM", uma de usinagem. Enviar de novo atualiza sem perder o que o CQ já deu baixa.',
-  'fab.projeto':'PROJETO', 'fab.arquivo':'ARQUIVO', 'fab.enviar':'Gravar lista e OPs',
+'fab.subirTit':'Subir BOM (planilha)',
+  'fab.subirNota':'Suba a planilha do projeto (.xls, .xlsx ou .csv). Só o escopo é gravado, como BOM: as colunas de OP são ignoradas.',
+  'fab.projeto':'PROJETO', 'fab.arquivo':'ARQUIVO', 'fab.enviar':'Gravar BOM',
   'fab.fArea':'ÁREA', 'fab.fProjeto':'PROJETO', 'fab.fBusca':'BUSCAR (OP, DESENHO, DESCRIÇÃO)',
   'fab.fCliente':'CLIENTE', 'fab.contagemNova':'{0} OPs · {1} abertas · {2} em retrabalho · {3} aprovadas ({4} com desvio) · {5} peças mortas',
   'fab.verRnc':'RNC {0}', 'fab.mortaPara':'Retrabalho na OP {0} · {1}', 'fab.origem':'retrabalho da OP {0}',
@@ -975,4 +975,10 @@ export default {
   'tec.avanco':'AVANÇO', 'tec.bomDet':'{0} peças de fabricação', 'tec.semBom':'BOM ainda não enviada.', 'tec.avancoDet':'Peças · {0} de {1} com baixa', 'tec.semAvanco':'Nasce da BOM.', 'bom.baixar':'⭳ Baixar BOM (Excel)', 'ac.avanco':'📈 Avanço', 'pl.marca.comercial':'Comercial', 'pl.marca.cald':'Caldeiraria', 'pl.marca.usin':'Usinagem', 'pl.marca.pintura':'Pintura', 'pl.marca.oxidacao':'Oxidação negra', 'pl.marca.servicoExterno':'Serviço externo', 'pl.marca.ttat':'TTAT (tratamento térmico)', 'pl.caldC':'🔨 CALD', 'pl.ttatC':'🔥 TTAT', 'avv.f.todos':'Todas', 'avv.f.andamento':'Em andamento', 'avv.f.semOp':'Sem OP', 'avv.f.concluidos':'Concluídas', 'avv.f.rnc':'Com RNC', 'avv.f.comerciais':'Comerciais', 'avv.cAvanco':'AVANÇO', 'avv.dicaArea':'{0}: {1} de {2} peças com baixa do programador', 'avv.semOp':'Peça ainda sem OP no site', 'avv.semBom':'A BOM deste projeto ainda não foi enviada. O Avanço nasce dela (quem sobe: técnico, GP ou Gerência).', 'avv.rodape':'BOM enviada por {0} em {1} · {2} · % pela baixa do programador (Cald e Usi)',
   'prog.baixaQ':'Baixa da OP {0} ({1}): {2} peça(s) aprovada(s) pelo CQ.', 'prog.baixaJa':'{0} já com baixa.', 'prog.baixaRot':'Peças com baixa agora (faltam {0})', 'prog.baixaInvalida':'Informe de 1 até {0} peças.', 'prog.baixaParcial':'OP {0}: {1} de {2} peças com baixa. Ela continua na lista para o resto.', 'prog.baixadasN':'{0} com baixa',
   'avv.foraArea':'{0}: OPs fora da sua área (não entram no seu %)',
+  'opm.subirBom':'⭱ Subir BOM (planilha)', 'fab.rSoBom':'Só a BOM é gravada: as colunas de OP da planilha são ignoradas.', 'fab.bomGravada':'BOM do projeto {0} gravada.',
+  'd.historicoTit':'Histórico', 'cr.posicao':'Onde entra', 'cr.posFim':'No fim', 'cr.posDepois':'Depois de: {0}', 'cr.duracaoNova':'Duração em dias (0 = o site divide)', 'cr.dicaReajuste':'Incluir, apagar ou remarcar uma tarefa reajusta as não feitas para terminar no fim do PCP.', 'cr.previstoDe':'Data prevista — {0}', 'cr.naoCabe':'Não cabe no prazo do PCP ({0}). Peça ao PM para estender o fim do PCP.', 'cr.antesDoInicio':'A tarefa começa em {0}: a data não pode ser antes disso.', 'cr.naoApagaFeita':'Tarefa concluída não pode ser apagada.', 'cr.apagarQ':'Apagar a tarefa "{0}" deste projeto? O tempo dela volta para as tarefas não feitas.', 'h.ck.incluiu':'Tarefa "{0}" incluída', 'h.ck.apagou':'Tarefa "{0}" apagada', 'h.ck.remarcou':'Tarefa "{0}" remarcada de {1} para {2}',
+  'fm.etapa1':'Etapa 1 de 2 · Dados do projeto', 'fm.etapa2':'Etapa 2 de 2 · Cronograma', 'fm.secDados':'Dados do projeto', 'fm.quandoAplicavel':'(quando aplicável)', 'fm.pm':'PM RESPONSÁVEL', 'fm.secProcessos':'O que o projeto tem', 'fm.processosNota':'Ligue os processos deste projeto. Cada um ganha início e fim no cronograma.', 'fm.secCronograma':'Cronograma', 'fm.janelaPcpNota2':'Pode ficar em branco: o projeto fica "aguardando cronograma" até o PM definir.', 'fm.inicio':'INÍCIO', 'fm.fim':'FIM', 'fm.semProcessos':'Nenhum processo ligado na etapa 1.', 'fm.voltar':'← Voltar', 'fm.proximo':'Próximo: cronograma →', 'fm.errProcPar':'{0}: preencha o início e o fim.', 'fm.errProcOrdem':'{0}: o fim é antes do início.', 'fm.avisoProcEntrega':'{0} termina em {1}, depois da entrega ({2}).', 'fm.avisoPintCald':'A pintura começa antes do fim da caldeiraria.', 'proc.pcp':'PCP', 'proc.cald':'Caldeiraria', 'proc.usi':'Usinagem', 'proc.pint':'Pintura', 'proc.mont':'Montagem mecânica',
+  'tl.entrega':'Entrega', 'tl.hoje':'Hoje', 'tl.mes1':'jan', 'tl.mes2':'fev', 'tl.mes3':'mar', 'tl.mes4':'abr', 'tl.mes5':'mai', 'tl.mes6':'jun', 'tl.mes7':'jul', 'tl.mes8':'ago', 'tl.mes9':'set', 'tl.mes10':'out', 'tl.mes11':'nov', 'tl.mes12':'dez',
+  'cm.colAguardando':'Aguardando programação', 'cm.colProgramadas':'Programadas', 'cm.colFinalizadas':'Finalizadas', 'cm.nadaFinalizado':'Nenhuma operação finalizada nos últimos 7 dias.', 'cm.verMais':'ver mais ({0})', 'cm.verMenos':'ver só os últimos 7 dias', 'cm.dicaArrastar':'arraste os cartões entre as colunas', 'cm.passouFim':'passou do fim', 'cm.reordenada':'Ordem da fila da {0} mudou: as seguintes foram reprogramadas.', 'cm.opFinalizada':'Operação da OP {0} finalizada na {1}.', 'cm.secAcoes':'Ações', 'cm.finalizarOp':'Finalizar operação', 'n.cm-atrasada':'{0}: OP {1} passou do fim previsto e não foi finalizada', 'n.cm-atrasadaM':'{0} · fim previsto {1}. Arraste para Finalizadas ou reprograme.',
+  'ger.bomDia':'Bom dia', 'ger.boaTarde':'Boa tarde', 'ger.boaNoite':'Boa noite', 'ger.semana':'Semana {0}',
 };

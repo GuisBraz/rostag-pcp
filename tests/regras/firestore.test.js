@@ -97,6 +97,9 @@ describe('projetos: técnico', () => {
     // resumo da BOM no projeto: o técnico do projeto grava; outro técnico não
     await assertSucceeds(como(P).doc('equipes/E1/projetos/doP').update({ bom: { linhas: ['A|1~4~C~~'], em: 'x' } }));
     await assertSucceeds(como(P).doc('equipes/E1/projetos/doP').update({ bom: null }));
+    // histórico do checklist: o técnico do projeto grava
+    await assertSucceeds(como(P).doc('equipes/E1/projetos/doP').update({ checklistLog: [{ em: '2026-11-27', acao: 'incluiu', t: 'X', por: 'P' }] }));
+    await assertFails(como(T).doc('equipes/E1/projetos/doP').update({ checklistLog: [] }));
     await assertFails(como(P).doc('equipes/E1/projetos/doP').update({ bom: { linhas: 'x' } }));
     await assertFails(como(T).doc('equipes/E1/projetos/doP').update({ bom: null }));
     await assertFails(como(P).doc('equipes/E1/projetos/doT').update({ checklist: [] }));

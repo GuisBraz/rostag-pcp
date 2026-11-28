@@ -14,7 +14,6 @@ import * as DadosAvanco from '../dados/avanco.js';
 import * as Producao from '../dominio/producao.js';
 import * as Projeto from '../dominio/projeto.js';
 import * as Auth from '../dados/auth.js';
-import * as Ops from '../dados/ops.js';
 import { $, registrarAcoes, comBotaoOcupado } from './dom.js';
 import { abrirModal, fecharModal } from './modal.js';
 import { toast } from './toast.js';
@@ -22,7 +21,6 @@ import { avisoErro } from './app.js';
 export { renderRnc } from './qualidade.js';
 import { rncsEsperandoMim } from './qualidade.js';
 import { configurar as configurarOpManual } from './opManual.js';
-import { alternarPopup } from './app.js';
 import { garantirXlsx } from './bibliotecas.js';
 import './opPdf.js';
 import { renderCargaFabrica } from './cargaFabrica.js';
@@ -156,7 +154,6 @@ function renderAvanco(lista) {
       (area ? barra(T('area.' + area), s[area]) :
         barra(T('fab.geral'), s) + barra(T('area.caldeiraria'), s.caldeiraria) + barra(T('area.usinagem'), s.usinagem)) +
       (s.pecasRnc ? '<div class="av-rnc">' + esc(T('fab.pecasRnc', numeroBr(s.pecasRnc))) + '</div>' : '') +
-      '<button type="button" class="link-btn av-lista" data-acao="abrirAvanco" data-arg="' + esc(id) + '">' + esc(T('av.abrir')) + ' →</button>' +
       '</div>';
   }).join('');
 }
@@ -319,7 +316,8 @@ function lerPlanilha(ev) {
     const XLSX = r[0];
     const wb = XLSX.read(new Uint8Array(r[1]), { type: 'array' });
     const lista = listaDaPlanilha(XLSX, wb);
-    const res = lista ? Planilha.lerOps(lista.matriz) : { ok: false };
+    // só a BOM: as colunas de OP da planilha são ignoradas (OPs novas virão de outra forma)
+    const res = lista ? Object.assign(Planilha.lerOps(lista.matriz), { ops: [], erros: [], avisos: [], ignoradas: 0 }) : { ok: false };
     if (!res.ok) { $('planilha-resumo').innerHTML = ''; $('planilha-erro').textContent = T('fab.erroCabecalho'); return; }
     const itens = Avanco.itens(lista.matriz);
     lista.arquivo = arquivo.name;
@@ -333,31 +331,11 @@ function lerPlanilha(ev) {
   });
 }
 
-function comparacaoAtual() {
-  const projetoId = $('planilha-projeto').value;
-  const existentes = {};
-  opsDoProjeto(projetoId).forEach(function (o) { existentes[o.id] = o; });
-  return Planilha.comparar(lida.ops, existentes, projetoId);
-}
-
 function mostrarResumo() {
   if (!lida) return;
-  const c = comparacaoAtual();
-  const finalizadas = c.atualizadas.filter(function (a) { return a.status && a.status !== 'aberta'; }).length;
-  const porArea = { caldeiraria: 0, usinagem: 0 };
-  lida.ops.forEach(function (o) { porArea[o.area]++; });
-  const itens = [
-    T('fab.rLidas', lida.ops.length, porArea.caldeiraria, porArea.usinagem),
-    T('fab.rNovas', c.novas.length),
-    T('fab.rAtualizadas', c.atualizadas.length) + (finalizadas ? ' ' + T('fab.rFinalizadas', finalizadas) : ''),
-    T('fab.rIguais', c.iguais.length)
-  ];
-  if (lida.ignoradas) itens.push(T('fab.rIgnoradas', lida.ignoradas));
-  if (c.juntar.length) itens.push(T('fab.rJuntar', c.juntar.length));
-  if (c.naoJuntou.length) itens.push(T('fab.rNaoJuntou', c.naoJuntou.map(function (x) { return x.numero; }).join(', ')));
   const comerciais = lida.itens.filter(function (i) { return i.comercial; }).length;
-  itens.unshift(T('fab.rLista', lida.itens.length, comerciais) + (lida.lista.opPintura ? ' · ' + T('fab.rPintura', lida.lista.opPintura) : '') +
-    (lida.lista.servicos.length ? ' · ' + T('fab.rServicos', lida.lista.servicos.length) : ''));
+  const itens = [T('fab.rLista', lida.itens.length, comerciais) + (lida.lista.opPintura ? ' · ' + T('fab.rPintura', lida.lista.opPintura) : '') +
+    (lida.lista.servicos.length ? ' · ' + T('fab.rServicos', lida.lista.servicos.length) : ''), T('fab.rSoBom')];
   let html = '<ul>' + itens.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
   if (lida.erros.length) {
     html += '<div class="planilha-erros"><b>' + esc(T('fab.rErros', lida.erros.length)) + '</b><ul>' +
@@ -378,18 +356,13 @@ function enviarPlanilha(_a, _b, btn) {
   if (!lida) return;
   const p = buscarProjeto($('planilha-projeto').value);
   if (!p) return;
-  const c = comparacaoAtual();
-  const mudouOps = c.novas.length || c.atualizadas.length || c.juntar.length;
-  comBotaoOcupado(btn, Ops.gravarPlanilha(p, c).then(function () {
-    return DadosAvanco.salvar(p, lida.lista).catch(function (e) { e.listaFalhou = true; throw e; });
-  }).then(function () {
+  comBotaoOcupado(btn, DadosAvanco.salvar(p, lida.lista).catch(function (e) { e.listaFalhou = true; throw e; }).then(function () {
     // resumo da BOM no projeto (o andamento sai do Avanço)
     BomResumo.gravar(p, lida.lista.matriz).catch(function (e) { console.warn('resumo da BOM:', e); });
     fecharModal('modal-planilha');
-    toast(T('fab.gravadas', c.novas.length, c.atualizadas.length));
+    toast(T('fab.bomGravada', nomeProjeto(p)));
     document.dispatchEvent(new CustomEvent('rostag:planilhaGravada', { detail: p.id }));
     estado.filtroFab.projeto = p.id;
-    if (p.gpUid && mudouOps) Auth.criarNotificacao(p.gpUid, 'planilhaOps', T('notif.planilha', p.commessa, c.novas.length, c.atualizadas.length), p.id);
     renderFabrica();
   }).catch(function (e) {
     if (e && e.message === 'avanco-grande') { $('planilha-erro').textContent = T('fab.erroListaGrande'); return; }
@@ -413,12 +386,9 @@ document.addEventListener('change', function (e) {
 
 configurarOpManual(projetosParaPlanilha);
 // escolher uma opção do menu fecha o menu
-document.addEventListener('click', function (e) {
-  if (e.target.closest && e.target.closest('.menu-add-item')) $('addops-panel').classList.remove('open');
-});
+
 
 registrarAcoes({
-  toggleAddOps: function (_a, _b, el) { alternarPopup('addops-panel', el); },
   filtrarFabrica: filtrarFabrica,
   abrirPlanilha: function (id) { abrirPlanilha(id || null); },
   lerPlanilha: lerPlanilha,
